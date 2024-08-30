@@ -1,13 +1,12 @@
-## **PMC-VIS:** Interactive Visualization meets Probabilistic Model Checking
-----------------------------
+# **PMC-VIS:** Interactive Visualization meets Probabilistic Model Checking
 
-### Requirements
+## Requirements
 1. Active Docker Daemon (min 2GB RAM, recommended 4+GB RAM)
 2. A chromium-based browser (e.g., Google Chrome)
 
 ----------------------------
 
-#### Docker Compose:
+## Docker Compose:
 1. on the directory `./src`
 2. `docker compose up` starts the server: 
    - `-d` flag detaches the running system
@@ -19,28 +18,25 @@
 
 ----------------------------
 
-#### Local installation:
+## Local installation:
 Requirements: GNU make, gcc, JDK 11, git, NodeJS v. 16+
   1. backend:
-      - new terminal, go to `src/backend/`
-        - install prism:
-        - download prism: `git clone https://github.com/prismmodelchecker/prism`
-        - go to `src/backend/prism/prism`
-        - run `git checkout 03c6c15`
-        - build prism: `make`
-      - go to `src/backend/server/`
-        - download dependencies: `mvn dependency:copy-dependencies`
-        - build server: `mvn package` 
-        - start server: `./bin/run server PRISMDefault.yml` 
-        - debug mode: `./bin/run server PRISMDebug.yml`
+      - new terminal, go to: `src/backend/`
+        - run: `git clone https://github.com/prismmodelchecker/prism` to download prism
+        - go to: `src/backend/prism/prism`
+        - run: `git checkout 03c6c15`
+        - run: `make` to build prism
+      - go to: `src/backend/server/`
+        - run: `mvn dependency:copy-dependencies` to download dependencies
+        - run: `mvn package` to build server
+        - run: `./bin/run server PRISMDefault.yml` to start server
+          - or run: `./bin/run server PRISMDebug.yml` to start sever in debug mode
+      - server at `localhost:8080` 
   2. frontend:
-      - new terminal, go to `src/frontend/`
-        - build server: `npm install` 
-        - start server: `npm start`
+      - new terminal, go to: `src/frontend/`
+        - run: `npm install` to build server
+        - run: `npm start` to start server
       - web vis at `http://localhost:3000`
-        - backend server at `localhost:8080` 
-
-----------------------------
 
 ## Research: 
 
