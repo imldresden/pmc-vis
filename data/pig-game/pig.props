@@ -1,0 +1,8 @@
+//Basic Check: do we reach the end
+"Assurence": Pmin=? [F "end"];
+
+//Let us try to win
+"Winner": Pmax=? [ F "won"];
+
+//Let us try to lose
+"Loser": Pmin=? [ F "won"];

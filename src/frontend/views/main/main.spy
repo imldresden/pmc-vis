@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<meta charset="utf-8" name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<html lang="en">
+
+<head>
+  <title>{{ title }}</title>
+
+  << styles>>
+
+</head>
+
+<body>
+
+  <section>
+    <div id="container">
+      <!-- panes are appended here -->
+    </div>
+  </section>
+
+  <span class="config-toggle" id="config-toggle"><i class="fa fa-bars" aria-hidden="true"></i></span>
+
+  <div id="config" class="config ui">
+    <div class="ui segment">
+      <h3 class="label label-info">Projects </h3>
+
+      <details class="ui accordion" closed="">
+        <summary class="title">
+          <i class="dropdown icon left"></i>
+          <p class="label inline label-info"> Current Project ID: </p>
+          <p class="label inline label-info" id="project-id"></p>
+        </summary>
+        <div class="content">
+          <div class="preamble">
+            <p class="label inline label-info">Active pane:
+            <p class="label inline label-info" id="selected-pane"></p>
+            </p>
+          </div>
+          <div id="info-box">
+
+          </div>
+
+          <!-- Legend -->
+          <div class="ui segment">
+            <div>
+              <b>States</b>
+              <div style="display:flex">
+                <span class="legend-node unvisited"></span>
+                <p class="legend-p">Collapsed</p>
+              </div>
+              <div style="display:flex">
+                <span class="legend-node visited"></span>
+                <p class="legend-p">Expanded</p>
+              </div>
+            </div>
+            <br>
+            <div>
+              <b>Actions</b>
+              <div style="display:flex">
+                <span class="legend-node actions"></span>
+                <p class="legend-p">Action nodes</p>
+              </div>
+              <div style="display:flex">
+                <span class="legend-edge chosen-edge"></span>
+                <p class="legend-p">Preferred action(s)</p>
+              </div>
+              <div style="display:flex">
+                <span class="legend-edge not-chosen-edge"></span>
+                <p class="legend-p">Other action(s)</p>
+              </div>
+            </div>
+            <br>
+            <div>
+              <b>Selection Colors</b>
+              <div style="display:flex">
+                <span class="legend-node states-selected"></span>
+                <p class="legend-p">States</p>
+              </div>
+              <div style="display:flex">
+                <span class="legend-node actions-selected"></span>
+                <p class="legend-p">Actions</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </details>
+
+      <div class="param">
+        <a id="new-project"> New project... </a>
+        <a id="download" style="display:none"></a>
+        <br>
+        <a id="export-strat"> Export marked nodes... </a>
+      </div>
+
+    </div>
+
+    <div class="ui segment">
+      <h3 class="label label-info cy-config">Settings </h3>
+      <div id="props-config">
+        <!-- layout specific options are appended here-->
+      </div>
+    </div>
+    <div class="ui segment">
+      <h3 class="label label-info">Graph View </h3>
+      <details class="ui accordion" closed="">
+        <summary class="title">
+          <i class="dropdown icon left"></i>
+          <p class="label inline label-info cy-config">Layout Options </p>
+        </summary>
+        <div id="cy-config" class="content cy-config">
+          <!-- layout specific options are appended here-->
+        </div>
+        
+      </details>
+      <div class="param" id="graph-config">
+        <!-- options for the graph view are appended here -->
+      </div>
+    </div>
+
+    <div class="ui segment">
+      <h3 class="label label-info" id="pcp-config-span">Inspection View</h3>
+      <div id="pcp-config">
+        <!-- layout specific options are appended here-->
+      </div>
+    </div>
+  </div>
+
+  << scripts >>
+
+</body>
+
+</html>

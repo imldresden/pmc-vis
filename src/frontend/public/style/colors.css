@@ -1,0 +1,36 @@
+:root {
+    --body-bg-color: #ffffff;
+
+    --state-color: #555;
+    --action-color: #afafaf;
+    --dark-text-color: #555;
+    
+    /* Panes */
+    --dragbar: #a1a1a7;
+    --dragbar-hover: #adc4ad;
+    --active-pane: #439843;
+    --pane-background: #f0f0f0;
+
+
+    /* PCP */ 
+    --pcp-primary: #4887b9;
+    --pcp-secondary: #ee8c31;
+    --pcp-hover-stroke: #77c277;
+    --pcp-hover-width: 3px;
+    --pcp-bubble-cursor-color: #a3a3a3;
+    --pcp-bg-stroke: #c4c4c4ea;
+    --pcp-text-fill: #333333;
+    --pcp-axes-lines: #6b6b6b;
+
+    /* Context menu */
+    --ctx-menu-text-color: #000000;
+    --ctx-menu-bg-color: #fafafa;
+    --ctx-menu-hover-color: #c8c8c8;
+
+    /* Config menu */
+    --config-bg-color: #f3f3f3;
+    --config-icon-color-active: #fff;
+    --config-icon-color-inactive: #818181;
+
+    --wildcard: #b8b8b8;
+}

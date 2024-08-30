@@ -1,0 +1,41 @@
+mdp
+
+const int max_rounds=5;
+
+formula f_end = (rounds=max_rounds) | (game_sum=100);
+
+label "end" =  f_end;
+label "won" =  f_end & (game_sum=100);
+label "lost" = f_end & (game_sum!=100);
+
+module game
+  rounds:[0..max_rounds] init 0;
+  game_sum:[0..100] init 0;
+
+  [next] (rounds < max_rounds) -> (rounds'=rounds+1) & (game_sum'=min(game_sum+sum, 100));
+
+  [end] f_end -> true;
+
+endmodule
+
+
+module round
+  sum:[0..100] init 0;
+  phase:[0..2] init 0;
+
+  [roll] (phase=0) -> 1/6:(phase'=2)&(sum'=0) + 1/6:(phase'=1)&(sum'=min(100,sum+2)) + 1/6:(phase'=1)&(sum'=min(100,sum+3)) + 1/6:(phase'=1)&(sum'=min(100,sum+4)) + 1/6:(phase'=1)&(sum'=min(100,sum+5)) + 1/6:(phase'=1)&(sum'=min(100,sum+6));
+
+  [hold] (phase=1) -> (phase'=2);
+  [continue] (phase=1) -> (phase'=0);
+
+  [next] (phase=2) -> (phase'=0) & (sum'=0);
+
+endmodule
+
+rewards "points"
+  [hold] true : sum;
+endrewards
+
+rewards "rolls"
+  [roll] true : 1;
+endrewards

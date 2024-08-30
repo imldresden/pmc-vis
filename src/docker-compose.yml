@@ -1,0 +1,11 @@
+services:
+  node:
+    build: frontend/
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+  server:
+    build: backend/server/
+    ports:
+      - "8080:8080"

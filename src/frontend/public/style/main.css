@@ -1,0 +1,298 @@
+@import 'colors.css';
+
+.minimap {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    overflow-y: hidden;
+    overflow-x: auto !important;
+    background-color: var(--body-bg-color);
+}
+
+.config {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 350px;
+    background: var(--config-bg-color);
+    box-sizing: border-box;
+    padding: 1em;
+    transition-property: opacity;
+    transition-duration: 250ms;
+    transition-timing-function: ease-out;
+    overflow: auto;
+    z-index: 1;
+}
+
+.param {
+    margin-top: 1.5em;
+}
+
+.button.param {
+    margin: 1em 0 1em 0 !important;
+}
+
+.param button {
+    width: 3em;
+    margin-right: 0.25em;
+    text-align: center;
+}
+
+.label {
+    display: block;
+    padding-bottom: 7px;
+}
+
+.label.inline {
+    display: inline;
+}
+
+.slider {
+    display: block;
+    width: 100%;
+    margin: 0;
+    margin-right: 5px;
+}
+
+.config-toggle {
+    position: fixed;
+    right: 15px;
+    top: -5px;
+    padding: 1em;
+    margin: 0.2em;
+    cursor: pointer;
+    color: var(--config-icon-color-active);
+    z-index: 9999999;
+}
+
+.config-toggle.icon-inactive {
+    color: var(--config-icon-color-inactive);
+}
+
+.config-closed .config {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.config-closed #cy {
+    right: 0;
+}
+
+.tip-link {
+    display: block;
+}
+
+/* atomic propositions css */
+.cy-html {
+    display: flex;
+    color: #fff;
+}
+
+.cy-html,
+.tippy-tooltip,
+.prop-text {
+    font-size: 10px;
+}
+
+.config select,
+.config .button {
+    font-size: 12px;
+    width: 100%;
+}
+
+.cy-html p {
+    margin: 0;
+}
+
+.inverted-text {
+    color: var(--dark-text-color);
+}
+
+.prop-text-label-icon {
+    padding-right: 7px;
+}
+
+.legend {
+    color: #000;
+    background-color: var(--pane-background);
+}
+
+.legend-node {
+    border-radius: 0%;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    height: 12px;
+    width: 12px;
+    margin-right: 5px;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+.legend-edge {
+    border-radius: 0%;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    width: 12px;
+    margin-right: 5px;
+    display: inline-block;
+}
+
+.legend-p {
+    margin: 0 !important;
+}
+
+.states-selected {
+    border: double 3px;
+    border-color: var(--pcp-primary)
+}
+
+.states-selected {
+    border: none;
+    border-radius: 50%;
+    background-color: var(--pcp-primary)
+}
+
+.actions {
+    background-color: var(--action-color);
+    border-radius: 50%;
+    margin-top: 6px;
+    margin-left: 3px;
+    margin-right: 8px;
+    height: 6px;
+    width: 6px;
+}
+
+/*.actions-selected {
+    border: double 3px;
+    border-radius: 50%;
+    border-color: var(--pcp-secondary)
+}*/
+
+.actions-selected {
+    border: none;
+    border-radius: 50%;
+    background-color: var(--pcp-secondary)
+}
+
+.visited {
+    border: solid 3px;
+    background-color: var(--pane-background);
+    border-color: var(--state-color);
+}
+
+.unvisited {
+    background-color: var(--state-color);
+}
+
+.chosen-edge {
+    border: none;
+    background-color: var(--action-color);
+    height: 2px;
+    margin-bottom: 6px;
+    margin-top: 9px;
+}
+
+.not-chosen-edge {
+    border: none;
+    border-bottom: 3px dotted var(--action-color);
+    height: 5px;
+    margin-bottom: 5px;
+    margin-top: 7px;
+}
+
+.config.ui.checkbox {
+    display: block;
+}
+
+.cy-html i,
+.prop-text i {
+    line-height: 2 !important;
+}
+
+.prop-text {
+    margin-left: 15px;
+    font-size: 10px !important;
+    padding-bottom: 5px;
+}
+
+.prop-text-label-text {
+    padding-left: 7px;
+}
+
+.ui p {
+    margin: 0 !important;
+}
+
+details.title p {
+    margin-left: 10px;
+}
+
+details>.content {
+    padding-top: 0 !important;
+    padding-bottom: 10px !important;
+}
+
+details {
+    border-bottom: solid 0.5px #e6e6e6;
+}
+
+input+label {
+    position: relative;
+    z-index: 0;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+    margin-top: 8px;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background: #292929;
+    cursor: pointer;
+    border-radius: 50%;
+
+}
+
+.slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: #292929;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+select.dropdown {
+    height: 25px;
+    border: 1px solid rgba(34,36,38,.15);
+}
+
+a:hover {
+    cursor:pointer;
+}
+
+.buttons {
+    display: flex;
+}

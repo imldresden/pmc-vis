@@ -1,0 +1,9 @@
+resourcePackages:
+  - prism.api
+  - prism.resources
+prettyPrint: true
+readAllResources: false
+openAPI:
+  info:
+    title: "pmc-vis backend"
+    description: "This server is running in the background of the pmc-vis application, and is handling all requests for graph information from the model checker"

@@ -1,0 +1,52 @@
+<script src="/libs/d3/dist/d3.min.js"></script>
+<script src="/libs/lodash/lodash.min.js"></script>
+
+<!-- cytoscape and layouts -->
+<script src="/libs/cytoscape/dist/cytoscape.min.js"></script>
+<script src="/libs/layout-base/layout-base.js"></script>
+<script src="/libs/cytoscape-layout-utilities/cytoscape-layout-utilities.js"></script>
+
+<!-- cola -->
+<script src="/libs/webcola/WebCola/cola.min.js"></script>
+<script src="/libs/cytoscape-cola/cytoscape-cola.js"></script>
+
+<!-- cose, fcose -->
+<script src="/libs/cose-base/cose-base.js"></script>
+<script src="/libs/cytoscape-fcose/cytoscape-fcose.js"></script>
+
+<!-- elk -->
+<script src="/libs/elkjs/lib/elk.bundled.js"></script>
+<script src="/libs/cytoscape-elk/dist/cytoscape-elk.js"></script>
+
+<!-- dagre -->
+<script src="/libs/dagre/dist/dagre.min.js"></script>
+<script src="/libs/cytoscape-dagre/cytoscape-dagre.js"></script>
+
+<!-- klay -->
+<script src="/libs/klayjs/klay.js"></script>
+<script src="/libs/cytoscape-klay/cytoscape-klay.js"></script>
+
+<!-- utils -->
+<script src="/libs/cytoscape-undo-redo/cytoscape-undo-redo.js"></script> <!-- undo/redo -->
+<script src="/libs/cytoscape-node-html-label/dist/cytoscape-node-html-label.js"></script> <!-- node html -->
+
+<!-- tooltips -->
+<script src="/libs/tippy.js/dist/tippy.all.js"></script>
+<script src="/libs/popper.js/dist/umd/popper.js"></script>
+<script src="/libs/cytoscape-popper/cytoscape-popper.js"></script>
+
+<!-- unique ids -->
+<script src="/libs/uuid/dist/umd/uuidv4.min.js"></script>
+
+<!-- customized extensions -->
+<script src="/libs/cytoscape-context-menus/cytoscape-context-menus.js"></script>
+
+<script src="/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+<!-- <script src="/libs/@fortawesome/fontawesome-free/js/all.js"></script> -->
+<script src="https://kit.fontawesome.com/7b18c84369.js" crossorigin="anonymous"></script>
+
+
+<script src="/js/views/panes.js" type="module"></script>
+<script src="/js/utils/controls.js" type="module"></script>
+<script src="/js/main/main.js" type="module"></script>
+

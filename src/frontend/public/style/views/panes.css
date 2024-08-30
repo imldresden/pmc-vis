@@ -1,0 +1,72 @@
+@import '../colors.css';
+
+/* the logic for resizing panes is in panes.js */
+.dragbar {
+    background-color: var(--dragbar);
+    height: 100%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    cursor: col-resize;
+}
+
+.dragbar:hover {
+    background-color: var(--dragbar-hover);
+    width: 10px;
+    z-index: 2;
+}
+
+/* the logic for resizing the split inside panes is in panes.js */
+.split-dragbar {
+    background-color: var(--dragbar);
+    height: 3px;
+    position: absolute;
+    width: 100%;
+    cursor: row-resize;
+    z-index: 1;
+}
+
+.split-dragbar:hover {
+    background-color: var(--dragbar-hover);
+    height: 6px;
+}
+
+.active-pane, .active-pane + .split-dragbar + .detail-inspector {
+    -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+    -moz-box-sizing: border-box;    /* Firefox, other Gecko */
+    box-sizing: border-box; 
+
+    border-top-color: var(--active-pane);
+    border-top-width: 5px;
+    border-top-style: solid;
+}
+
+/* the resizing logic depends on the following display properties */
+/*section {
+    height: 95vh;
+}*/
+
+#container {
+    display: inline-flex;
+    padding-right: 350px;
+}
+
+.cy-s {
+    width: 100px;
+    display: inline-block;
+    position: relative;
+    background-color: var(--pane-background);
+    
+    -webkit-user-select: none;  
+    -moz-user-select: none;    
+    -ms-user-select: none;      
+    user-select: none;
+}
+
+.cy {
+    width: 100%;
+    height: calc(100%); /* 10px is the height of the scrollbar */
+
+}
+
