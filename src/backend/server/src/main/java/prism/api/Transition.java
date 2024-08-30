@@ -22,20 +22,20 @@ public class Transition implements Node{
 
     private TreeMap<String, Double> scheduler;
 
-    private List<String> clusters;
+    private List<String> views;
 
     public Transition(){
         // Jackson deserialization
     }
 
-    public Transition(long id, String source, String action, Map<Long, Double> probabilityDistribution, Map<String, Double> rewards, Map<String, Double> results, Map<String, Double> scheduler, List<String> clusters,  Map<Long, String> translation){
+    public Transition(long id, String source, String action, Map<Long, Double> probabilityDistribution, Map<String, Double> rewards, Map<String, Double> results, Map<String, Double> scheduler, List<String> views,  Map<Long, String> translation){
         this.id = id;
         this.source = source;
         this.action = action;
-        this.clusters = clusters;
-        this.results = new TreeMap<>(results);
-        this.rewards = new TreeMap<>(rewards);
-        this.scheduler = new TreeMap<>(scheduler);
+        this.views = views;
+        if (results != null) this.results = new TreeMap<>(results); else this.results = new TreeMap<>();
+        if (rewards != null) this.rewards = new TreeMap<>(rewards); else this.rewards = new TreeMap<>();
+        if (scheduler != null) this.scheduler = new TreeMap<>(scheduler); else this.scheduler = new TreeMap<>();
         if (translation == null) {
             this.probabilityDistribution = probabilityDistribution.entrySet().stream().collect(Collectors.toMap(e -> Long.toString(e.getKey()), Map.Entry::getValue ));
         }
@@ -57,7 +57,7 @@ public class Transition implements Node{
 
     @Override
     public String getId() {
-        return (clusters == null) ? String.format("t%s", id) : String.format("t%s_%s", String.join("_", clusters), id);
+        return (views == null) ? String.format("t%s", id) : String.format("t%s_%s", String.join("_", views), id);
     }
 
     @Override
@@ -75,20 +75,21 @@ public class Transition implements Node{
     public Map<String, Map<String, Value>> getDetails() {
         Map<String, Map<String, Value>> details = new HashMap<>();
         Map<String, Value> parameters = new TreeMap<>();
-        parameters.put("origin", new Value(source, "ordinal"));
-        parameters.put("action", new Value(action, "ordinal"));
-        parameters.put("outcome distribution", new Value(probabilityDistribution, "ordinal"));
+        parameters.put("origin", new Value(source, "numbers"));
+        parameters.put("action", new Value(action, "numbers"));
+        parameters.put("outcome distribution", new Value(probabilityDistribution, "numbers"));
 
         details.put(OUTPUT_VARIABLES, parameters);
-        details.put(OUTPUT_REWARDS, new TreeMap<>(rewards.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "ordinal")))));
-        details.put(OUTPUT_RESULTS, new TreeMap<>(results.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "ordinal")))));
+        details.put(OUTPUT_REWARDS, new TreeMap<>(rewards.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
+        details.put(OUTPUT_RESULTS, new TreeMap<>(results.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
+        details.put(OUTPUT_SCHEDULER, new TreeMap<>(scheduler.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
         return details;
     }
 
     @Override
     public Map<String, Object> getViewDetails() {
         Map<String, Object> output = new HashMap<>();
-        output.put("cluster identifier", clusters);
+        output.put("views identifier", views);
         return output;
     }
 
@@ -106,6 +107,19 @@ public class Transition implements Node{
     @JsonIgnore
     public String getSource() {
         return source;
+    }
+
+    @JsonIgnore
+    public Map<String, Double> getResults() {
+        return results;
+    }
+
+    @JsonIgnore
+    private String viewForm(String id){
+        if (views == null || views.isEmpty()){
+            return id;
+        }
+        return String.format("%s_%s", String.join("_", views), id);
     }
 
     @JsonIgnore
@@ -133,9 +147,9 @@ public class Transition implements Node{
     @JsonIgnore
     public List<Edge> createEdges(){
         List<Edge> edges = new ArrayList<>();
-        edges.add(new Edge(source, this.getId(), action));
+        edges.add(new Edge(viewForm(source), this.getId(), action));
         for (Map.Entry<String, Double> e : probabilityDistribution.entrySet()) {
-            edges.add(new Edge(this.getId(), e.getKey(), Double.toString(e.getValue())));
+            edges.add(new Edge(this.getId(), viewForm(e.getKey()), Double.toString(e.getValue())));
         }
         return edges;
     }

@@ -11,7 +11,7 @@ const params = {
 
   randomize: false,  
   nodeSpacing: 5,
-  edgeLengthVal: 75,
+  edgeLength: 75,
   //edgeSymDiffLength: 2,
   //edgeJaccardLength: 2,
   centerGraph: true,
@@ -50,7 +50,7 @@ const params = {
     },
     {
       label: 'Edge length',
-      param: 'edgeLengthVal',
+      param: 'edgeLength',
       min: 1,
       max: 200, 
       type: 'slider',

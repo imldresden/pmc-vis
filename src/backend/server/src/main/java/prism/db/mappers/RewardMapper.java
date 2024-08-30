@@ -2,8 +2,8 @@ package prism.db.mappers;
 
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
-import prism.core.Model;
 import prism.core.Namespace;
+import prism.core.Project;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -16,8 +16,8 @@ public class RewardMapper implements RowMapper<Map<String, Double>> {
 
     private List<String> rewardNames;
 
-    public RewardMapper(Model model){
-        rewardNames = model.getModulesFile().getRewardStructNames();
+    public RewardMapper(Project project){
+        rewardNames = project.getModulesFile().getRewardStructNames();
     }
 
     @Override

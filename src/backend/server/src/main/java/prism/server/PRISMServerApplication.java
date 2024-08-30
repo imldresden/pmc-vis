@@ -1,14 +1,13 @@
 package prism.server;
 
 import io.dropwizard.Application;
-import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
-import org.jdbi.v3.core.Jdbi;
 import prism.cli.SchedulerConverter;
+import prism.cli.StatisticalChecker;
 import prism.resources.PRISMResource;
 
 import javax.servlet.DispatcherType;
@@ -31,6 +30,7 @@ public class PRISMServerApplication extends Application<PRISMServerConfiguration
 	@Override
 	public void initialize(Bootstrap<PRISMServerConfiguration> bootstrap) {
 		bootstrap.addCommand(new SchedulerConverter());
+		bootstrap.addCommand(new StatisticalChecker());
 	}
 
 	@Override
@@ -61,6 +61,8 @@ public class PRISMServerApplication extends Application<PRISMServerConfiguration
 
 		System.out.println("Backend Server started");
 		System.out.println("Server is listening on port http://localhost:8080");
+
+
 	}
 
 

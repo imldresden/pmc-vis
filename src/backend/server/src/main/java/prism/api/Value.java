@@ -28,7 +28,7 @@ public class Value {
 
     public Value(Object value, String type){
         this.value = value;
-        this.info = new TreeMap();
+        this.info = new TreeMap<>();
         this.info.put("type", type);
     }
 

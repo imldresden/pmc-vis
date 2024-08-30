@@ -1,27 +1,49 @@
+import { setPane } from "../utils/controls.js";
+import { colorList } from "../utils/utils.js";
+
 const MIN_LANE_SIZE = 10;
+const socket = io();
 
 const panes = {}; // governs the pane-based exploration
 const info = {}; // global object  
-const tracker = {} // keeps track of already seen nodes, marks, etc. 
+const tracker = {}; // keeps track of already seen nodes, marks, etc. 
 let width;
 let height;
 
+socket.on("handle overview node clicked", (data) => {
+    if (data) {
+        highlightPaneById(data);
+    }
+});
+
+socket.on("disconnect", () => {
+    location.reload();
+});
+
 function uid() {
-    return 'id' + uuidv4().replace(/-/g, '');
+    return "id" + uuidv4().replace(/-/g, "");
 }
 
 function updateHeights() {
-    Object.values(panes).forEach(p => {
+    Object.values(panes).forEach((p) => {
         p.height = height;
         document.getElementById(p.id).style.height = p.height + "px";
-    })
+    });
 }
 
-function spawnPane(dims, { spawner, id }) {
-    if (spawner && panes[spawner] && panes[spawner].spawned) {
-        destroyPanes(panes[spawner].spawned);
-    }
-
+function spawnPane(
+    dims,
+    { spawner, id, newPanePosition },
+    nodesIds,
+    spawnerNodes
+  ) {
+    // if (spawner && panes[spawner] && panes[spawner].spawned) {
+    //     destroyPanes(panes[spawner].spawned);
+    // }
+  
+    const panesLength = Object.keys(panes).length;
+    const index = panesLength % colorList.length;
+    const backgroundColor = colorList[index];
     const pane = {
         id: id || uid(),
         container: uid(),
@@ -29,16 +51,34 @@ function spawnPane(dims, { spawner, id }) {
         width: dims.width,
         height: dims.height,
         split: dims.split || 0.3,
-        cy: undefined // must be set later! 
+        cy: undefined, // must be set later!,
+        backgroundColor,
+        nodesIds,
+        spawner,
+        spawnerNodes,
     };
 
-    pane.details = pane.container + '-details';
+    const newPane = {
+        backgroundColor: pane.backgroundColor,
+        id: pane.id,
+        nodesIds: pane.nodesIds,
+        spawner,
+        spawnerNodes,
+    };
+
+    socket.emit("pane added", newPane);
+
+    pane.details = pane.container + "-details";
 
     // add the node-link diagram view
     const cyContainer = document.createElement("div");
     cyContainer.id = pane.container;
     cyContainer.className = "cy";
-    cyContainer.style.height = (dims.height * (1 - pane.split)) + "px";
+    cyContainer.style.height = dims.height * (1 - pane.split) + "px";
+
+    cyContainer.style.borderBottomColor = backgroundColor + "50";
+    cyContainer.style.borderBottomWidth = "25px";
+    cyContainer.style.borderBottomStyle = "solid";
 
     const dragbar = document.createElement("div");
     dragbar.id = pane.dragbar;
@@ -49,10 +89,10 @@ function spawnPane(dims, { spawner, id }) {
     details.className = "detail-inspector";
     details.id = pane.details;
     details.style.width = "100%";
-    details.style.height = (dims.height * pane.split) + "px";
+    details.style.height = dims.height * pane.split + "px";
 
     const split_dragbar = document.createElement("div");
-    split_dragbar.id = pane.dragbar + '-split';
+    split_dragbar.id = pane.dragbar + "-split";
     split_dragbar.className = "split-dragbar";
 
     const div = document.createElement("div");
@@ -65,11 +105,19 @@ function spawnPane(dims, { spawner, id }) {
     div.appendChild(details);
     div.appendChild(dragbar);
 
-    document.getElementById('container').appendChild(div);
+    if (document.getElementById(spawner) && newPanePosition?.value === "insert") {
+        document.getElementById(spawner).insertAdjacentElement("afterend", div);
+    } else {
+        document.getElementById("container")?.appendChild(div);
+    }
+
     enableDragBars();
 
     panes[div.id] = pane;
-    if (spawner) {
+    if (spawner && panes[spawner]) {
+        if (spawner.length > 0) {
+            // TODO, eg merged
+        }
         panes[spawner].spawned = div.id; // to remember which pane was created from this one
     }
 
@@ -87,7 +135,7 @@ function calcPaneDims(numNodes) {
         if (numNodes < 3) {
             paneWidth = 130;
         } else {
-            paneWidth = Math.min(1000, ((numNodes / 3 + 1) * 150));
+            paneWidth = Math.min(1000, (numNodes / 3 + 1) * 150);
         }
     }
 
@@ -104,26 +152,72 @@ function resizePane(div, pwidth) {
 }
 
 function resizeSplit(div, pheight) {
-    const _height = Math.min(height - (height * 0.05), Math.max(MIN_LANE_SIZE, pheight));
+    const _height = Math.min(
+        height - height * 0.05,
+        Math.max(MIN_LANE_SIZE, pheight)
+    );
     div.style.height = _height + "px";
-    panes[div.parentElement.id].split = 1 - (_height / panes[div.parentElement.id].height);
+    panes[div.parentElement.id].split =
+        1 - _height / panes[div.parentElement.id].height;
 }
 
 function togglePane(div) {
-    if (div.style.width === MIN_LANE_SIZE + "px") { // pane is closed
-        resizePane(div, panes[div.id].oldWidth);
-    } else {
-        panes[div.id].oldWidth = div.offsetWidth;
-        resizePane(div, MIN_LANE_SIZE);
+    if (div) {
+        if (div.style.width === MIN_LANE_SIZE + "px") {
+            // pane is closed
+            resizePane(div, panes[div.id].oldWidth);
+        } else {
+            panes[div.id].oldWidth = div.offsetWidth;
+            resizePane(div, MIN_LANE_SIZE);
+        }
+
+        dispatchEvent(
+            new CustomEvent("paneResize", {
+                detail: {
+                    pane: panes[div.id],
+                },
+            })
+        );
+
+        refreshCys();
     }
+}
 
-    dispatchEvent(new CustomEvent("paneResize", {
-        detail: {
-            pane: panes[div.id],
-        },
-    }));
+function expandPane(div) {
+    const windWidth = window.innerWidth;
+    if (div) {
+        resizePane(div, windWidth / 1.5);
 
-    refreshCys();
+        dispatchEvent(
+            new CustomEvent("paneResize", {
+                detail: {
+                    pane: panes[div.id],
+                },
+            })
+        );
+
+        refreshCys();
+    }
+}
+
+function collapsePane(div) {
+    if (div) {
+        if (panes[div.id]) {
+            panes[div.id].oldWidth = div.offsetWidth;
+        } else {
+        }
+        resizePane(div, MIN_LANE_SIZE);
+
+        dispatchEvent(
+            new CustomEvent("paneResize", {
+                detail: {
+                    pane: panes[div.id],
+                },
+            })
+        );
+
+        refreshCys();
+    }
 }
 
 function refreshCys() {
@@ -137,7 +231,6 @@ function refreshCys() {
     if (window.cy) {
         window.cy.resize();
     }
-
 }
 
 function enableDragBars() {
@@ -146,7 +239,7 @@ function enableDragBars() {
 }
 
 function enablePaneDragBars() {
-    const dragbars = document.getElementsByClassName('dragbar');
+    const dragbars = document.getElementsByClassName("dragbar");
 
     for (const d of dragbars) {
         d.onmousedown = null;
@@ -160,18 +253,20 @@ function enablePaneDragBars() {
             const div = document.getElementById(elementId).parentElement;
             dragging = panes[div.id];
             document.onmousemove = function (ex) {
-                resizePane(div, (ex.x - div.getBoundingClientRect().left) + 2);
+                resizePane(div, ex.x - div.getBoundingClientRect().left + 2);
             };
 
             document.onmouseup = function (e) {
                 document.onmousemove = null;
                 if (dragging) {
                     // resize vis inside pane
-                    dispatchEvent(new CustomEvent("paneResize", {
-                        detail: {
-                            pane: dragging,
-                        },
-                    }));
+                    dispatchEvent(
+                        new CustomEvent("paneResize", {
+                            detail: {
+                                pane: dragging,
+                            },
+                        })
+                    );
                     dragging = false;
                 }
                 refreshCys();
@@ -186,7 +281,7 @@ function enablePaneDragBars() {
 }
 
 function enableSplitDragBars() {
-    const dragbars = document.getElementsByClassName('split-dragbar');
+    const dragbars = document.getElementsByClassName("split-dragbar");
 
     for (const d of dragbars) {
         d.onmousedown = null;
@@ -200,24 +295,26 @@ function enableSplitDragBars() {
             const div = document.getElementById(elementId).previousElementSibling;
             dragging = panes[div.parentElement.id];
             document.onmousemove = function (ex) {
-                resizeSplit(div, (ex.y - div.getBoundingClientRect().top) + 2);
+                resizeSplit(div, ex.y - div.getBoundingClientRect().top + 2);
             };
 
             document.onmouseup = function (e) {
                 document.onmousemove = null;
                 if (dragging) {
                     // resize vis inside pane
-                    dispatchEvent(new CustomEvent("paneResize", {
-                        detail: {
-                            pane: dragging,
-                        },
-                    }));
+                    dispatchEvent(
+                        new CustomEvent("paneResize", {
+                            detail: {
+                                pane: dragging,
+                            },
+                        })
+                    );
                     dragging = false;
                 }
                 refreshCys();
             };
         };
-        d.ondblclick = null
+        d.ondblclick = null;
     }
 }
 
@@ -225,36 +322,74 @@ function getPanes() {
     return panes;
 }
 
+function updatePanes(newPanesData) {
+    Object.keys(newPanesData).forEach(k => panes[k] = newPanesData[k]);
+}
+
 // recursively destroy every pane starting from an id
 function destroyPanes(firstId, firstOnly = false) {
     const pane = document.getElementById(firstId);
-    console.log(firstId)
 
-    if (panes[firstId] && panes[firstId].spawned) {
-        if (!firstOnly) {
-            destroyPanes(panes[firstId].spawned)
+    if (pane) {
+        if (panes[firstId] && panes[firstId].spawned) {
+            if (!firstOnly) {
+                destroyPanes(panes[firstId].spawned);
+            }
         }
+
+        pane.remove();
+        delete panes[firstId];
+        Object.keys(panes).forEach((k) => {
+            if (panes[k].spawned === firstId) {
+                panes[k].spawned = undefined;
+            }
+        });
+
+        socket.emit("pane removed", firstId);
     }
+}
 
-    pane.remove();
-    delete panes[firstId];
-    Object.keys(panes).forEach(k => {
-        if (panes[k].spawned === firstId) {
-            panes[k].spawned = undefined;
+function highlightPaneById(paneId) {
+    const windWidth = window.innerWidth;
+
+    const paneDiv = document.getElementById(paneId);
+    setPane(paneId);
+    if (paneDiv) {
+        expandPane(paneDiv);
+        // resizePane(paneDiv, windWidth / 1.5);
+        dispatchEvent(
+            new CustomEvent("paneResize", {
+                detail: {
+                    pane: panes[paneDiv.id],
+                },
+            })
+        );
+        if (panes) {
+            Object.keys(panes).forEach((id) => {
+                if (id !== paneId) {
+                    const otherPaneDiv = document.getElementById(id);
+                    // resizePane(otherPaneDiv, 20);
+                    collapsePane(otherPaneDiv);
+                }
+            });
         }
-    })
+
+        // refreshCys();
+    }
 }
 
 function updateDocDims() {
-    width = window.innerWidth
-        || document.documentElement.clientWidth
-        || document.body.clientWidth;
+    width =
+        window.innerWidth ||
+        document.documentElement.clientWidth ||
+        document.body.clientWidth;
 
-    height = window.innerHeight
-        || document.documentElement.clientHeight
-        || document.body.clientHeight;
+    height =
+        window.innerHeight ||
+        document.documentElement.clientHeight ||
+        document.body.clientHeight;
 
-    width -= document.getElementById("config").clientWidth + 50;
+    width -= document.getElementById("config")?.clientWidth + 50;
     updateHeights();
 }
 
@@ -262,88 +397,98 @@ updateDocDims();
 
 addEventListener("resize", (event) => {
     updateDocDims();
-    Object.keys(panes).forEach(pane => {
+    Object.keys(panes).forEach((pane) => {
         panes[pane].height = height;
         const container = document.getElementById(panes[pane].id);
         container.style.height = height + "px";
-        document.getElementById(panes[pane].container).style.height = height * (1 - panes[pane].split) + "px";
-        document.getElementById(panes[pane].details).style.height = height * (panes[pane].split) + "px";
-    })
+        document.getElementById(panes[pane].container).style.height =
+            height * (1 - panes[pane].split) + "px";
+        document.getElementById(panes[pane].details).style.height =
+            height * panes[pane].split + "px";
+    });
 });
 
 addEventListener("global-action", function (e) {
-    if (e.detail.action === 'propagate') {
-        Object.keys(tracker).forEach(k => {
-            Object.values(getPanes()).forEach(pane => {
+    if (e.detail.action === "propagate") {
+        Object.keys(tracker).forEach((k) => {
+            Object.values(getPanes()).forEach((pane) => {
                 pane.cy.fns[k](pane.cy, Array.from(tracker[k]));
             });
-        })
+        });
     } else {
         const action = e.detail.type + e.detail.action;
         if (!tracker[e.detail.action]) {
             tracker[e.detail.action] = new Set();
         }
 
-        if (e.detail.type === '') {
-            e.detail.elements.forEach(tracker[e.detail.action].add, tracker[e.detail.action])
-        } else { // 'undo-'
-            e.detail.elements.forEach(tracker[e.detail.action].delete, tracker[e.detail.action])
+        if (e.detail.type === "") {
+            e.detail.elements.forEach(
+                tracker[e.detail.action].add,
+                tracker[e.detail.action]
+            );
+        } else {
+            // 'undo-'
+            e.detail.elements.forEach(
+                tracker[e.detail.action].delete,
+                tracker[e.detail.action]
+            );
         }
 
-        Object.values(getPanes()).forEach(pane => {
+        Object.values(getPanes()).forEach((pane) => {
             pane.cy.fns[action](pane.cy, e.detail.elements);
         });
     }
 });
 
-document.getElementById("export-strat").addEventListener("click", function () {
-
-    if (!tracker['mark']) {
+document.getElementById("export-strat")?.addEventListener("click", function () {
+    if (!tracker["mark"]) {
         Swal.fire({
-            icon: 'error',
-            title: 'Nothing to export',
-            html: 'Nodes can be marked/unmarked using the context menu (right-click)',
+            icon: "error",
+            title: "Nothing to export",
+            html: "Nodes can be marked/unmarked using the context menu (right-click)",
             timer: 5000,
-            timerProgressBar: true
+            timerProgressBar: true,
         });
-        return; 
+        return;
     }
 
     const checker = {
-        nodes: structuredClone(tracker['mark']),
+        nodes: structuredClone(tracker["mark"]),
         edges: new Set(),
         sources: new Set(),
         targets: new Set(),
-    }
+    };
 
     const returnable = {
         nodes: new Map(),
         edges: new Map(),
-    }
+    };
 
     let paneData;
-    Object.values(getPanes()).forEach(pane => {
+    Object.values(getPanes()).forEach((pane) => {
         paneData = pane.cy.json();
 
         if (paneData.elements.edges) {
-
-            paneData.elements.edges.forEach(edge => {
-                if (tracker['mark'].has(edge.data.source) || tracker['mark'].has(edge.data.target)) {
+            paneData.elements.edges.forEach((edge) => {
+                if (
+                    tracker["mark"].has(edge.data.source) ||
+                    tracker["mark"].has(edge.data.target)
+                ) {
                     checker.edges.add(edge.data.id);
 
-                    if (edge.data.source.startsWith('t_')) {
+                    if (edge.data.source.startsWith("t_")) {
                         checker.sources.add(edge.data.source);
                     }
 
-                    if (edge.data.target.startsWith('t_')) {
+                    if (edge.data.target.startsWith("t_")) {
                         checker.targets.add(edge.data.target);
                     }
                 }
             });
 
-            paneData.elements.edges.forEach(edge => {
+            paneData.elements.edges.forEach((edge) => {
                 if (checker.edges.has(edge.data.id)) {
-                    if (edge.data.source.startsWith('t_')) {
+                    if (edge.data.source.startsWith("t_")) {
                         if (checker.targets.has(edge.data.target)) {
                             returnable.edges.set(edge.data.id, edge);
                         } else {
@@ -351,7 +496,7 @@ document.getElementById("export-strat").addEventListener("click", function () {
                         }
                     }
 
-                    if (edge.data.target.startsWith('t_')) {
+                    if (edge.data.target.startsWith("t_")) {
                         if (checker.sources.has(edge.data.target)) {
                             returnable.edges.set(edge.data.id, edge);
                         } else {
@@ -359,14 +504,16 @@ document.getElementById("export-strat").addEventListener("click", function () {
                         }
                     }
                 }
-
             });
         }
 
-        paneData.elements.nodes.forEach(node => {
-            if (checker.nodes.has(node.data.id) || (node.data.type === 't' &&
-                (checker.sources.has(node.data.id) && checker.targets.has(node.data.id))
-            )) {
+        paneData.elements.nodes.forEach((node) => {
+            if (
+                checker.nodes.has(node.data.id) ||
+                (node.data.type === "t" &&
+                    checker.sources.has(node.data.id) &&
+                    checker.targets.has(node.data.id))
+            ) {
                 checker.nodes.add(node);
                 returnable.nodes.set(node.data.id, node);
             }
@@ -376,18 +523,22 @@ document.getElementById("export-strat").addEventListener("click", function () {
     paneData.elements.nodes = Array.from(returnable.nodes.values());
     paneData.elements.edges = Array.from(returnable.edges.values());
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(paneData));
-    const dl = document.getElementById('download');
+    const dataStr =
+        "data:text/json;charset=utf-8," +
+        encodeURIComponent(JSON.stringify(paneData));
+    const dl = document.getElementById("download");
     dl.setAttribute("href", dataStr);
     dl.setAttribute("download", `strategy-export.json`);
     dl.click();
 });
 
-document.getElementById("new-project").addEventListener("click", async function () {
-    let redirectName;
-    await Swal.fire({
-        title: 'Create new project',
-        html: `
+document
+    .getElementById("new-project")
+    ?.addEventListener("click", async function () {
+        let redirectName;
+        await Swal.fire({
+            title: "Create new project",
+            html: `
         
         <div>
             <p> If creation is successful, you will be redirected. </p>
@@ -414,57 +565,84 @@ document.getElementById("new-project").addEventListener("click", async function 
                 <input id="project-name" type="text" placeholder="Project name">
             </div>
         </div>`,
-        focusConfirm: false,
-        confirmButtonText: 'Create',
-        confirmButtonColor: 'green',
+            focusConfirm: false,
+            confirmButtonText: "Create",
+            confirmButtonColor: "green",
 
-        preConfirm: () => {
-            Swal.showLoading()
-            const modelInput = document.getElementById('prism-model');
-            const propsInput = document.getElementById('prism-props');
-            const nameInput = document.getElementById('project-name');
-            if (modelInput.value && propsInput.value) {
-                const formValues = {
-                    model: [modelInput.value, modelInput.files[0]],
-                    props: [propsInput.value, propsInput.files[0]],
-                    name: nameInput.value,
+            preConfirm: () => {
+                Swal.showLoading();
+                const modelInput = document.getElementById("prism-model");
+                const propsInput = document.getElementById("prism-props");
+                const nameInput = document.getElementById("project-name");
+                if (modelInput.value && propsInput.value) {
+                    const formValues = {
+                        model: [modelInput.value, modelInput.files[0]],
+                        props: [propsInput.value, propsInput.files[0]],
+                        name: nameInput.value,
+                    };
+
+                    const formData = new FormData();
+
+                    formData.append(
+                        "model_file",
+                        formValues.model[1],
+                        formValues.model[0]
+                    );
+                    formData.append(
+                        "property_file",
+                        formValues.props[1],
+                        formValues.props[0]
+                    );
+
+                    if (!formValues.name) {
+                        formValues.name = uuidv4();
+                    }
+                    redirectName = formValues.name;
+                    return fetch(
+                        `http://localhost:8080/${formValues.name}/create-project`,
+                        {
+                            method: "POST",
+                            body: formData,
+                        }
+                    );
                 }
-
-                const formData = new FormData();
-
-                formData.append("model_file", formValues.model[1], formValues.model[0]);
-                formData.append("property_file", formValues.props[1], formValues.props[0]);
-
-                if (!formValues.name) {
-                    formValues.name = uuidv4();
-                }
-                redirectName = formValues.name;
-                return fetch(`http://localhost:8080/${formValues.name}/create-project`, {
-                    method: "POST",
-                    body: formData,
+            },
+        }).then((response) => {
+            if (response.value.status === 200) {
+                Swal.fire({
+                    title: "Success!",
+                    html: "Redirecting to the created project on a new tab. ",
+                    timer: 2000,
+                    timerProgressBar: true,
+                }).then(() => {
+                    window
+                        .open(
+                            window.location.href.split("?")[0] + "?id=" + redirectName,
+                            "_blank"
+                        )
+                        .focus();
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error Creating New Project",
+                    text: `Something went wrong! Received status ${response.status}. Please see the logs for more details`,
                 });
             }
-        }
-    }).then((response) => {
-        console.log(response)
-        if (response.value.status === 200) {
-            Swal.fire({
-                title: 'Success!',
-                html: 'Redirecting to the created project on a new tab. ',
-                timer: 2000,
-                timerProgressBar: true
-            }).then(() => {
-                window.open(window.location.href.split('?')[0] + "?id=" + redirectName, '_blank').focus();
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error Creating New Project',
-                text: `Something went wrong! Received status ${response.status}. Please see the logs for more details`,
-            });
-        }
+        });
+    });
 
-    })
-});
-
-export { enablePaneDragBars, spawnPane, getPanes, destroyPanes, calcPaneDims, togglePane, uid, info };
+export {
+    enablePaneDragBars,
+    spawnPane,
+    getPanes,
+    updatePanes,
+    destroyPanes,
+    calcPaneDims,
+    togglePane,
+    expandPane,
+    collapsePane,
+    highlightPaneById,
+    uid,
+    info,
+};

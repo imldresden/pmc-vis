@@ -189,10 +189,10 @@ const parallelCoords = function (pane, data, metadata) {
 
                 axis.mapping = {};
                 axis.domain().forEach(d => {
-                    axis.mapping[d] = axis(d)
+                    axis.mapping[d] = axis(d);
                 });
                 return axis;
-            } else if (metadata.data_id != d) { // ordinals
+            } else if (metadata.data_id != d) { // numbers
                 const extent = d3.extent(data, function (p) { return +p[d].value; });
                 if (extent[0] === extent[1]) {
                     extent[1] = extent[0] + 1;
@@ -208,7 +208,7 @@ const parallelCoords = function (pane, data, metadata) {
                 }
 
                 return (resp.axes[d] = d3.scaleLinear()
-                    .domain(extent)
+                    .domain([extent[1], extent[0]])
                     .range([0, resp.svg_dims[orient]]));
             }
         }));
@@ -246,10 +246,10 @@ const parallelCoords = function (pane, data, metadata) {
         function checkIfActive(point) {
             return Array.from(selections).every(
                 ([key, [min, max]]) => {
-                    const val = point[key].type === 'ordinal' ?
+                    const val = point[key].type === 'numbers' ?
                         point[key].value :
                         resp.axes[key].mapping[point[key].value];
-                    return val >= min && val <= max;
+                    return val >= Math.min(min, max) && val <= Math.max(min, max);
                 }
             );
         }
@@ -325,10 +325,12 @@ const parallelCoords = function (pane, data, metadata) {
 
             // disallow highlighting if outside cursor area wrt axes locations
             const mouse_scale_pos = resp.axes[dim].invert(mouse[orient]);
-            const range = resp.axes[dim].range();
+            const pixelRange = resp.axes[dim].range();
+            const range = [resp.axes[dim].invert(pixelRange[0]), resp.axes[dim].invert(pixelRange[1])];
+            
             if (Math.abs(position(dim) - mouse[1 - orient]) > cursor_pad ||
-                !(mouse_scale_pos > resp.axes[dim].invert(range[0])
-                    && mouse_scale_pos < resp.axes[dim].invert(range[1]))
+                !(mouse_scale_pos > Math.max(range[0], range[1]))
+                    && mouse_scale_pos < Math.min(range[0], range[1])
             ) {
                 cursor_rect.attr(resp.w_h[orient], 0);
                 cursor_rect.attr(resp.w_h[1 - orient], 0);
@@ -350,8 +352,8 @@ const parallelCoords = function (pane, data, metadata) {
             data.map(function (point) {
                 const active = checkIfActive(point);
 
-                const val = point[dim].type === 'ordinal' ? point[dim].value : resp.axes[dim].mapping[point[dim].value];
-                if (active && val < mouse_upper_limit && val > mouse_lower_limit) {
+                const val = point[dim].type === 'numbers' ? point[dim].value : resp.axes[dim].mapping[point[dim].value];
+                if (active && val >= Math.min(mouse_lower_limit, mouse_upper_limit) && val <= Math.max(mouse_lower_limit, mouse_upper_limit)) {
                     highlighted.add(point.id);
                     path(point, highlight);
                 } else {
@@ -465,8 +467,6 @@ const parallelCoords = function (pane, data, metadata) {
 
         // handles a brush event, updates selections 
         function brush({ selection }, key) {
-            selected = {};
-
             if (selection === null || selection[0] === selection[1]) {
                 selections.delete(key);
             } else {
@@ -475,9 +475,16 @@ const parallelCoords = function (pane, data, metadata) {
 
             drawBrushed();
             updateCountStrings();
+            dispatchEvent(new CustomEvent("linked-selection", {
+                detail: {
+                    pane: pane.id,
+                    selection: publicFunctions.getSelection(),
+                },
+            }));
         }
 
         function drawBrushed() {
+            selected = {};
             // clear all canvas
             foreground.clearRect(0, 0, width + 10, height + 10);
             background.clearRect(0, 0, width + 10, height + 10);
@@ -499,11 +506,7 @@ const parallelCoords = function (pane, data, metadata) {
             return position(a) - position(b);
         }
 
-        removeEventListener("paneResize", resize, true);
-        addEventListener("paneResize", resize, true);
-        drawBrushed();
-
-        function drawBrushMinMax(data, name, min=true) {
+        function drawBrushMinMax(data, name, pane, min=true) {
             d3.select(brushes["brush-"+getAxisId(name)]).call(d3.brush().clear);
             
             const extent = d3.extent(data, function (p) { 
@@ -512,7 +515,14 @@ const parallelCoords = function (pane, data, metadata) {
 
             selections.set(name, [extent[min? 0 : 1], extent[min? 0 : 1]]);
             drawBrushed();
-            updateCountStrings();
+            updateCountStrings()
+            
+            dispatchEvent(new CustomEvent("linked-selection", {
+                detail: {
+                    pane: pane.id,
+                    selection: publicFunctions.getSelection(),
+                },
+            }));
         }
 
         makeCtxMenu(pane.details, pane, publicFunctions, {
@@ -533,7 +543,7 @@ const parallelCoords = function (pane, data, metadata) {
                             });
                             return;
                         }
-                        drawBrushMinMax(data, e.axisName, true);
+                        drawBrushMinMax(data, e.axisName, pane, true);
                     },
                 },
                 {
@@ -549,13 +559,22 @@ const parallelCoords = function (pane, data, metadata) {
                             });
                             return;
                         }
-                        drawBrushMinMax(data, e.axisName, false);
+                        drawBrushMinMax(data, e.axisName, pane, false);
                     },
                 },
             ]
         });
 
+        removeEventListener("paneResize", resize, true);
+        addEventListener("paneResize", resize, true);
+        drawBrushed();
         updateCountStrings();
+        dispatchEvent(new CustomEvent("linked-selection", {
+            detail: {
+                pane: pane.id,
+                selection: publicFunctions.getSelection(),
+            },
+        }));
     }
 
     function updateCountStrings() {

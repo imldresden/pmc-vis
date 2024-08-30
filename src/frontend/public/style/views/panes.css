@@ -47,10 +47,29 @@
     height: 95vh;
 }*/
 
+#container-body {
+    height: 1005;
+}
+
+/* #container-section {
+    height: 500px;
+} */
+
 #container {
     display: inline-flex;
     padding-right: 350px;
+    height: 100%;
+    overflow: auto;
 }
+
+#cy-overview {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    left: 0;
+    background-color: var(--pane-background);
+    border-top: 1px solid #ccc;
+  }
 
 .cy-s {
     width: 100px;

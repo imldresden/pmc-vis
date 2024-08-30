@@ -12,7 +12,8 @@
 
 <body>
 
-  <section>
+    <div id="container-body">
+  <section id="container-section">
     <div id="container">
       <!-- panes are appended here -->
     </div>
@@ -124,10 +125,16 @@
         <!-- layout specific options are appended here-->
       </div>
     </div>
-  </div>
 
-  << scripts >>
+    <div class="ui segment">
+      <h3 class="label label-info" id="overview-config-span">Overview Settings</h3>
+      <div id="overview-config">
+        <!-- layout specific options are appended here-->
+      </div>
+    </div>
+  </div>
+</div>
+<< scripts >>
 
 </body>
-
 </html>

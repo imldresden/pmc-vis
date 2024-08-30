@@ -1,5 +1,5 @@
 Requirements: 
-- NodeJS v. 16+ 
+- NodeJS v. 20+: `https://nodejs.org/en/download/package-manager`
 
 How to run: 
 - install using `npm install`

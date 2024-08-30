@@ -1,0 +1,7 @@
+Pmax=? [G !"failed"];
+Pmin=? [G !"failed"];
+
+R{"cost"}min=? [F "end"];
+R{"cost"}max=? [F "end"];
+
+Pmax=? [F "deadlock"];

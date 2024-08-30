@@ -63,9 +63,13 @@ public class State implements Node{
     @Override
     public Map<String, Map<String, Value>> getDetails() {
         Map<String, Map<String, Value>> details = new HashMap<>();
-        details.put(OUTPUT_VARIABLES, new TreeMap<>(parameters.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "ordinal")))));
-        details.put(OUTPUT_REWARDS, new TreeMap<>(rewards.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "ordinal")))));
-        details.put(OUTPUT_RESULTS, new TreeMap<>(properties.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "ordinal")))));
+        details.put(OUTPUT_VARIABLES, new TreeMap<>(parameters.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
+        details.put(OUTPUT_REWARDS, new TreeMap<>(rewards.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
+        details.put(OUTPUT_RESULTS, new TreeMap<>(properties.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> new Value(e.getValue(), "numbers")))));
+        if(atomicPropositions == null){
+            details.put(OUTPUT_LABELS, new TreeMap<>());
+            return details;
+        }
         details.put(OUTPUT_LABELS, new TreeMap<>(atomicPropositions.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue() == null ? new Value() : new Value(e.getValue())))));
         return details;
     }
@@ -110,5 +114,10 @@ public class State implements Node{
             buffer.add(String.format("%s=%s", e.getKey(), e.getValue()));
         }
         return String.join(";", buffer);
+    }
+
+    @JsonIgnore
+    public Map<String, Object> getParameters() {
+        return parameters;
     }
 }

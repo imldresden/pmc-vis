@@ -4,14 +4,14 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import prism.PrismLangException;
 import prism.api.State;
-import prism.core.Model;
 import prism.core.Namespace;
-import prism.core.cluster.Cluster;
+import prism.core.Project;
+import prism.core.View.View;
 
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.List;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -19,34 +19,35 @@ import java.util.stream.Collectors;
  */
 public class StateMapper implements RowMapper<State> {
 
-    private final List<Cluster> clusters;
-    private final Model model;
+    private final List<View> views;
+    private final Project project;
 
-    private final ClusterMapper clusterMapper;
+    private final ViewMapper viewMapper;
 
     private final PropertyMapper propertyMapper;
 
     private final RewardMapper rewardMapper;
 
-    public StateMapper(Model model, List<Cluster> clusters) {
-        this.model = model;
-        this.clusters = clusters;
-        this.clusterMapper = new ClusterMapper();
-        this.propertyMapper = new PropertyMapper(model.getProperties());
-        this.rewardMapper = new RewardMapper(model);
+
+    public StateMapper(Project project, List<View> views) {
+        this.project = project;
+        this.views = views;
+        this.viewMapper = new ViewMapper();
+        this.propertyMapper = new PropertyMapper(project.getProperties());
+        this.rewardMapper = new RewardMapper(project);
     }
 
     @Override
     public State map(final ResultSet rs, final StatementContext ctx) throws SQLException {
-        if (clusters == null) {
+        if (views == null) {
             try {
-                return new State(rs.getLong(Namespace.ENTRY_S_ID), rs.getString(Namespace.ENTRY_S_NAME), model.parseParameters(rs.getString(Namespace.ENTRY_S_NAME)), model.getLabelMap(model.parseState(rs.getString(Namespace.ENTRY_S_NAME))), rewardMapper.map(rs, ctx), propertyMapper.map(rs, ctx));
+                return new State(rs.getLong(Namespace.ENTRY_S_ID), rs.getString(Namespace.ENTRY_S_NAME), project.parseParameters(rs.getString(Namespace.ENTRY_S_NAME)), project.getLabelMap(project.parseState(rs.getString(Namespace.ENTRY_S_NAME))), rewardMapper.map(rs, ctx), propertyMapper.map(rs, ctx));
             }catch (PrismLangException e) {
                 return new State(rs.getLong(Namespace.ENTRY_S_ID), rs.getString(Namespace.ENTRY_S_NAME), new TreeMap<>(), new TreeMap<>(), rewardMapper.map(rs, ctx), propertyMapper.map(rs, ctx));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-        return new State(rs.getString(Namespace.ENTRY_C_NAME), clusters.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), clusterMapper.map(rs, ctx));
+        return new State(rs.getString(Namespace.ENTRY_C_NAME), views.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), viewMapper.map(rs, ctx));
     }
 }

@@ -1,0 +1,133 @@
+mdp
+
+const int max_load = 4;
+
+const int num_jobs = 3;
+
+const int num_machine = 3;
+
+label "end" = _timer_phase = 2 & _timer_time = 3;
+
+label "failed" = _timer_phase = 2 & (_job_0_active & _job_0_load > 0 ? 1 : 0) + ((_job_1_active & _job_1_load > 0 ? 1 : 0) + (_job_2_active & _job_2_load > 0 ? 1 : 0)) > 0;
+
+label "success" = _timer_phase = 2 & (_job_0_active & _job_0_load > 0 ? 1 : 0) + ((_job_1_active & _job_1_load > 0 ? 1 : 0) + (_job_2_active & _job_2_load > 0 ? 1 : 0)) = 0;
+
+init
+    ((((((_job_0_load = 0 & _job_1_load = 0) & _job_2_load = 0) & _machine_0_used = false) & _machine_1_used = false) & _machine_2_used = false) & _timer_phase = 0) & _timer_time = 0
+endinit
+
+formula _active = true;
+
+formula _job_0_active = true;
+
+formula _job_1_active = true;
+
+formula _job_2_active = true;
+
+formula _machine_0_active = true;
+
+formula _machine_1_active = true;
+
+formula _machine_2_active = true;
+
+formula _reward_active = true;
+
+formula _timer_active = true;
+
+formula _reward_cost_active = true;
+
+formula _reward_loads_active = true;
+
+formula _reward_violations_active = true;
+
+module _job_0_job_impl
+    _job_0_load : [0 .. max_load];
+    
+    [run_0] _job_0_active & _job_0_load <= _machine_0_power -> (_job_0_load' = 0);
+    [run_3] _job_0_active & _job_0_load <= _machine_1_power -> (_job_0_load' = 0);
+    [run_6] _job_0_active & _job_0_load <= _machine_2_power -> (_job_0_load' = 0);
+    [generate] _job_0_active & _job_0_load = 0 -> 1 / max_load:(_job_0_load' = 1) + 1 / max_load:(_job_0_load' = 2) + 1 / max_load:(_job_0_load' = 3) + 1 / max_load:(_job_0_load' = 4);
+    [reset] _job_0_active -> (_job_0_load' = 0);
+endmodule
+
+module _job_1_job_impl
+    _job_1_load : [0 .. max_load];
+    
+    [run_1] _job_1_active & _job_1_load <= _machine_0_power -> (_job_1_load' = 0);
+    [run_4] _job_1_active & _job_1_load <= _machine_1_power -> (_job_1_load' = 0);
+    [run_7] _job_1_active & _job_1_load <= _machine_2_power -> (_job_1_load' = 0);
+    [generate] _job_1_active & _job_1_load = 0 -> 1 / max_load:(_job_1_load' = 1) + 1 / max_load:(_job_1_load' = 2) + 1 / max_load:(_job_1_load' = 3) + 1 / max_load:(_job_1_load' = 4);
+    [reset] _job_1_active -> (_job_1_load' = 0);
+endmodule
+
+module _job_2_job_impl
+    _job_2_load : [0 .. max_load];
+    
+    [run_2] _job_2_active & _job_2_load <= _machine_0_power -> (_job_2_load' = 0);
+    [run_5] _job_2_active & _job_2_load <= _machine_1_power -> (_job_2_load' = 0);
+    [run_8] _job_2_active & _job_2_load <= _machine_2_power -> (_job_2_load' = 0);
+    [generate] _job_2_active & _job_2_load = 0 -> 1 / max_load:(_job_2_load' = 1) + 1 / max_load:(_job_2_load' = 2) + 1 / max_load:(_job_2_load' = 3) + 1 / max_load:(_job_2_load' = 4);
+    [reset] _job_2_active -> (_job_2_load' = 0);
+endmodule
+
+module _machine_0_machine_impl
+    _machine_0_power : [1 .. max_load];
+    _machine_0_used : bool;
+    
+    [run_0] _machine_0_active & !_machine_0_used -> (_machine_0_used' = true);
+    [run_1] _machine_0_active & !_machine_0_used -> (_machine_0_used' = true);
+    [run_2] _machine_0_active & !_machine_0_used -> (_machine_0_used' = true);
+    [reset] _machine_0_active -> (_machine_0_used' = false);
+endmodule
+
+module _machine_1_machine_impl
+    _machine_1_power : [1 .. max_load];
+    _machine_1_used : bool;
+    
+    [run_3] _machine_1_active & !_machine_1_used -> (_machine_1_used' = true);
+    [run_4] _machine_1_active & !_machine_1_used -> (_machine_1_used' = true);
+    [run_5] _machine_1_active & !_machine_1_used -> (_machine_1_used' = true);
+    [reset] _machine_1_active -> (_machine_1_used' = false);
+endmodule
+
+module _machine_2_machine_impl
+    _machine_2_power : [1 .. max_load];
+    _machine_2_used : bool;
+    
+    [run_6] _machine_2_active & !_machine_2_used -> (_machine_2_used' = true);
+    [run_7] _machine_2_active & !_machine_2_used -> (_machine_2_used' = true);
+    [run_8] _machine_2_active & !_machine_2_used -> (_machine_2_used' = true);
+    [reset] _machine_2_active -> (_machine_2_used' = false);
+endmodule
+
+module _timer_timer_impl
+    _timer_phase : [0 .. 2];
+    _timer_time : [0 .. 3];
+    _timer_block_end : [0 .. 1];
+    
+    [generate] _timer_active & _timer_phase = 0 -> (_timer_phase' = 1);
+    [run_0] _timer_active & _timer_phase = 1 -> true;
+    [run_1] _timer_active & _timer_phase = 1 -> true;
+    [run_2] _timer_active & _timer_phase = 1 -> true;
+    [run_3] _timer_active & _timer_phase = 1 -> true;
+    [run_4] _timer_active & _timer_phase = 1 -> true;
+    [run_5] _timer_active & _timer_phase = 1 -> true;
+    [run_6] _timer_active & _timer_phase = 1 -> true;
+    [run_7] _timer_active & _timer_phase = 1 -> true;
+    [run_8] _timer_active & _timer_phase = 1 -> true;
+    [end] _timer_active & (_timer_phase = 1 & (_timer_block_end = 0 | !(_job_0_load > 0 & (!_machine_0_used & _job_0_load <= _machine_0_power | (!_machine_1_used & _job_0_load <= _machine_1_power | !_machine_2_used & _job_0_load <= _machine_2_power)) | (_job_1_load > 0 & (!_machine_0_used & _job_1_load <= _machine_0_power | (!_machine_1_used & _job_1_load <= _machine_1_power | !_machine_2_used & _job_1_load <= _machine_2_power)) | _job_2_load > 0 & (!_machine_0_used & _job_2_load <= _machine_0_power | (!_machine_1_used & _job_2_load <= _machine_1_power | !_machine_2_used & _job_2_load <= _machine_2_power)))))) -> (_timer_phase' = 2);
+    [reset] _timer_active & (_timer_phase = 2 & _timer_time < 3) -> (_timer_phase' = 0) & (_timer_time' = _timer_time + 1);
+    [over] _timer_active & (_timer_phase = 2 & _timer_time = 3) -> true;
+endmodule
+
+rewards "cost"
+    [end] true : (_machine_0_active & _machine_0_used ? _machine_0_power : 0) + ((_machine_1_active & _machine_1_used ? _machine_1_power : 0) + (_machine_2_active & _machine_2_used ? _machine_2_power : 0));
+endrewards
+
+rewards "loads"
+    [end] true : (_job_0_active & _job_0_load > 0 ? _job_0_load : 0) + ((_job_1_active & _job_1_load > 0 ? _job_1_load : 0) + (_job_2_active & _job_2_load > 0 ? _job_2_load : 0));
+endrewards
+
+rewards "violations"
+    [end] true : (_job_0_active & _job_0_load > 0 ? 1 : 0) + ((_job_1_active & _job_1_load > 0 ? 1 : 0) + (_job_2_active & _job_2_load > 0 ? 1 : 0));
+endrewards

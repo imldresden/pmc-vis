@@ -6,7 +6,6 @@ import prism.Pair;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
 
 public class PairMapper<T, K> implements RowMapper<Pair<T, K>> {
 

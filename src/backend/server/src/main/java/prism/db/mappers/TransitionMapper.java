@@ -3,9 +3,9 @@ package prism.db.mappers;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import prism.api.Transition;
-import prism.core.Model;
 import prism.core.Namespace;
-import prism.core.cluster.Cluster;
+import prism.core.Project;
+import prism.core.View.View;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,33 +28,33 @@ public class TransitionMapper implements RowMapper<Transition> {
 
     private final Map<Long, String> map;
 
-    private final List<Cluster> clusters;
+    private final List<View> views;
 
-    public TransitionMapper(Model model){
+    public TransitionMapper(Project project){
         this.distributionMapper = new DistributionMapper();
-        this.propertyMapper = new PropertyMapper(model.getProperties());
-        this.rewardMapper = new RewardMapper(model);
-        this.scheduleMapper = new ScheduleMapper(model.getProperties());
+        this.propertyMapper = new PropertyMapper(project.getProperties());
+        this.rewardMapper = new RewardMapper(project);
+        this.scheduleMapper = new ScheduleMapper(project.getSchedulers());
         this.map = null;
-        this.clusters = new ArrayList<>();
+        this.views = new ArrayList<>();
     }
 
-    public TransitionMapper(Model model, List<Cluster> clusters, Map<Long, String> map){
+    public TransitionMapper(Project project, List<View> views, Map<Long, String> map){
         distributionMapper = new DistributionMapper();
         this.propertyMapper = null;
         this.rewardMapper = null;
         this.scheduleMapper = null;
         this.map = map;
-        this.clusters = clusters;
+        this.views = views;
     }
 
     @Override
     public Transition map(final ResultSet rs, final StatementContext ctx) throws SQLException {
         if (propertyMapper != null){
-            return new Transition(rs.getLong(Namespace.ENTRY_T_ID), rs.getString(Namespace.ENTRY_T_OUT), rs.getString(Namespace.ENTRY_T_ACT), distributionMapper.map(rs, ctx), rewardMapper.map(rs, ctx), propertyMapper.map(rs, ctx), scheduleMapper.map(rs, ctx),  clusters.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), map);
+            return new Transition(rs.getLong(Namespace.ENTRY_T_ID), rs.getString(Namespace.ENTRY_T_OUT), rs.getString(Namespace.ENTRY_T_ACT), distributionMapper.map(rs, ctx), rewardMapper.map(rs, ctx), propertyMapper.map(rs, ctx), scheduleMapper.map(rs, ctx),  views.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), map);
         }
         else {
-            return new Transition(rs.getLong(Namespace.ENTRY_T_ID), rs.getString(Namespace.ENTRY_T_OUT), rs.getString(Namespace.ENTRY_T_ACT), distributionMapper.map(rs, ctx), null, null, null,  clusters.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), map);
+            return new Transition(rs.getLong(Namespace.ENTRY_T_ID), rs.getString(Namespace.ENTRY_T_OUT), rs.getString(Namespace.ENTRY_T_ACT), distributionMapper.map(rs, ctx), null, null, null,  views.stream().map(c -> Long.toString(c.getId())).collect(Collectors.toList()), map);
         }
     }
 }

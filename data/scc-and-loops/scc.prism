@@ -1,0 +1,49 @@
+mdp
+
+const int c_max_time = 5;
+
+label "end" = (time = c_max_time);
+
+module reconfiguration
+  activity: [0..1] init 0;
+  config1: [0..4] init 0;
+  config2: [0..4] init 0;
+
+  [reconfigure] (activity=0) -> (activity'=1);
+
+  [configure1] (activity=1) -> (config1'=0);
+  [configure1] (activity=1) -> (config1'=1);
+  [configure1] (activity=1) -> (config1'=2);
+  [configure1] (activity=1) -> (config1'=3);
+  [configure1] (activity=1) -> (config1'=4);
+
+  [configure2] (activity=1) -> (config2'=0);
+  [configure2] (activity=1) -> (config2'=1);
+  [configure2] (activity=1) -> (config2'=2);
+  [configure2] (activity=1) -> (config2'=3);
+  [configure2] (activity=1) -> (config2'=4);
+
+  [end_reconfigure] (activity=1) -> (activity'=0);
+endmodule
+
+module phases
+  phases: [0..2] init 0;
+
+  [reconfigure] (phases=0) -> (phases'=1);
+  [end_reconfigure] (phases=1) -> (phases'=2);
+  [working] (phases=2) -> (phases'=0);
+
+endmodule
+
+module timer
+  time: [0..c_max_time] init 0;
+
+  [working] (time < c_max_time) -> (time'=time+1);
+  [reconfigure] (time < c_max_time) -> true;
+
+  [end] (time=c_max_time) -> true;
+endmodule
+
+rewards "Utility"
+  [working] true : config1*3 + config2*2;
+endrewards

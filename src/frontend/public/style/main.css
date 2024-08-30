@@ -91,7 +91,7 @@ body {
 /* atomic propositions css */
 .cy-html {
     display: flex;
-    color: #fff;
+    color: var(--ap-text-color);
 }
 
 .cy-html,
@@ -115,6 +115,9 @@ body {
 }
 
 .prop-text-label-icon {
+    display: inline-block;
+    overflow: hidden;         /*prevent text from being shown outside the border */
+    text-overflow: ellipsis;  /*cut off text with an ellipsis*/
     padding-right: 7px;
 }
 

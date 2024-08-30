@@ -19,7 +19,7 @@ PRISM_CLASSPATH=target/classes:target/dependency/*:"$PRISM_DIR":"$PRISM_DIR"/cla
 # As above, we look in both the top-level and the prism sub-directory
 PRISM_LIB_PATH="$PRISM_DIR"/lib:"$PRISM_DIR"/prism/lib
 #if [ "$OSTYPE" == "darwin"* ]; then
-#	export DYLD_LIBRARY_PATH="$PRISM_LIB_PATH"
+	export DYLD_LIBRARY_PATH="$PRISM_LIB_PATH"
 #else
 	export LD_LIBRARY_PATH="$PRISM_LIB_PATH"
 #fi

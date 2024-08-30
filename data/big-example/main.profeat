@@ -1,0 +1,180 @@
+const int num_servers = 3;
+
+const int num_modes = 3;
+
+const int num_types = 2;
+
+const int num_tasks = 2;
+
+const int max_load = 6;
+
+const int max_time = 4;
+
+//---------------formulas-------------------------
+
+//Assigns id for every server-task combination
+formula st_id(server, task) = num_tasks * server + task;
+
+//Assigns id for every server-mode combination
+formula sm_id(server, mode) = num_modes * server + mode;
+
+//return functions for st_id
+formula get_task(st) = mod(st, num_tasks);
+formula get_server(st) = floor(st/num_tasks);
+
+//define load reduction for every configurtation of server
+const int mode_values = {1, 2, 3, 2, 4, 6};
+formula f_server_perfomance(server_id) = mode_values[server[server_id].mode + ((server[server_id].type-1)*num_modes) - 1]; // TODO: Absichern
+
+//Sum up all load in all active tasks
+formula f_current_load = for i in [0..num_tasks-1]{ (task[i].load) + ... };
+
+//---------------labels-------------------------
+
+formula f_empty_load = for i in [0..num_tasks-1]{ (task[i].load = 0) & ... };
+
+label "all_done" = (system_core.phases = 0) & f_empty_load;
+
+label "always_finish" = (system_core.phases != 0) | f_empty_load;
+
+label "end" = (time.t = max_time);
+
+//---------------system-------------------------
+
+
+root feature
+    all of system, PMC;
+endfeature
+
+feature system
+    all of system_core, servers, tasks;
+endfeature
+
+feature system_core
+    modules system_core_impl;
+endfeature
+
+module system_core_impl
+    phases: [0..2] init 0;
+
+    [generating] (phases=0) -> (phases'=1);
+
+    [configure] (phases=1) -> (phases'=2);
+
+    for i in [0..((num_servers*num_tasks)-1)]
+        [working[i]] active(server[get_server(i)]) & (phases=2) -> true;
+    endfor
+
+    for i in [0..num_servers-1]
+        [idle[i]] (phases=2) -> true;
+    endfor
+
+    [working] (phases=2) -> (phases'=0);
+endmodule
+
+//---------------servers-------------------------
+
+feature servers
+    some of server[num_servers];
+
+    initial constraint for i in [0..num_servers-1]{ (server[i].type-1) + ... } < 2;
+endfeature
+
+feature server
+    type: [1..num_types];
+    block configure[id], idle[id];
+
+    modules server_impl;
+endfeature
+
+module server_impl
+
+    mode: [1..num_modes] init 1;
+    configured: [0..1] init 0;
+    finished: [0..1] init 0;
+
+    for i in [1..num_modes]
+        [configure[sm_id(id, i)]] (system_core.phases=1) & (configured=0) -> (mode'=i) & (configured'=1);
+    endfor
+
+    [configure] true -> (configured'=0);
+
+    for i in [0..num_tasks-1]
+        [working[st_id(id, i)]] (finished = 0) -> (finished'=1);
+    endfor
+
+    [idle[id]] (finished = 0) -> (finished'=1);
+
+    [working] (finished = 1) -> (finished'=0);
+
+endmodule
+
+
+//---------------tasks-------------------------
+
+feature tasks
+    all of task[num_tasks];
+endfeature
+
+feature task
+    modules task_impl;
+endfeature
+
+module task_impl
+    load: [0..max_load] init 0;
+
+    [generating] (load=0) -> for i in [0..max_load] {(1/(max_load+1)) : (load'= i)} ;
+    [generating] (load!=0) -> true;
+
+    for i in [0..num_servers-1]
+        [working[st_id(i, id)]] load>0 -> (load'=max(0,load-f_server_perfomance(i)));
+    endfor
+endmodule
+
+//---------------rewards-------------------------
+
+feature PMC
+    all of costs, time;
+endfeature
+
+feature time
+    stopping: [0..1] init 1;
+
+    modules time_impl;
+endfeature
+
+module time_impl
+
+    t: [0..max_time] init 0;
+
+    [generating] ((stopping = 0) | (t<max_time)) -> true;
+    [working] (t<max_time) -> (t'=t+1);
+    [working] (stopping = 0) & (t=max_time) -> true;
+
+    [end] ((stopping = 1) & (t=max_time)) -> true;
+
+endmodule
+
+feature costs
+    all of violations, energy;
+endfeature
+
+feature violations
+    violation_penalty: [0..2];
+
+    rewards "violations"
+       (system_core.phases = 0) : f_current_load * violation_penalty;
+    endrewards
+endfeature
+
+feature energy
+    rewards "energy"
+        for i in [0..((num_servers*num_tasks)-1)]
+            [working[i]] true: f_server_perfomance(get_server(i)) * server[get_server(i)].type;
+        endfor
+
+        for i in [0..num_servers-1]
+            [idle[i]] true: server[i].type;
+        endfor
+    endrewards
+endfeature

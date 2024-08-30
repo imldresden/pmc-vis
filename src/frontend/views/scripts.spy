@@ -1,5 +1,7 @@
+<script src="/socket.io/socket.io.js"></script>
 <script src="/libs/d3/dist/d3.min.js"></script>
 <script src="/libs/lodash/lodash.min.js"></script>
+<script src="/libs/jszip/dist/jszip.min.js"></script>
 
 <!-- cytoscape and layouts -->
 <script src="/libs/cytoscape/dist/cytoscape.min.js"></script>
@@ -45,8 +47,6 @@
 <!-- <script src="/libs/@fortawesome/fontawesome-free/js/all.js"></script> -->
 <script src="https://kit.fontawesome.com/7b18c84369.js" crossorigin="anonymous"></script>
 
-
 <script src="/js/views/panes.js" type="module"></script>
 <script src="/js/utils/controls.js" type="module"></script>
 <script src="/js/main/main.js" type="module"></script>
-

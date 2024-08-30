@@ -1,0 +1,54 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "PRISM",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#transitions"
+		},
+		{
+			"include": "#actions"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.mdp",
+				"match": "\\b(A|bool|clock|const|ctmc|C|double|dtmc|E|endinit|endinvariant|endmodule|endobservables|endrewards|endsystem|false|formula|filter|func|F|global|G|init|invariant|I|int|label|max|mdp|min|module|X|nondeterministic|observable|observables|of|Pmax|Pmin|P|pomdp|popta|probabilistic|prob|pta|rate|rewards|Rmax|Rmin|R|S|stochastic|system|true|U|W)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.mdp",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.mdp",
+					"match": "\\\\."
+				}
+			]
+		},
+		"transitions": {
+			"patterns": [
+				{
+					"name": "meta.structure.dictionary.key.python",
+					"match": "->"
+				}
+			]
+		},
+		"actions": {
+			"patterns": [
+				{
+					"name": "markup.bold",
+					"match": "\\[\\w*\\]"
+				}
+			]
+		}
+	},
+	"scopeName": "source.mdp"
+}

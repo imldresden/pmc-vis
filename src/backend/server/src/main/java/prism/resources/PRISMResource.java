@@ -9,11 +9,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.jdbi.v3.core.Jdbi;
-import prism.api.Graph;
 import prism.api.Message;
-import prism.core.Model;
 import prism.core.Namespace;
-import prism.core.cluster.ClusterType;
+import prism.core.Project;
+import prism.core.View.ViewType;
 import prism.db.Database;
 import prism.server.PRISMServerConfiguration;
 
@@ -37,12 +36,12 @@ public class PRISMResource {
     private final PRISMServerConfiguration configuration;
 
     private final String rootDir;
-    private String cuddMaxMem;
+    private long cuddMaxMem;
 
     private int maxIterations;
     private final boolean debug;
 
-    private Map<String, Model> currModels;
+    private Map<String, Project> currModels;
 
 
     public PRISMResource(Environment environment, PRISMServerConfiguration configuration){
@@ -59,31 +58,46 @@ public class PRISMResource {
 
         File[] files = Objects.requireNonNull(new File(rootDir).listFiles());
         Arrays.sort(files);
-        for (File file : files) {
-            if (file.isDirectory()){
-                try {
-                    String projectID = file.getName();
-                    createStyleFile(projectID);
-                    dbfactory.setUrl(String.format("jdbc:sqlite:%s/%s", file.getPath(), Namespace.DATABASE_FILE));
-
-                    final Jdbi jdbi = factory.build(environment, dbfactory, projectID);
-                    Database database = new Database(jdbi, debug);
-                    currModels.put(projectID, new Model(projectID, rootDir,  database, cuddMaxMem, maxIterations, debug));
-                } catch (Exception e) {
-                    System.out.println(e);
-                    continue;
+        String initProject = configuration.getInitModel();
+        if (initProject  != null){
+            boolean found = false;
+            for (File file : files) {
+                if (file.getName().equals(initProject)){
+                    found = true;
+                    loadProject(file);
                 }
-
+            }
+            if (!found){
+                System.out.println("Warning: No Local Project " + initProject + " found. No Project initialised");
+            }
+        }else{
+            for (File file : files) {
+                loadProject(file);
             }
         }
     }
 
-    private static Response ok(Graph g){
-        return Response.ok(g).build();
+    private void loadProject(File file){
+        if (file.isDirectory()){
+            try {
+                String projectID = file.getName();
+                createStyleFile(projectID);
+
+                final JdbiFactory factory = new JdbiFactory();
+                DataSourceFactory dbfactory = configuration.getDataSourceFactory();
+                dbfactory.setUrl(String.format("jdbc:sqlite:%s/%s", file.getPath(), Namespace.DATABASE_FILE));
+
+                final Jdbi jdbi = factory.build(environment, dbfactory, projectID);
+                Database database = new Database(jdbi, debug);
+                currModels.put(projectID, new Project(projectID, rootDir,  database, cuddMaxMem, maxIterations, debug));
+            } catch (Exception e) {
+                System.out.println(e);
+            }
+        }
     }
 
-    private static Response ok(Message m) {
-        return Response.ok(m).build();
+    private static Response ok(Object o){
+        return Response.ok(o).build();
     }
 
     private static Response missing(Message m){
@@ -105,12 +119,11 @@ public class PRISMResource {
     public Response createUpperGraph(
             @Parameter(description = "identifier of project")
             @PathParam("project_id") String projectID,
-            @QueryParam("cluster") List<Integer> abstractionID,
-            @QueryParam("scheduler") Optional<Integer> schedulerID
+            @QueryParam("view") List<Integer> viewID
     ) {
         try{
             if (!currModels.containsKey(projectID)) return error(new Message(String.format("Project %s not found", projectID)));
-            return ok(currModels.get(projectID).getGraph(schedulerID.orElse(-1), abstractionID));
+            return ok(currModels.get(projectID).getGraph( viewID));
         } catch (Exception e) {
             return error(e);
         }
@@ -168,9 +181,45 @@ public class PRISMResource {
 
             final Jdbi jdbi = factory.build(environment, dbfactory, projectID);
             Database database = new Database(jdbi, debug);
-            currModels.put(projectID, new Model(projectID, rootDir,  database, cuddMaxMem, maxIterations, debug));
+            currModels.put(projectID, new Project(projectID, rootDir,  database, cuddMaxMem, maxIterations, debug));
         } catch (Exception e) {
             return error(e);
+        }
+
+        return Response.ok(output).build();
+    }
+
+    @Path("/add-scheduler")
+    @POST
+    @Timed
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Upload Files to Model Checker", description = "POST Model Files in Order to create a new Project. POST property files in order to add properties to compute")
+    public Response uploadCustomScheduler(
+            @Parameter(description = "identifier of project")
+            @PathParam("project_id") String projectID,
+            @Parameter(description = "Scheduler File to upload to project")
+            @FormDataParam("scheduler_file") InputStream schedulerInputStream,
+            @FormDataParam("scheduler_file") FormDataContentDisposition schedulerDetail
+    ) {
+
+        String output = "";
+
+        if(schedulerDetail != null) {
+            try {
+                Project p = currModels.get(projectID);
+                final String schedulerDescription = String.format("%s/%s/%s", rootDir, projectID, schedulerDetail.getFileName());
+                writeToFile(schedulerInputStream, schedulerDescription);
+                output += String.format("Scheduler File uploaded to %s\n", schedulerDescription);
+
+                File schedulerFile = new File(schedulerDescription);
+                p.addCustomScheduler(schedulerFile);
+
+                Files.delete(schedulerFile.toPath());
+            } catch (Exception e) {
+                return error(e);
+            }
+        }else{
+            output += "No file posted";
         }
 
         return Response.ok(output).build();
@@ -208,7 +257,18 @@ public class PRISMResource {
             @PathParam("id") long nodeID
     ) {
         return ok(this.currModels.get(projectID).getState(nodeID));
+    }
 
+    @Path("/subgraph")
+    @GET
+    @Timed(name="subgraph")
+    @Operation(summary = "Returns single node", description = "Returns single Node Object with identifier 'id'")
+    public Response getSubGraph(
+            @Parameter(description = "identifier of project") @PathParam("project_id") String projectID,
+            @Parameter(description = "Identifier of target node", required = true) @QueryParam("id") List<Long> nodeIDs,
+            @QueryParam("view") List<Integer> viewID
+    ) {
+        return ok(this.currModels.get(projectID).getSubGraph(nodeIDs, viewID));
     }
 
     @Path("/outgoing")
@@ -216,14 +276,12 @@ public class PRISMResource {
     @Timed(name="outgoing")
     @Operation(summary = "Returns all outgoing edges", description = "Returns all edges starting in state 'id'")
     public Response getOutgoing(
-            @Parameter(description = "identifier of project")
-            @PathParam("project_id") String projectID,
+            @Parameter(description = "identifier of project") @PathParam("project_id") String projectID,
             @Parameter(description = "Identifier of target node", required = true) @QueryParam("id") List<Long> nodeIDs,
-            @Parameter(description = "Identifier of scheduler used. Marks the transitions the scheduler would take") @QueryParam("scheduler") Optional<Integer> schedulerID,
-            @QueryParam("cluster") List<Integer> clusterID
+            @QueryParam("view") List<Integer> viewID
     ) {
         if (!currModels.containsKey(projectID)) return error(String.format("project %s not open", projectID));
-        return ok(currModels.get(projectID).getOutgoing(nodeIDs, schedulerID.orElse(-1), clusterID));
+        return ok(currModels.get(projectID).getOutgoing(nodeIDs, viewID));
     }
 
     @Path("/initial")
@@ -233,34 +291,29 @@ public class PRISMResource {
     public Response getInitial(
             @Parameter(description = "identifier of project")
             @PathParam("project_id") String projectID,
-            @QueryParam("cluster") List<Integer> clusterID
+            @QueryParam("view") List<Integer> viewID
     ) {
-        return ok(currModels.get(projectID).getInitialNodes(clusterID));
+        return ok(currModels.get(projectID).getInitialNodes(viewID));
     }
 
-    @Path("/cluster:{type}")
+    @Path("/view:{type}")
     @GET
-    @Operation(summary = "Creates a cluster", description = "")
-    public Response createScheduler(
+    @Operation(summary = "Creates a views", description = "Creates a new view in the project")
+    public Response createView(
             @Parameter(description = "identifier of project")
             @PathParam("project_id") String projectID,
-            @PathParam("type") ClusterType type,
-            @QueryParam("target") Optional<String> target,
-            @QueryParam("granularity") Optional<Long> granularity
+            @PathParam("type") ViewType type,
+            @QueryParam("param") List<String> parameters,
+            @QueryParam("limit_expression") String expression,
+            @QueryParam("limit_data") String data
     ) {
         try {
-            List<String> parameters = new ArrayList<>();
-            if (target.isPresent()){
-                parameters.add(target.get());
-                if (granularity.isPresent()){
-                    parameters.add(granularity.get().toString());
-                }else{
-                    parameters.add("1");
-                }
-            }
+            currModels.get(projectID).createView(type, parameters);
+            return ok("Created View");
 
-            return ok(new Message(currModels.get(projectID).createCluster(type, parameters)));
         } catch (Exception e) {
+            System.out.println(e.getCause());
+            e.printStackTrace();
             return error(e);
         }
     }

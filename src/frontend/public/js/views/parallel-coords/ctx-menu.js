@@ -13,10 +13,6 @@ const makeCtxMenu = function (divID, pane, fns, { condition, extras }) {
                         selection: fns.getSelection(),
                     },
                 }));
-
-                const selection = fns.getSelection();
-                pane.cy.nodes().unselect();
-                pane.cy.$('#' + selection.map(n => n.id).join(', #')).select();
             },
         },
         {

@@ -4,13 +4,13 @@
     --state-color: #555;
     --action-color: #afafaf;
     --dark-text-color: #555;
+    --ap-text-color: #ffffff;
     
     /* Panes */
     --dragbar: #a1a1a7;
     --dragbar-hover: #adc4ad;
     --active-pane: #439843;
     --pane-background: #f0f0f0;
-
 
     /* PCP */ 
     --pcp-primary: #4887b9;

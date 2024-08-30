@@ -9,14 +9,14 @@ svg text {
 .background path {
   fill: none;
   stroke: var(--pcp-bg-stroke);
-  opacity: 0.5;
+  opacity: 1;
   shape-rendering: optimizeQuality;
 }
 
 /*.foreground,*/
 .foreground path {
   fill: none;
-  opacity: 0.5;
+  opacity: 1;
   /*stroke: var(--pcp-primary); /* set dynamically */
 }
 
