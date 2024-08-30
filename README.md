@@ -38,6 +38,8 @@ Requirements: GNU make, gcc, JDK 11, git, NodeJS v. 16+
         - run: `npm start` to start server
       - web vis at `http://localhost:3000`
 
+----------------------------
+
 ### Research: 
 
 PMC-VIS: An Interactive Visualization Tool for Probabilistic Model Checking <a href="https://doi.org/10.1007/978-3-031-47115-5_20">(doi:link)</a>
