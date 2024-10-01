@@ -1,3 +1,4 @@
+name: pmc-vis
 services:
   node:
     build: frontend/
