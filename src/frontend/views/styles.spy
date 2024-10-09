@@ -1,11 +1,10 @@
 <link rel="shortcut icon" type="image/svg" href="/favicon.svg"/>
 
-<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.css">
+<link rel="stylesheet" href="/libs/normalize.css/normalize.css">
+<link rel="stylesheet" href="/libs/font-awesome/css/font-awesome.min.css">
+<link rel="stylesheet" href="/libs/fomantic-ui-css/semantic.min.css">
 
 <link rel="stylesheet" href="/style/cy-custom-extensions/ctx-menu.css">
-<link rel="stylesheet" href="/libs/font-awesome/css/font-awesome.min.css">
-<link rel="stylesheet" href="https://unpkg.com/fomantic-ui@2.9.2/dist/semantic.min.css">
-
 <link rel="stylesheet" href="/style/main.css">
 <link rel="stylesheet" href="/style/widgets/ctx-menu.css">
 <link rel="stylesheet" href="/style/views/panes.css">
