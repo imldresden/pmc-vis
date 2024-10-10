@@ -12,25 +12,40 @@
 
 <body>
 
-    <div id="container-body">
-  <section id="container-section">
-    <div id="container">
-      <!-- panes are appended here -->
-    </div>
-  </section>
+  <nav>
+    <div class="nav-wrapper-left">
+      <a class="tool-name" href="/" >
+        <i class="fa-solid fa-circle-nodes fa-xl"></i>
+        <p class="label inline label-info tool-title"> {{ title }} </p>
+          
+      </a>  
+      <div class="project-name">
+        <p class="label inline label-info">Current Project ID: </p>
+        <p class="label inline label-info" id="project-id"></p>
+      </div>
 
-  <span class="config-toggle" id="config-toggle"><i class="fa fa-bars" aria-hidden="true"></i></span>
+    </div>
+
+    <div class="nav-wrapper-right">
+      <div class="right-buttons"> 
+        <i class="fa fa-bars config-toggle" id="config-toggle" aria-hidden="true"></i>
+      </div>
+    </div>
+  </nav>
+
+  
+  <div id="container">
+    <!-- panes are appended here -->
+  </div>
+  
+  
 
   <div id="config" class="config ui">
     <div class="ui segment">
-      <h3 class="label label-info">Projects </h3>
+      <h3 class="label label-info">Project </h3>
 
       <details class="ui accordion" closed="">
-        <summary class="title">
-          <i class="dropdown icon left"></i>
-          <p class="label inline label-info"> Current Project ID: </p>
-          <p class="label inline label-info" id="project-id"></p>
-        </summary>
+        
         <div class="content">
           <div class="preamble">
             <p class="label inline label-info">Active pane:

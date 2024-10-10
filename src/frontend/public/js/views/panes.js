@@ -384,10 +384,10 @@ function updateDocDims() {
         document.documentElement.clientWidth ||
         document.body.clientWidth;
 
-    height =
+    height = -45 + (
         window.innerHeight ||
         document.documentElement.clientHeight ||
-        document.body.clientHeight;
+        document.body.clientHeight);
 
     width -= document.getElementById("config")?.clientWidth + 50;
     updateHeights();
@@ -608,26 +608,28 @@ document
                 }
             },
         }).then((response) => {
-            if (response.value.status === 200) {
-                Swal.fire({
-                    title: "Success!",
-                    html: "Redirecting to the created project on a new tab. ",
-                    timer: 2000,
-                    timerProgressBar: true,
-                }).then(() => {
-                    window
-                        .open(
-                            window.location.href.split("?")[0] + "?id=" + redirectName,
-                            "_blank"
-                        )
-                        .focus();
-                });
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error Creating New Project",
-                    text: `Something went wrong! Received status ${response.status}. Please see the logs for more details`,
-                });
+            if (response.value) {
+                if (response.value.status === 200) {
+                    Swal.fire({
+                        title: "Success!",
+                        html: "Redirecting to the created project on a new tab. ",
+                        timer: 2000,
+                        timerProgressBar: true,
+                    }).then(() => {
+                        window
+                            .open(
+                                window.location.href.split("?")[0] + "?id=" + redirectName,
+                                "_blank"
+                            )
+                            .focus();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error Creating New Project",
+                        text: `Something went wrong! Received status ${response.status}. Please see the logs for more details`,
+                    });
+                }
             }
         });
     });

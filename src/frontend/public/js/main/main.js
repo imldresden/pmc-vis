@@ -29,15 +29,9 @@ Promise.all([
   info.metadata = data.info;
   delete data.info;
 
-  Object.keys(info.metadata).forEach((k) => {
-    if (k === "ID" && document.getElementById("project-id")) {
-      document.getElementById("project-id").innerHTML = info.metadata[k];
-    } else {
-      const p = document.createElement("p");
-      p.innerHTML = k + ": " + info.metadata[k];
-      document.getElementById("info-box")?.appendChild(p);
-    }
-  });
+  if (document.getElementById("project-id")) {
+    document.getElementById("project-id").innerHTML = info.metadata["ID"];
+  }
 
   const firstPaneId = "pane-0";
 

@@ -7,28 +7,54 @@
 }
 
 body {
-    width: 100%;
     height: 100%;
-    overflow-y: hidden;
-    overflow-x: auto !important;
+    overflow: hidden;
     background-color: var(--body-bg-color);
+}
+
+body ::-webkit-scrollbar-thumb {
+    border-radius: 0px !important;
+}
+
+::-moz-scrollbar-button, ::-webkit-scrollbar-button {
+    width: 0px;
+}
+
+/* Sidebar */
+#container {
+    width: calc(100% - 350px);
+    transition: width .5s;
+}
+
+body.config-closed #container {
+    width: 100%;
+    transition: width .5s;
 }
 
 .config {
     position: fixed;
     right: 0;
-    top: 0;
+    top: 35px;
     bottom: 0;
-    width: 350px;
     background: var(--config-bg-color);
     box-sizing: border-box;
-    padding: 1em;
-    transition-property: opacity;
-    transition-duration: 250ms;
-    transition-timing-function: ease-out;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     z-index: 1;
+    width: 350px;
+    transition: width .5s;
 }
+
+.config.ui > .ui.segment {
+    margin: 1em !important;
+}
+
+.config-closed .config {
+    width: 0px;
+    transition: width .5s;
+}
+
+/* End Sidebar */
 
 .param {
     margin-top: 1.5em;
@@ -61,27 +87,12 @@ body {
 }
 
 .config-toggle {
-    position: fixed;
-    right: 15px;
-    top: -5px;
-    padding: 1em;
-    margin: 0.2em;
     cursor: pointer;
     color: var(--config-icon-color-active);
-    z-index: 9999999;
 }
 
 .config-toggle.icon-inactive {
     color: var(--config-icon-color-inactive);
-}
-
-.config-closed .config {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.config-closed #cy {
-    right: 0;
 }
 
 .tip-link {
@@ -172,12 +183,6 @@ body {
     height: 6px;
     width: 6px;
 }
-
-/*.actions-selected {
-    border: double 3px;
-    border-radius: 50%;
-    border-color: var(--pcp-secondary)
-}*/
 
 .actions-selected {
     border: none;
@@ -298,4 +303,57 @@ a:hover {
 
 .buttons {
     display: flex;
+}
+
+nav {
+	background-color: var(--tool-color);    
+    color: var(--light-text-color);
+    display: flex;
+    justify-content: space-between;
+}
+
+nav .nav-wrapper-left {
+    position: relative;
+    height: 100%;
+    display: flex;
+    text-align: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+nav .nav-wrapper-right {
+    position: relative;
+    height: 100%;
+    display: flex;
+    text-align: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-right: 20px;
+}
+
+nav .tool-name {
+    margin-left: 10px;
+    color: var(--light-text-color)
+}
+
+nav .tool-name:hover {
+    margin-left: 10px;
+    color: var(--light-text-color-hover)
+}
+
+.tool-title {
+    font-size: 20px;
+}
+
+nav .project-name {
+    margin-left: 25px
+}
+
+
+nav,
+nav .nav-wrapper i,
+nav a.sidenav-trigger,
+nav a.sidenav-trigger {
+	height: 35px;
+	line-height: 35px;
 }
