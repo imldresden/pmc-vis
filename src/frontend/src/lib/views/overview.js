@@ -238,32 +238,12 @@ function makeOverviewSettings() {
   const $buttons = h('div', { class: 'buttons param' }, []);
   const $buttons2 = h('div', { class: 'buttons param' }, []);
   const $buttons3 = h('div', { class: 'buttons param' }, []);
-  const $buttonMerge = h('button', { class: 'ui button', id: 'child-button' }, [h('span', {}, [t('Merge')])]);
-  const $buttonRemove = h(
-    'button',
-    { class: 'ui button', id: 'child-button' },
-    [h('span', {}, [t('Remove')])],
-  );
-  const $buttonDuplicate = h(
-    'button',
-    { class: 'ui button', id: 'child-button' },
-    [h('span', {}, [t('Duplicate')])],
-  );
-  const $buttonExport = h(
-    'button',
-    { class: 'ui button', id: 'child-button' },
-    [h('span', {}, [t('Export')])],
-  );
-  const $buttonExpand = h(
-    'button',
-    { class: 'ui button', id: 'child-button' },
-    [h('span', {}, [t('Expand')])],
-  );
-  const $buttonCollapse = h(
-    'button',
-    { class: 'ui button', id: 'child-button' },
-    [h('span', {}, [t('Collapse')])],
-  );
+  const $buttonMerge = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-object-group button-icon' }, []), h('span', {}, [t('Merge')])]);
+  const $buttonRemove = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-trash button-icon' }, []), h('span', {}, [t('Remove')])]);
+  const $buttonDuplicate = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-copy button-icon' }, []), h('span', {}, [t('Duplicate')])]);
+  const $buttonExport = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-download button-icon' }, []), h('span', {}, [t('Export')])]);
+  const $buttonExpand = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-expand button-icon' }, []), h('span', {}, [t('Expand')])]);
+  const $buttonCollapse = h('button', { class: 'ui button', id: 'child-button' }, [h('i', { class: 'fa-solid fa-compress button-icon' }, []), h('span', {}, [t('Collapse')])]);
 
   $buttonMerge.addEventListener('click', async () => {
     socket.emit('handle selection', 'merge');

@@ -97,6 +97,10 @@ a:hover {
   color: var(--dark-text-color);
 }
 
+.button-icon {
+  margin-right: 8px;
+}
+
 nav {
   a:hover {
     color: var(--dark-text-color);
