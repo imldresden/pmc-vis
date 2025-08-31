@@ -431,7 +431,9 @@ function destroyPanes(firstId, { firstOnly = false, pre = false } = {}) {
     });
 
     if (!pre) {
-      setPane(panes[newKeys[newKeys.length - 1]].id);
+      const lastPaneId = newKeys[newKeys.length - 1];
+
+      highlightPaneById(lastPaneId);
     }
 
     socket.emit('pane removed', firstId);
