@@ -95,8 +95,8 @@ public abstract class View implements Namespace {
 //        timeSaverMap.put("tsColumn", tsColumn);
 //        timeSaverMap.put("tsGrpFct", tsGrpFct);
 //        timeSaverMap.put("tsExecuteBatch", tsGrpFct);
-        if (model.getMdpGraph() == null) model.buildMdpGraph();
-        this.relevantStates = model.getMdpGraph().stateSet();
+        //if (model.getMdpGraph() == null) model.buildMdpGraph();
+        //this.relevantStates = model.getMdpGraph().stateSet();
         this.id = id;
         attributes.put("ID", id);
         attributes.put("isactive", isActive);
@@ -114,8 +114,8 @@ public abstract class View implements Namespace {
         tsColumn = new TimeSaver("Create Column Time", model.getID(), getType().name(), new File(pathToFile));
         tsGrpFct = new TimeSaver("Grouping Function Time", model.getID(), getType().name(), new File(pathToFile));
         tsExecuteBatch = new TimeSaver("Execute Batch Time", model.getID(), getType().name(), new File(pathToFile));
-        if (model.getMdpGraph() == null) model.buildMdpGraph();
-        this.relevantStates = model.getMdpGraph().stateSet();
+        //if (model.getMdpGraph() == null) model.buildMdpGraph();
+        //this.relevantStates = model.getMdpGraph().stateSet();
         this.id = id;
         attributes.put("ID", id);
         attributes.put("isactive", isActive);
@@ -134,8 +134,8 @@ public abstract class View implements Namespace {
         tsColumn = new TimeSaver("Create Column Time", model.getID(), getType().name(), new File(pathToFile));
         tsGrpFct = new TimeSaver("Grouping Function Time", model.getID(), getType().name(), new File(pathToFile));
         tsExecuteBatch = new TimeSaver("Execute Batch Time", model.getID(), getType().name(), new File(pathToFile));
-        if (model.getMdpGraph() == null) model.buildMdpGraph();
-        this.relevantStates = model.getMdpGraph().stateSet();
+        //if (model.getMdpGraph() == null) model.buildMdpGraph();
+        //this.relevantStates = model.getMdpGraph().stateSet();
         this.id = id;
         this.semiGrouping = semiGrouping;
         attributes.put("ID", id);
@@ -159,7 +159,7 @@ public abstract class View implements Namespace {
 
             // 2. Create new Column         "       "
             try (Timer createColumn = new Timer(tsColumn)) {
-                model.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT DEFAULT %s", model.getStateTableName(), getCollumn(), Namespace.ENTRY_C_BLANK));
+                //model.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT DEFAULT %s", model.getStateTableName(), getCollumn(), Namespace.ENTRY_C_BLANK));
             }
             if (model.debug) System.out.println("######################################3");
 
@@ -190,7 +190,7 @@ public abstract class View implements Namespace {
     // returns list of sql statements that write the assigned value to the database
 
     protected boolean isBuilt(){
-        return model.getDatabase().question(String.format("SELECT * FROM pragma_table_info('%s') WHERE name='%s'\n", model.getStateTableName(), getCollumn()));
+        return true;//return model.getDatabase().question(String.format("SELECT * FROM pragma_table_info('%s') WHERE name='%s'\n", model.getStateTableName(), getCollumn()));
     }
 
     public ViewType getType() {
@@ -273,37 +273,37 @@ public abstract class View implements Namespace {
 
     // crashes if column name (value in stateRestriction.keySet()) does not exist
     private void setRelevantStates(Map<String, Set<String>> stateRestriction) {
-        relevantStatesAreProperSubset = true;
-
-        // build query
-        StringBuilder query = new StringBuilder(String.format("SELECT %s FROM %s WHERE ", ENTRY_S_ID, model.getStateTableName()));
-        Iterator<String> viewIterator = stateRestriction.keySet().iterator();
-//        messages.put("viewIterator.hasNext() ", List.of(String.valueOf(viewIterator.hasNext())));
-        while (viewIterator.hasNext()) {
-            query.append("(");
-            String view = viewIterator.next();
-            Iterator<String> labelIterator = stateRestriction.get(view).iterator();
-            while (labelIterator.hasNext()) {
-                String label = labelIterator.next();
-                query.append(String.format("%s = '%s'", view, label));
-                if (labelIterator.hasNext()) {
-                    query.append(" OR ");
-                }
-            }
-            if (viewIterator.hasNext()) {
-                query.append(") AND ");
-            }
-            else {
-                query.append(")");
-            }
-        }
-        // execute query and store result in relevantStates
-        relevantStates = new HashSet<>(model.getDatabase().executeCollectionQuery(query.toString(), Long.class));
+//        relevantStatesAreProperSubset = true;
+//
+//        // build query
+//        StringBuilder query = new StringBuilder(String.format("SELECT %s FROM %s WHERE ", ENTRY_S_ID, model.getStateTableName()));
+//        Iterator<String> viewIterator = stateRestriction.keySet().iterator();
+////        messages.put("viewIterator.hasNext() ", List.of(String.valueOf(viewIterator.hasNext())));
+//        while (viewIterator.hasNext()) {
+//            query.append("(");
+//            String view = viewIterator.next();
+//            Iterator<String> labelIterator = stateRestriction.get(view).iterator();
+//            while (labelIterator.hasNext()) {
+//                String label = labelIterator.next();
+//                query.append(String.format("%s = '%s'", view, label));
+//                if (labelIterator.hasNext()) {
+//                    query.append(" OR ");
+//                }
+//            }
+//            if (viewIterator.hasNext()) {
+//                query.append(") AND ");
+//            }
+//            else {
+//                query.append(")");
+//            }
+//        }
+//        // execute query and store result in relevantStates
+//        relevantStates = new HashSet<>(model.getDatabase().executeCollectionQuery(query.toString(), Long.class));
     }
 
     private void resetRelevantStates(){
         relevantStatesAreProperSubset = false;
-        relevantStates = model.getMdpGraph().stateSet();
+        //relevantStates = model.getMdpGraph().stateSet();
         attributes.put("relevantstates", "not displayed");
     }
 
@@ -335,11 +335,11 @@ public abstract class View implements Namespace {
     }
 
     public void removeFromDb() {
-        model.removeViewFromDbByColName(getCollumn());
+//        model.removeViewFromDbByColName(getCollumn());
     }
 
     public void removeFromViewList() {
-        model.removeFromViews(this);
+//        model.removeFromViews(this);
     }
 
     public void rebuildView() throws Exception {
@@ -354,9 +354,9 @@ public abstract class View implements Namespace {
             return false;
         }
 
-        if (model.getMdpGraph() == null) {
-            model.buildMdpGraph();
-        }
+//        if (model.getMdpGraph() == null) {
+//            model.buildMdpGraph();
+//        }
 
         return true;
     }

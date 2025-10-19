@@ -79,16 +79,16 @@ public class State implements Node{
         return "s";
     }
 
-    @Override
-    public Map<String, Object> getViewDetails() {
-        Map<String, Object> output = new HashMap<>();
-        output.put("cluster identifier", clusters);
-        if (clusters != null){
-            output.put("clustered states", clusteredNodes);
-            output.put("number of clustered states", clusteredNodes.size());
-        }
-        return output;
-    }
+//    @Override
+//    public Map<String, Object> getViewDetails() {
+//        Map<String, Object> output = new HashMap<>();
+//        output.put("cluster identifier", clusters);
+//        if (clusters != null){
+//            output.put("clustered states", clusteredNodes);
+//            output.put("number of clustered states", clusteredNodes.size());
+//        }
+//        return output;
+//    }
 
     @Override
     public String getNumId() {

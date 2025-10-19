@@ -8,6 +8,7 @@ import prism.Pair;
 import prism.PrismException;
 import prism.api.Transition;
 import prism.api.VariableInfo;
+import prism.core.Model;
 import prism.core.Namespace;
 import prism.core.Project;
 import prism.core.Scheduler.Scheduler;
@@ -28,7 +29,7 @@ public abstract class Property implements Namespace {
 
     protected int id;
 
-    protected Project project;
+    protected Model model;
     protected String name;
     protected Expression expression;
     protected PropertiesFile propertiesFile;
@@ -41,26 +42,26 @@ public abstract class Property implements Namespace {
 
     protected double maximum = 0.0;
 
-    public Property(Project project, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
-        this.project = project;
+    public Property(Model model, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
+        this.model = model;
         this.id = id;
         this.name = prismProperty.getName() != null ? prismProperty.getName() : prismProperty.getExpression().toString();
         this.expression = prismProperty.getExpression();
         this.propertiesFile = propertiesFile;
 
-        Map<String, VariableInfo> info = (Map<String, VariableInfo>) project.getInfo().getStateEntry(OUTPUT_RESULTS);
+        Map<String, VariableInfo> info = (Map<String, VariableInfo>) model.getInfo().getStateEntry(OUTPUT_RESULTS);
 
-        if (project.getDatabase().question(String.format("SELECT name FROM pragma_table_info('%s') WHERE name = '%s'", project.getStateTableName(), this.getPropertyCollumn()))) {
+        if (model.getDatabase().question(String.format("SELECT name FROM pragma_table_info('%s') WHERE name = '%s'", model.getTableStates(), this.getPropertyCollumn()))) {
             this.newMaximum();
             this.scheduler = Scheduler.loadScheduler(this.getName(), this.id);
-            project.addScheduler(scheduler);
+            model.addScheduler(scheduler);
             alreadyChecked = true;
             info.put(this.name, this.getPropertyInfo());
         }else{
             info.put(this.name, VariableInfo.blank(this.name));
         }
-        project.getInfo().setStateEntry(OUTPUT_RESULTS, info);
-        project.getInfo().setTransitionEntry(OUTPUT_RESULTS, info);
+        model.getInfo().setStateEntry(OUTPUT_RESULTS, info);
+        model.getInfo().setTransitionEntry(OUTPUT_RESULTS, info);
     }
 
     protected VariableInfo getPropertyInfo(){
@@ -68,26 +69,26 @@ public abstract class Property implements Namespace {
     }
 
     protected void newMaximum(){
-        Optional<Double> out = project.getDatabase().executeLookupQuery(String.format("SELECT MAX(CAST(%s as REAL)) FROM %s", this.getPropertyCollumn(), project.getStateTableName()), Double.class);
+        Optional<Double> out = model.getDatabase().executeLookupQuery(String.format("SELECT MAX(CAST(%s as REAL)) FROM %s", this.getPropertyCollumn(), model.getTableStates()), Double.class);
         if (out.isPresent()){
             this.maximum = Math.ceil(out.get());
         }
 
     }
 
-    public static Property createProperty(Project project, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
+    public static Property createProperty(Model model, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
         Expression expression = prismProperty.getExpression();
 
         // P operator
         if (expression instanceof ExpressionProb) {
-            return new Probability(project, id, propertiesFile, prismProperty);
+            return new Probability(model, id, propertiesFile, prismProperty);
         }
         // R operator
         else if (expression instanceof ExpressionReward) {
             try {
-                return new Expectation(project, id, propertiesFile, prismProperty, ((ExpressionReward) expression).getRewardStructIndexByIndexObject(project.getModulesFile().getRewardStructNames(), project.getModulesFile().getConstantValues()));
+                return new Expectation(model, id, propertiesFile, prismProperty, ((ExpressionReward) expression).getRewardStructIndexByIndexObject(model.getModulesFile().getRewardStructNames(), model.getModulesFile().getConstantValues()));
             } catch (PrismException e) {
-                return new Expectation(project, id, propertiesFile, prismProperty);
+                return new Expectation(model, id, propertiesFile, prismProperty);
             }
             // Fallback (should not happen)
         }else{
@@ -96,7 +97,7 @@ public abstract class Property implements Namespace {
     }
 
     public Map<Long, Double> getPropertyMap() {
-        List<Pair<Long, Double>> list = project.getDatabase().executeCollectionQuery(String.format("SELECT %s, %s FROM %s", ENTRY_S_ID, getPropertyCollumn(), project.getStateTableName()), new EntryMapper(getPropertyCollumn()));
+        List<Pair<Long, Double>> list = model.getDatabase().executeCollectionQuery(String.format("SELECT %s, %s FROM %s", ENTRY_S_ID, getPropertyCollumn(), model.getTableStates()), new EntryMapper(getPropertyCollumn()));
         Map<Long, Double> out = new HashMap<>();
         for (Pair<Long, Double> p : list){
             out.put(p.getKey(), p.getValue());
@@ -122,18 +123,18 @@ public abstract class Property implements Namespace {
 
     public void clear(){
         this.alreadyChecked = false;
-        Map<String, VariableInfo> info = (Map<String, VariableInfo>) project.getInfo().getStateEntry(OUTPUT_RESULTS);
+        Map<String, VariableInfo> info = (Map<String, VariableInfo>) model.getInfo().getStateEntry(OUTPUT_RESULTS);
         info.replace(this.name, VariableInfo.blank(this.name));
-        project.getInfo().setStateEntry(OUTPUT_RESULTS, info);
-        project.getInfo().setTransitionEntry(OUTPUT_RESULTS, info);
+        model.getInfo().setStateEntry(OUTPUT_RESULTS, info);
+        model.getInfo().setTransitionEntry(OUTPUT_RESULTS, info);
     }
 
     public abstract VariableInfo modelCheck() throws PrismException;
 
     public void printScheduler(String filename, boolean limit) {
         File f = new File(filename);
-        ModulesFile modulesFile = project.getModulesFile();
-        String state_table = project.getStateTableName();
+        ModulesFile modulesFile = model.getModulesFile();
+        String state_table = model.getTableStates();
 
         if (limit){
             try {
@@ -143,7 +144,7 @@ public abstract class Property implements Namespace {
             }
         }
 
-        int size = project.getDatabase().executeLookupQuery(String.format("SELECT COUNT(*) FROM %s", state_table), Integer.class).orElse(0);
+        int size = model.getDatabase().executeLookupQuery(String.format("SELECT COUNT(*) FROM %s", state_table), Integer.class).orElse(0);
 
         try(BufferedWriter writer = new BufferedWriter(new FileWriter(f))) {
             //HEADER
@@ -188,7 +189,7 @@ public abstract class Property implements Namespace {
                     , ENTRY_T_ACT
                     , state_table
                     , joins.toString()
-                    , project.getTransitionTableName()
+                    , model.getTableTrans()
                     , ENTRY_S_ID
                     , ENTRY_T_OUT
                     , this.getSchedulerCollumn()
@@ -196,7 +197,7 @@ public abstract class Property implements Namespace {
                     , order.toString()
                     , ENTRY_S_NAME);
 
-            try(PersistentQuery query = project.getDatabase().openQuery(transitionQuery); ResultIterator<Pair<String, String>> it = query.iterator(new PairMapper<>(ENTRY_S_NAME, "actions", String.class, String.class))) {
+            try(PersistentQuery query = model.getDatabase().openQuery(transitionQuery); ResultIterator<Pair<String, String>> it = query.iterator(new PairMapper<>(ENTRY_S_NAME, "actions", String.class, String.class))) {
                 while (it.hasNext()) {
                     Pair<String, String> out = it.next();
                     String s = String.format("%s;%s", out.getKey(), String.join(";", out.getValue()));
@@ -217,12 +218,12 @@ public abstract class Property implements Namespace {
 
     private String createReachableTable() throws Exception {
         Set<String> visited = new HashSet<>();
-        Set<String> visiting = new HashSet<>(project.getInitialStates());
-        String table_name = project.getStateTableName() + "_reach";
+        Set<String> visiting = new HashSet<>(model.getInitialStates());
+        String table_name = model.getTableStates() + "_reach";
 
         Map<String, List<Transition>> outgoing = new HashMap<>();
 
-        for (Transition t : project.getAllTransitions()){
+        for (Transition t : model.getAllTransitions()){
             String s_id = t.getSource();
             if (!outgoing.containsKey(s_id)){
                 outgoing.put(s_id, new ArrayList<>());
@@ -231,11 +232,11 @@ public abstract class Property implements Namespace {
         }
 
 
-        project.getDatabase().execute(String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY NOT NULL, %s TEXT, %s BOOLEAN)", table_name, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT));
+        model.getDatabase().execute(String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY NOT NULL, %s TEXT, %s BOOLEAN)", table_name, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT));
 
-        String stateInsertCall = String.format("INSERT INTO %s SELECT %s,%s,%s FROM %s WHERE %s = ?", table_name, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT, project.getStateTableName(), ENTRY_S_ID);
+        String stateInsertCall = String.format("INSERT INTO %s SELECT %s,%s,%s FROM %s WHERE %s = ?", table_name, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT, model.getTableStates(), ENTRY_S_ID);
 
-        try(Batch toExecute = project.getDatabase().createBatch(stateInsertCall, 1)){
+        try(Batch toExecute = model.getDatabase().createBatch(stateInsertCall, 1)){
             while(!visiting.isEmpty()){
                 Set<String> toVisit = new HashSet<>();
 
@@ -265,6 +266,6 @@ public abstract class Property implements Namespace {
     }
 
     private void removeReachableTable(String state_table) throws SQLException {
-        project.getDatabase().execute(String.format("DROP TABLE IF EXISTS %s", state_table));
+        model.getDatabase().execute(String.format("DROP TABLE IF EXISTS %s", state_table));
     }
 }

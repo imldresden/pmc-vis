@@ -24,7 +24,7 @@ const DECIMAL_PLACES = 3;
 
 function fixed(num) {
   if (num === undefined) return;
-  return num != 0 ? num.toFixed(DECIMAL_PLACES) : num;
+  return num % 1 != 0 ? num.toFixed(DECIMAL_PLACES) : num;
 }
 
 const colorList = [

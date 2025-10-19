@@ -1,6 +1,6 @@
 package prism.core.Scheduler;
 
-import prism.core.Project;
+import prism.core.Model;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -19,17 +19,17 @@ public class Scheduler {
         this.id = id;
     }
 
-    public static Scheduler createScheduler(Project project, String name, int id, List<Criteria> criterias) throws SQLException {
-        String table = project.getTransitionTableName();
-        String schedTable = project.getSchedulerTableName();
+    public static Scheduler createScheduler(Model model, String name, int id, List<Criteria> criterias) throws SQLException {
+        String table = model.getTableTrans();
+        String schedTable = model.getTableSched();
 
-        Optional<String> entry = project.getDatabase().executeLookupQuery(String.format("SELECT %s FROM %s WHERE %s = '%s'", ENTRY_SCH_NAME, schedTable, ENTRY_SCH_ID, id), String.class);
+        Optional<String> entry = model.getDatabase().executeLookupQuery(String.format("SELECT %s FROM %s WHERE %s = '%s'", ENTRY_SCH_NAME, schedTable, ENTRY_SCH_ID, id), String.class);
 
         if(entry.isPresent()){
             if (entry.get().equals(name)){
                 return loadScheduler(name, id);
             }else{
-                return createScheduler(project, name, id+1, criterias);
+                return createScheduler(model, name, id+1, criterias);
             }
         }
 
@@ -49,9 +49,9 @@ public class Scheduler {
         String updateQuery = String.format("WITH cte AS (SELECT *, dense_rank() OVER(PARTITION BY %s ORDER BY %s) AS r FROM %s) UPDATE %s SET %s=1 WHERE %s IN (SELECT %s FROM cte WHERE r=1)", partition, order, table, table, scheduler_collumn, ENTRY_T_ID, ENTRY_T_ID);
         String infoQuery = String.format("INSERT INTO %s (%s, %s) VALUES(%s, '%s')", schedTable, ENTRY_SCH_ID, ENTRY_SCH_NAME, id, name);
 
-        project.getDatabase().execute(creationQuery);
-        project.getDatabase().execute(updateQuery);
-        project.getDatabase().execute(infoQuery);
+        model.getDatabase().execute(creationQuery);
+        model.getDatabase().execute(updateQuery);
+        model.getDatabase().execute(infoQuery);
 
         return new Scheduler(name, id);
     }

@@ -2,12 +2,19 @@ import events from '../../utils/events.js';
 import PureContextMenu from 'pure-context-menu/pure-context-menu.js';
 
 function makeCtxMenu(divID, pane, fns, { extras }) {
-  const items = [
-    {
-      label: 'Sync Selection in Model View',
-      preventCloseOnClick: true,
-      callback: () => dispatchEvent(events.LINKED_SELECTION(pane.id, fns.getSelection())),
-    },
+  const items = [];
+
+  if (!pane.cy.vars['pcp-auto-sync'].value) {
+    items.push(
+      {
+        label: 'Sync Selection in Model View',
+        preventCloseOnClick: true,
+        callback: () => dispatchEvent(events.LINKED_SELECTION(pane.id, fns.getSelection())),
+      },
+    );
+  }
+
+  items.push(
     {
       label: 'New Pane from Selection...',
       callback: () => {
@@ -16,7 +23,7 @@ function makeCtxMenu(divID, pane, fns, { extras }) {
         }
       },
     },
-  ];
+  );
 
   return new PureContextMenu(document.body, items, {
     show: (e, inst) => {

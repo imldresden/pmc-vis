@@ -21,10 +21,6 @@ public interface Node extends Namespace {
     @JsonProperty
     String getName();
 
-    @Schema(description = "View Details of node")
-    @JsonProperty
-    Map<String, Object> getViewDetails();
-
     @Schema(description = "")
     @JsonProperty
     Map<String, Map<String, Object>> getDetails();

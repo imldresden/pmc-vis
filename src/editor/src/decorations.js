@@ -14,13 +14,10 @@ const formulaRegExp = /^\s*formula\s+(\w+)\s*=\s*(.+?)\s*;$/
 const variableDefRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(\w+)\s*\.\.\s*(\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/
 const variableRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(\w+)\s*\.\.\s*(\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/gm
 const renameRegExp = /(\w+)\s*=\s*(\w+)/
+const commentRegExp = /\/\/(.*)$/gm
 
-const actionRegExp = /\[(.*)\]\s*(.*)\s*->(.*?);/gm
+const actionRegExp = /\[(.*)\]\s*(.*)\s*->((?:.|\n)*?);/gm
 const moduleRegExp = /module\s+(\w*)(?:\s*=\s*(\w+))?(.*?)endmodule/gms
-
-//Standard Icons
-const inactive = new vscode.ThemeIcon("issues");
-const active = new vscode.ThemeIcon("issue-closed");
 
 //Decoration Design
 const allowedActionDecoration = vscode.window.createTextEditorDecorationType({
@@ -108,7 +105,7 @@ class Decorator {
     }
 
     parseDocument(activeEditor) {
-        const text = activeEditor.document.getText();
+        const text = this.stripComments(activeEditor.document.getText());
 
         this._constantDef = new Map();
         this._formulaDef = new Map();
@@ -134,6 +131,7 @@ class Decorator {
     }
 
     matchVars(state) {
+        console.log(this._variableDef)
         for (let key in state.variables) {
             if (!this._variableDef.has(key)) {
                 return false;
@@ -420,6 +418,10 @@ class Decorator {
         e = e.replaceAll(/(?<!!|<|>)=/g, "==");
         e = e.replaceAll(/!(?!=)/g, " not ");
         return e;
+    }
+
+    stripComments(text) {
+        return text.replace(commentRegExp, "")
     }
 
     parseConstants(text) {

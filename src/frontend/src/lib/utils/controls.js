@@ -447,7 +447,6 @@ async function triggerModelCheckProperty(e, propType, props) {
 }
 
 socket.on('MC_STATUS', (status) => {
-  console.log(status);
   setInfo(status.info);
   info.updating = true;
   setPane(pane.id, { force: true });

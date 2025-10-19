@@ -63,7 +63,7 @@ public class TaskManager implements Executor, Managed {
                     return;
                 }
             }
-            Status status = new Status(this.activeProjects.get(id), this.status());
+            Status status = new Status(this.activeProjects.get(id).getDefaultModel(), this.status());
             ackRequest.sendAckData(status);
         });
     }
@@ -114,14 +114,16 @@ public class TaskManager implements Executor, Managed {
         }
     }
 
-    private void sendStatus(String id){
+    private void sendStatus(String id, Optional<String> version){
         if (socketServer != null) {
             try {
                 if (this.activeProjects.get(id) == null){
                     socketServer.send(Namespace.EVENT_STATUS, new Status());
                     return;
                 }
-                Status status = new Status(this.activeProjects.get(id), this.status());
+                Status status;
+                if (version.isPresent()) status = new Status(this.activeProjects.get(id).getModel(version.get()), this.status());
+                else status = new Status(this.activeProjects.get(id).getDefaultModel(), this.status());
                 socketServer.send(Namespace.EVENT_STATUS, status);
             }catch (Exception e){
                 System.err.println("Error sending status to server: " + e.getMessage());
@@ -223,6 +225,9 @@ public class TaskManager implements Executor, Managed {
             public String projectID() { return ""; }
 
             @Override
+            public String version() { return ""; }
+
+            @Override
             public void run() {
                 r.run();
             }
@@ -237,7 +242,7 @@ public class TaskManager implements Executor, Managed {
                     t.run();
                 } finally {
                     logger.info("Task {} executed", t.name());
-                    sendStatus(t.projectID());
+                    sendStatus(t.projectID(), Optional.ofNullable(t.version()));
                     scheduleNext();
                 }
             }
@@ -253,6 +258,9 @@ public class TaskManager implements Executor, Managed {
 
             @Override
             public String projectID() { return t.projectID();}
+
+            @Override
+            public String version() { return t.version();}
         });
         if (active == null) {
             scheduleNext();

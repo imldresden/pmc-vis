@@ -87,7 +87,7 @@ public class SchedulerConverter extends ConfiguredCommand<PRISMServerConfigurati
         TaskManager activeProjects = new TaskManager();
 
         Project project = new Project(projectID, configuration.getPathTemplate(), activeProjects,  database, configuration.getCUDDMaxMem(), configuration.getIterations(), configuration.getDebug());
-        project.printScheduler(namespace.get("out"), namespace.getBoolean("limit"));
+        project.getDefaultModel().printScheduler(namespace.get("out"), namespace.getBoolean("limit"));
         project.removeFiles();
     }
 

@@ -2,6 +2,7 @@ package prism.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import prism.core.Model;
 import prism.core.Project;
 
 import java.util.ArrayList;
@@ -21,12 +22,12 @@ public class Status {
     public Status(){
         this.info = null;
         this.messages = new ArrayList<>();
-        this.messages.add("No Project with that name");
+        this.messages.add("Model not found");
         this.status = 404;
     }
 
-    public Status(Project project, List<String> messages){
-        this.info = project.getInformation();
+    public Status(Model model, List<String> messages){
+        this.info = model.getInformation();
         this.messages = messages;
         this.status = 200;
     }

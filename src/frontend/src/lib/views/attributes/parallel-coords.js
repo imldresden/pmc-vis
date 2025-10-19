@@ -242,9 +242,11 @@ function parallelCoords(pane, data, metadata) {
 
       drawBrushed();
       updateCountStrings();
-      dispatchEvent(
-        events.LINKED_SELECTION(pane.id, publicFunctions.getSelection()),
-      );
+      if (pane.cy.vars['pcp-auto-sync'].value) {
+        dispatchEvent(
+          events.LINKED_SELECTION(pane.id, publicFunctions.getSelection()),
+        );
+      }
     }
 
     function drawBrushed() {
@@ -463,7 +465,7 @@ function parallelCoords(pane, data, metadata) {
       } else if (metadata.booleans.includes(d)) {
         resp.axes[d] = d3
           .scalePoint()
-          .domain([false, true])
+          .domain([true, false])
           .range([0, resp.svg_dims[orient]])
           .padding(1);
         const axis = resp.axes[d];

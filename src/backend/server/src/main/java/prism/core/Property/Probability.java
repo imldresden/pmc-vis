@@ -10,7 +10,7 @@ import prism.Result;
 import prism.StateValues;
 import prism.api.Transition;
 import prism.api.VariableInfo;
-import prism.core.Project;
+import prism.core.Model;
 import prism.core.Scheduler.Criteria;
 import prism.core.Scheduler.CriteriaSort;
 import prism.core.Scheduler.Scheduler;
@@ -29,8 +29,8 @@ import java.util.Optional;
 
 public class Probability extends Property{
 
-    public Probability(Project project, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
-        super(project, id, propertiesFile, prismProperty);
+    public Probability(Model model, int id, PropertiesFile propertiesFile, parser.ast.Property prismProperty){
+        super(model, id, propertiesFile, prismProperty);
         this.minimum = ((ExpressionProb) expression).getRelOp() == RelOp.MIN;
     }
 
@@ -40,27 +40,27 @@ public class Probability extends Property{
             return this.getPropertyInfo();
         }
 
-        if (project.debug) {
+        if (model.debug) {
             System.out.println("-----------------------------------");
         }
 
         Result result;
-        try (Timer time = new Timer(String.format("Checking %s", this.getName()), project.getLog())) {
-            result = project.getPrism().modelCheck(propertiesFile, expression);
+        try (Timer time = new Timer(String.format("Checking %s", this.getName()), model.getLog())) {
+            result = model.getModelChecker().getPrism().modelCheck(propertiesFile, expression);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        try (Timer time = new Timer(String.format("Insert %s to db", this.getName()), project.getLog())) {
+        try (Timer time = new Timer(String.format("Insert %s to db", this.getName()), model.getLog())) {
             StateValues vals = (StateValues) result.getVector();
-            StateAndValueMapper map = new StateAndValueMapper(project.getModelParser());
+            StateAndValueMapper map = new StateAndValueMapper(model.getModelParser());
 
             vals.iterate(map, false);
             Map<BigInteger, Double> values = map.output();
 
-            project.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", project.getStateTableName(), this.getPropertyCollumn()));
-            project.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", project.getTransitionTableName(), this.getPropertyCollumn()));
+            model.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", model.getTableStates(), this.getPropertyCollumn()));
+            model.getDatabase().execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", model.getTableTrans(), this.getPropertyCollumn()));
 
-            try (Batch toExecute = project.getDatabase().createBatch(String.format("UPDATE %s SET %s = ? WHERE %s = ?", project.getStateTableName(), this.getPropertyCollumn(), ENTRY_S_ID), 2)) {
+            try (Batch toExecute = model.getDatabase().createBatch(String.format("UPDATE %s SET %s = ? WHERE %s = ?", model.getTableStates(), this.getPropertyCollumn(), ENTRY_S_ID), 2)) {
                 for (BigInteger stateID : values.keySet()) {
                     toExecute.addToBatch(String.valueOf(values.get(stateID)), String.valueOf(stateID));
                 }
@@ -70,10 +70,10 @@ public class Probability extends Property{
 
             MDStrategy strategy = (MDStrategy) result.getStrategy();
 
-            //try (Batch toExecute = project.getDatabase().createBatch(String.format("UPDATE %s SET %s = ?, %s = ? WHERE %s = ?", project.getTransitionTableName(), this.getPropertyCollumn(), this.getSchedulerCollumn(), ENTRY_T_ID), 3)) {
-            try (Batch toExecute = project.getDatabase().createBatch(String.format("UPDATE %s SET %s = ? WHERE %s = ?", project.getTransitionTableName(), this.getPropertyCollumn(), ENTRY_T_ID), 2)) {
-                String transitionQuery = String.format("SELECT * FROM %s", project.getTransitionTableName());
-                try (PersistentQuery query = project.getDatabase().openQuery(transitionQuery); ResultIterator<Transition> it = query.iterator(new TransitionMapper(project))) {
+            //try (Batch toExecute = model.getDatabase().createBatch(String.format("UPDATE %s SET %s = ?, %s = ? WHERE %s = ?", model.getTransitionTableName(), this.getPropertyCollumn(), this.getSchedulerCollumn(), ENTRY_T_ID), 3)) {
+            try (Batch toExecute = model.getDatabase().createBatch(String.format("UPDATE %s SET %s = ? WHERE %s = ?", model.getTableTrans(), this.getPropertyCollumn(), ENTRY_T_ID), 2)) {
+                String transitionQuery = String.format("SELECT * FROM %s", model.getTableTrans());
+                try (PersistentQuery query = model.getDatabase().openQuery(transitionQuery); ResultIterator<Transition> it = query.iterator(new TransitionMapper(model))) {
                     while (it.hasNext()) {
                         Transition t = it.next();
 
@@ -174,8 +174,8 @@ public class Probability extends Property{
                 throw new RuntimeException(e);
             }
             Criteria criteria = new CriteriaSort(this.getPropertyCollumn(), minimum ? CriteriaSort.Direction.ASC: CriteriaSort.Direction.DESC);
-            this.scheduler = Scheduler.createScheduler(this.project, this.getName(), this.id, Collections.singletonList(criteria));
-            project.addScheduler(scheduler);
+            this.scheduler = Scheduler.createScheduler(this.model, this.getName(), this.id, Collections.singletonList(criteria));
+            model.addScheduler(scheduler);
             this.newMaximum();
             alreadyChecked = true;
 

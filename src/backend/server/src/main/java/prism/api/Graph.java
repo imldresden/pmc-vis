@@ -2,6 +2,7 @@ package prism.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import prism.core.Model;
 import prism.core.Project;
 import prism.core.Scheduler.Scheduler;
 
@@ -23,8 +24,8 @@ public class Graph {
         // Jackson deserialization
     }
 
-    public Graph(Project project, List<State> states, List<Transition> transitions) {
-        this.info = project.getInformation();
+    public Graph(Model model, List<State> states, List<Transition> transitions) {
+        this.info = model.getInformation();
         this.nodes = new ArrayList<>(states);
         this.nodes.addAll(transitions);
         this.edges = new ArrayList<>();

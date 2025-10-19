@@ -22,17 +22,14 @@ public class Transition implements Node{
 
     private TreeMap<String, Double> scheduler;
 
-    private List<String> views;
-
     public Transition(){
         // Jackson deserialization
     }
 
-    public Transition(String id, String source, String action, Map<String, Double> probabilityDistribution, Map<String, Double> rewards, Map<String, Double> results, Map<String, Double> scheduler, List<String> views,  Map<String, String> translation){
+    public Transition(String id, String source, String action, Map<String, Double> probabilityDistribution, Map<String, Double> rewards, Map<String, Double> results, Map<String, Double> scheduler, Map<String, String> translation){
         this.id = id;
         this.source = source;
         this.action = action;
-        this.views = views;
         if (results != null) this.results = new TreeMap<>(results); else this.results = new TreeMap<>();
         if (rewards != null) this.rewards = new TreeMap<>(rewards); else this.rewards = new TreeMap<>();
         if (scheduler != null) this.scheduler = new TreeMap<>(scheduler); else this.scheduler = new TreeMap<>();
@@ -55,13 +52,9 @@ public class Transition implements Node{
         }
     }
 
-    private boolean viewsInactive() { 
-        return views == null || views.isEmpty();
-    }
-
     @Override
     public String getId() {
-        return viewsInactive() ? String.format("t%s", id) : String.format("t%s_%s", String.join("_", views), id);
+        return String.format("t%s", id);
     }
 
     @Override
@@ -90,13 +83,6 @@ public class Transition implements Node{
         return details;
     }
 
-    @Override
-    public Map<String, Object> getViewDetails() {
-        Map<String, Object> output = new HashMap<>();
-        output.put("views identifier", views);
-        return output;
-    }
-
     //@Override
     public String getNumId() {
         return id;
@@ -116,11 +102,6 @@ public class Transition implements Node{
     @JsonIgnore
     public Map<String, Double> getResults() {
         return results;
-    }
-
-    @JsonIgnore
-    private String viewForm(String id){
-        return viewsInactive() ? id : String.format("%s_%s", String.join("_", views), id);
     }
 
     @JsonIgnore
@@ -148,9 +129,9 @@ public class Transition implements Node{
     @JsonIgnore
     public List<Edge> createEdges(){
         List<Edge> edges = new ArrayList<>();
-        edges.add(new Edge(viewForm(source), this.getId(), action));
+        edges.add(new Edge(source, this.getId(), action));
         for (Map.Entry<String, Double> e : probabilityDistribution.entrySet()) {
-            edges.add(new Edge(this.getId(), viewForm(e.getKey()), Double.toString(e.getValue())));
+            edges.add(new Edge(this.getId(), e.getKey(), Double.toString(e.getValue())));
         }
         return edges;
     }

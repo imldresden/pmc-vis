@@ -1,16 +1,13 @@
 {
     "name": "pmc-vis",
     "version": "0.0.1",
-    "description": "",
+    "description": "visual analysis tool for probabilistic models",
     "type": "module",
     "scripts": {
-        "start": "node server.js",
-        "start-ci": "PORT=7007 forever start server.js",
-        "stop-ci": "forever stopall",
         "dev": "vite --port 3000",
         "build": "vite build",
         "preview": "vite preview",
-        "check": "tsc -p tsconfig.node.json"
+        "check": "tsc --noEmit"
     },
     "dependencies": {
         "@fortawesome/fontawesome-free": "6.7.2",
@@ -54,6 +51,5 @@
         "typescript": "~5.8.3",
         "vite": "^6.0.0",
         "vite-plugin-socket-io": "^1.0.2"
-    },
-    "main": "server.js"
+    }
 }

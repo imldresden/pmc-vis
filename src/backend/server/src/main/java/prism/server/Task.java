@@ -11,4 +11,6 @@ public interface Task extends Runnable {
     public Type type();
 
     public String projectID();
+
+    public String version();
 }

@@ -7,6 +7,7 @@ import parser.type.TypeBool;
 import parser.type.TypeDouble;
 import parser.type.TypeInt;
 import prism.PrismLangException;
+import prism.core.Model;
 import prism.core.ModelParser;
 import prism.core.Project;
 
@@ -23,11 +24,11 @@ public class BaseState {
     private final parser.State state;
 
     private final String stateID;
-    private final Project parent;
+    private final Model parent;
 
     private static final Type[] valueTypes = {TypeInt.getInstance(), TypeDouble.getInstance(), TypeBool.getInstance()};
 
-    public BaseState(String stateID, String stringValues, Project parent) throws PrismLangException {
+    public BaseState(String stateID, String stringValues, Model parent) throws PrismLangException {
         this.stateID = stateID;
         this.parent = parent;
         String intern = stringValues;
@@ -93,7 +94,7 @@ public class BaseState {
         }
     }
 
-    public BaseState(String stateID, parser.State state, Project parent){
+    public BaseState(String stateID, parser.State state, Model parent){
         this.stateID = stateID;
         this.state = state;
         this.parent = parent;
@@ -136,7 +137,7 @@ public class BaseState {
 
     public double getStateReward(String rewardFunction) throws PrismLangException {
         double[] rewards = new double[parent.getModulesFile().getNumRewardStructs()];
-        parent.getUpdater().calculateStateRewards(state, rewards);
+        parent.getModelChecker().getUpdater().calculateStateRewards(state, rewards);
 
         return rewards[parent.getModulesFile().getRewardStructIndex(rewardFunction)];
     }
@@ -170,7 +171,7 @@ public class BaseState {
         return this.state.hashCode();
     }
 
-    public Project getParent() {
+    public Model getParent() {
         return this.parent;
     }
 

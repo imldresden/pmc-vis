@@ -10,6 +10,7 @@ import prism.PrismException;
 import prism.api.Message;
 import prism.api.Pane;
 import prism.api.Status;
+import prism.core.Model;
 import prism.core.Namespace;
 import prism.core.Project;
 import prism.server.PRISMServerConfiguration;
@@ -24,10 +25,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Path("/{project_id}")
 @Produces(MediaType.APPLICATION_JSON)
@@ -67,10 +65,12 @@ public class TaskResource extends Resource {
     @Operation(summary = "Returns status of current computation", description = "Reads the internal Task Manager for the status of current computations on the server")
     public Response getStatus(
             @Parameter(description = "identifier of project")
-            @PathParam("project_id") String projectID
-    ) {
+            @PathParam("project_id") String projectID,
+            @QueryParam("version") Optional<String> version
+    ) throws Exception {
         refreshProject(projectID);
-        return ok(new Status(tasks.getProject(projectID), tasks.status()));
+        if (version.isPresent()) return ok(new Status(tasks.getProject(projectID).getModel(version.get()), tasks.status()));
+        return ok(new Status(tasks.getProject(projectID).getDefaultModel(), tasks.status()));
     }
 
     @Deprecated
@@ -144,21 +144,23 @@ public class TaskResource extends Resource {
         refreshProject(projectID);
 
         String output = "";
+        boolean newProject = false;
 
         //Create Project folder for a new Project
         if (!new File(String.format("%s/%s", rootDir, projectID)).exists()){
             try{Files.createDirectory(Paths.get(String.format("%s/%s", rootDir, projectID)));
                 createStyleFile(projectID);
+                newProject = true;
             } catch (IOException e) {
                 return error(e);
             }
         }
 
-        final String uploadModel = String.format("%s/%s/", rootDir, projectID) + Namespace.PROJECT_MODEL;
+        final String uploadModel = String.format("%s/%s/", rootDir, projectID) + modelDetail.getFileName();
 
         //Check whether we overwrite the model file. Remove Project and delete file if this is the case.
         File modelFile = new File(uploadModel);
-        boolean newProject = !modelFile.exists();
+        boolean newFile = !modelFile.exists();
 
         try {
             //Write new File
@@ -174,7 +176,7 @@ public class TaskResource extends Resource {
                 tempFile.delete();
                 return error("File could not be parsed: \n" + parsingMessage);
             }
-            if (!newProject){
+            if (!newFile){
                 modelFile.delete();
             }
             Files.move(tempFile.toPath(), modelFile.toPath());
@@ -225,7 +227,7 @@ public class TaskResource extends Resource {
             try {
                 writeToFile(propInputStream, uploadProp);
                 if (tasks.containsProject(projectID)) {
-                    tasks.getProject(projectID).loadPropertyFile(new File(uploadProp));
+                    tasks.getProject(projectID).addPropertyFile(new File(uploadProp));
                 }else{
                     loadProject(projectID);
                 }
@@ -246,7 +248,8 @@ public class TaskResource extends Resource {
             @PathParam("project_id") String projectID,
             @Parameter(description = "Scheduler File to upload to project")
             @FormDataParam("scheduler_file") InputStream schedulerInputStream,
-            @FormDataParam("scheduler_file") FormDataContentDisposition schedulerDetail
+            @FormDataParam("scheduler_file") FormDataContentDisposition schedulerDetail,
+            @QueryParam("version") Optional<String> version
     ) {
 
         String output = "";
@@ -254,12 +257,18 @@ public class TaskResource extends Resource {
         if(schedulerDetail != null) {
             try {
                 Project p = tasks.getProject(projectID);
+                Model m;
+                if (version.isPresent()) {
+                    m = p.getModel(version.get());
+                }else{
+                    m = p.getDefaultModel();
+                }
                 final String schedulerDescription = String.format("%s/%s/%s", rootDir, projectID, schedulerDetail.getFileName());
                 writeToFile(schedulerInputStream, schedulerDescription);
                 output += String.format("Scheduler File uploaded to %s\n", schedulerDescription);
 
                 File schedulerFile = new File(schedulerDescription);
-                p.addCustomScheduler(schedulerFile);
+                m.addCustomScheduler(schedulerFile);
 
                 Files.delete(schedulerFile.toPath());
             } catch (Exception e) {
@@ -300,30 +309,39 @@ public class TaskResource extends Resource {
             @Parameter(description = "identifier of project")
             @PathParam("project_id") String projectID,
             @Parameter(description = "properties that should be checked")
-            @QueryParam("property") List<String> properties
+            @QueryParam("property") List<String> properties,
+            @QueryParam("version") Optional<String> version
     ){
         if (!tasks.containsProject(projectID)) {
             return error(String.format("Project %s does not exist", projectID));
         }
+        try {
 
-        Project p = tasks.getProject(projectID);
+            Project p = tasks.getProject(projectID);
 
-        for (String propertyName : properties) {
-            try {
-            p.getProperty(propertyName).ifPresent(property -> {
-                try {
-                    p.checkProperty(propertyName);
-                    if (debug){
-                        System.out.println("Checking property " + propertyName);
-                    }
-                } catch (PrismException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            } catch (Exception e) {
-                return error(e);
+            Model m;
+            if (version.isPresent()) {
+                m = p.getModel(version.get());
+            }else{
+
+                    m = p.getDefaultModel();
             }
 
+            for (String propertyName : properties) {
+                m.getProperty(propertyName).ifPresent(property -> {
+                    try {
+                        m.checkProperty(propertyName);
+                        if (debug){
+                            System.out.println("Checking property " + propertyName);
+                        }
+                    } catch (PrismException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+            }
+        } catch (Exception e) {
+            return error(e);
         }
 
         return ok(new Message(String.format("Started checking %s in project %s", String.join(", ", properties), projectID)));

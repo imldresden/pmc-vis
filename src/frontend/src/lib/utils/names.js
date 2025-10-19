@@ -21,7 +21,7 @@ const CONSTANTS = {
   },
 
   CONTROLS: {
-    'pcp-auto-sync': 'Automatically synchronize selections',
+    'pcp-auto-sync': 'Automatically sync selections',
     'pcp-vs': 'Axis Violin Plots',
     'pcp-hs': 'Axis Histograms',
     'pcp-dfs': 'Axis Value Frequencies',
@@ -43,6 +43,13 @@ const CONSTANTS = {
       description: (num) => `Expands ${num} levels from the selected node(s)`,
       keyboard: 'Shift+Enter', // not implemented
       keyboard_pane: 'Shift+Ctrl+Enter', // not implemented
+    },
+    collapse: {
+      name: 'Collapse',
+      icon: 'fa-solid fa-angle-left',
+      description: 'Collapses immediately outgoing actions and states from selected node(s)',
+      keyboard: '--',
+      keyboard_pane: '--',
     },
     mark: {
       name: 'Mark/Unmark Node(s)',

@@ -119,7 +119,7 @@ public class StatisticalChecker extends ConfiguredCommand<PRISMServerConfigurati
 
             copyFile(new File((String) namespace.get("scheduler")), schedulerFile);
 
-            project.addCustomScheduler(schedulerFile);
+            project.getDefaultModel().addCustomScheduler(schedulerFile);
             scheduler = Optional.of(schedulerFile.getName());
             Files.delete(schedulerFile.toPath());
         }

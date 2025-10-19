@@ -2,7 +2,6 @@ package prism.core;
 
 import com.google.common.math.BigIntegerMath;
 import parser.State;
-import parser.Values;
 import parser.VarList;
 import parser.ast.Expression;
 import parser.ast.ModulesFile;
@@ -25,7 +24,7 @@ public class ModelParser {
 
     private static final Type[] valueTypes = {TypeInt.getInstance(), TypeDouble.getInstance(), TypeBool.getInstance()};
 
-    private final Project project;
+    private final Model parent;
     private final ModulesFile modulesFile;
     private final Updater updater;
 
@@ -33,8 +32,8 @@ public class ModelParser {
     private final BigInteger maxStateIndex;
     private List<parser.State> initials;
 
-    public ModelParser(Project project, ModulesFile modulesFile, boolean debug) {
-        this.project = project;
+    public ModelParser(Model parent, ModulesFile modulesFile, boolean debug) {
+        this.parent = parent;
         this.modulesFile = modulesFile;
         Prism prism;
         if (debug) prism = new Prism(new PrismPrintStreamLog(System.out));
@@ -57,15 +56,15 @@ public class ModelParser {
             String name = varList.getName(i);
             info.put(name, new VariableInfo(name, VariableInfo.parseType(varList.getType(i).getTypeString()), varList.getLow(i), varList.getHigh(i) ));
         }
-        project.getInfo().setStateEntry(Namespace.OUTPUT_VARIABLES, info);
+        this.parent.getInfo().setStateEntry(Namespace.OUTPUT_VARIABLES, info);
         info = new TreeMap<>();
         for (int i = 0; i < modulesFile.getNumRewardStructs() ; i++) {
             RewardStruct rw = modulesFile.getRewardStruct(i);
             String name = rw.getName();
             info.put(name, new VariableInfo(name, VariableInfo.Type.TYPE_NUMBER, 0, Double.POSITIVE_INFINITY));
         }
-        project.getInfo().setStateEntry(Namespace.OUTPUT_REWARDS, info);
-        project.getInfo().setTransitionEntry(Namespace.OUTPUT_REWARDS, info);
+        this.parent.getInfo().setStateEntry(Namespace.OUTPUT_REWARDS, info);
+        this.parent.getInfo().setTransitionEntry(Namespace.OUTPUT_REWARDS, info);
         try {
             buildInitialStateObjects();
         } catch (Exception e) {
@@ -340,7 +339,7 @@ public class ModelParser {
             rewards.put(rewardNames.get(i), rewardValues[i]);
         }
 
-        return new prism.api.State(stateidentifier.toString(), state.toString(), variables, project.getLabelMap(state), rewards, new TreeMap<>());
+        return new prism.api.State(stateidentifier.toString(), state.toString(), variables, parent.getLabelMap(state), rewards, new TreeMap<>());
     }
 
     private Transition convertApiTransition(parser.State out, int choice_index, Choice<Double> choice, Map<parser.State, Double> distribution) throws Exception {
@@ -363,7 +362,7 @@ public class ModelParser {
             rewards.put(rewardNames.get(i), rewardValues[i]);
         }
 
-        return new Transition(identifier.toString(), stateIdentifier(out).toString(), choice.getModuleOrAction(), outDistribution, rewards, null, null, null, null);
+        return new Transition(identifier.toString(), stateIdentifier(out).toString(), choice.getModuleOrAction(), outDistribution, rewards, null, null, null);
     }
 
     // Output Functions
@@ -376,7 +375,7 @@ public class ModelParser {
             states.add(convertApiState(state));
         }
         
-        return new Graph(project, states, new ArrayList<>());
+        return new Graph(parent, states, new ArrayList<>());
     }
 
     public Graph getGraph() throws Exception {
@@ -402,7 +401,7 @@ public class ModelParser {
                 for (int j = 0; j < choice.size(); j++) {
                     double probability = choice.getProbability(j);
                     parser.State target = choice.computeTarget(j, state, modulesFile.createVarList());
-                    if (!states.contains(target) | visited.contains(target)) {
+                    if (!(states.contains(target) | visited.contains(target))) {
                         states.add(target);
                     }
                     probabilities.put(target, probability);
@@ -411,7 +410,7 @@ public class ModelParser {
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
             }
         }
-        return new Graph(project, outStates, transitions);
+        return new Graph(parent, outStates, transitions);
     }
 
     public Graph getSubGraph(List<String> stateIDs) throws Exception {
@@ -446,7 +445,7 @@ public class ModelParser {
                 }
             }
         }
-        return new Graph(project, outStates, transitions);
+        return new Graph(parent, outStates, transitions);
     }
 
     public Graph getOutgoing(List<String> stateIDs) throws Exception {
@@ -478,7 +477,7 @@ public class ModelParser {
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
             }
         }
-        return new Graph(project, outStates, transitions);
+        return new Graph(parent, outStates, transitions);
 
     }
 
@@ -519,7 +518,7 @@ public class ModelParser {
             }
         }
 
-        return new Graph(project, outStates, transitions);
+        return new Graph(parent, outStates, transitions);
     }
 
 
