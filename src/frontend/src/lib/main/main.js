@@ -102,6 +102,7 @@ async function start() {
     // fetch(BACKEND + PROJECT).then((res) => res.json()), // requests entire dataset
   ]).then((promises) => {
     const data = promises[0];
+    console.log('data', data);
     const nodesIds = data.nodes
       .map((node) => node.id)
       .filter((id) => !id.startsWith('t'));

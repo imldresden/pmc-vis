@@ -11,25 +11,30 @@
   <link rel="stylesheet" href="../src/lib/style/widgets/ctx-menu.css">
   <link rel="stylesheet" href="../src/lib/style/views/panes.css">
   <link rel="stylesheet" href="../src/lib/style/views/parallel-coords.css">
+  <link rel="stylesheet" href="../src/lib/style/views/overview.css">
 </head>
 
-<body>
-<h3 class="label label-info">Overview Graph </h3>
-  <section>
+<body class="overview-page">
+  <header class="overview-header">
+    <h1 class="overview-title">Overview Graph</h3>
+  </header>
+  <main class="overview-main">
     <div id="overview-container">
-    <div id="cy-overview"></div>
-    
+      <div id="overview-controls" class="overview-controls">
+        <!-- Fit and Center buttons will be added here -->
+      </div>
+      <div id="cy-overview"></div>
     </div>
-  </section>
+  </main>
   
-  <div id="config" class="config ui">
+  <aside id="config" class="config ui">
     <div class="ui segment">
         <h3 class="label label-info" id="overview-config-span">Selection Options</h3>
       <div id="overview-graph-config">
         <!-- layout specific options are appended here-->
       </div>
     </div>
-  </div>
+  </aside>
   
   <script src="../src/lib/views/overview.js" type="module"></script>
 

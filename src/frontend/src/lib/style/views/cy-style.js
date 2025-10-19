@@ -175,10 +175,65 @@ const overviewStylesheet = [
     },
   },
   {
+    selector: 'node',
+    style: {
+      'background-color': '#95a5a6',
+      'background-opacity': 0.8,
+      'text-valign': 'center',
+      'text-halign': 'center',
+      color: 'white',
+      'font-size': '10px',
+      'font-weight': 'bold',
+      width: '20px',
+      height: '20px',
+      'border-width': 2,
+      'border-color': '#333',
+      'border-opacity': 0.8,
+    },
+  },
+  {
+    selector: 'node[level="0"]',
+    style: {
+      'background-color': '#e74c3c',
+      width: '40px',
+      height: '40px',
+    },
+  },
+  {
+    selector: 'node[level="1"]',
+    style: {
+      'background-color': '#3498db',
+    },
+  },
+  {
+    selector: 'node[level="2"]',
+    style: {
+      'background-color': '#2ecc71',
+    },
+  },
+  {
+    selector: 'node[level="3"]',
+    style: {
+      'background-color': '#f39c12',
+    },
+  },
+  {
+    selector: 'node[level="4"]',
+    style: {
+      'background-color': '#9b59b6',
+    },
+  },
+  {
+    selector: 'node[level="5"]',
+    style: {
+      'background-color': '#1abc9c',
+    },
+  },
+  {
     selector: 'node.active-pane',
     style: {
       'border-color': '#439843',
-      'border-width': '1px',
+      'border-width': '3px',
       'border-style': 'solid',
     },
   },
@@ -190,16 +245,28 @@ const overviewStylesheet = [
     selector: 'edge',
     style: {
       label: 'data(label)',
-      color: colors.NODE_COLOR,
-      width: 1.5,
-      'font-size': 8,
-      'curve-style': 'bezier',
+      width: 2,
+      'line-color': '#34495e',
+      'target-arrow-color': '#34495e',
       'target-arrow-shape': 'triangle',
-      'line-color': colors.EDGE_COLOR,
-      'target-arrow-color': colors.EDGE_COLOR,
+      'curve-style': 'round-segments',
+      'segment-distances': [0, 100],
+      'segment-weights': [0.5, 0.5],
+      'font-size': 8,
+      color: '#34495e',
+      'text-outline-color': 'white',
+      'text-outline-opacity': 1,
+      'text-outline-width': '1px',
+    },
+  },
+  {
+    selector: 'edge.merge-edge',
+    style: {
       'line-style': 'dashed',
-      'line-dash-pattern': [6, 3],
-      'line-dash-offset': 24,
+      'line-dash-pattern': [5, 5],
+      'line-color': '#e67e22',
+      'target-arrow-color': '#e67e22',
+      width: 3,
     },
   },
 ];
