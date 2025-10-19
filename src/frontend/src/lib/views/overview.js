@@ -3,8 +3,18 @@ import { h, t } from '../utils/utils.js';
 import { cytoscape } from './imports/import-cytoscape.js';
 import { socket } from './imports/import-socket.js';
 
-let DISTANCE_BETWEEN_LEVELS = 120; // Default distance between levels in pixels
-let DISTANCE_BETWEEN_NODES_IN_LEVEL = 100; // Default distance between nodes in pixels
+let DISTANCE_BETWEEN_LEVELS = 180; // Default distance between levels in pixels
+let DISTANCE_BETWEEN_NODES_IN_LEVEL = 150; // Default distance between nodes in pixels
+let LAYOUT_DIRECTION = 'horizontal'; // 'horizontal' or 'vertical'
+const INITIAL_HORIZONTAL_POSITION = {
+  X: 100,
+  Y: -300,
+};
+
+const INITIAL_VERTICAL_POSITION = {
+  X: 300,
+  Y: 200,
+};
 
 // Helper function to get color for level (adapted from customLayout.js)
 function getColorForLevel(level) {
@@ -34,14 +44,28 @@ function applyCustomSegmentDistances(cy) {
       const BX = targetNode.position('x');
       const BY = targetNode.position('y');
 
-      const P1Y = AY;
       const P1Item = sourceNode.data('item') || 1;
       // Color the edges based on the item
       const P1Color = getColorForLevel(P1Item);
-      const P1X = BX - 10 * P1Item - 20;
 
-      const P2Y = BY;
-      const P2X = P1X;
+      let P1X;
+      let P1Y;
+      let P2X;
+      let P2Y;
+
+      if (LAYOUT_DIRECTION === 'horizontal') {
+        // Horizontal layout: edges curve horizontally
+        P1Y = AY;
+        P1X = BX - 10 * P1Item - 20;
+        P2Y = BY;
+        P2X = P1X;
+      } else {
+        // Vertical layout: edges curve vertically
+        P1X = AX;
+        P1Y = BY - 10 * P1Item - 20;
+        P2X = BX;
+        P2Y = P1Y;
+      }
 
       // Calculate distances from P1 and P2 to line AB
       // Line AB: from (AX, AY) to (BX, BY)
@@ -123,6 +147,53 @@ function getPathEdges(pathNodes) {
   return pathEdges;
 }
 
+// Function to calculate and set dynamic width and height for cy-overview
+function updateCyOverviewDimensions(cy) {
+  const nodes = cy.nodes();
+  if (nodes.length === 0) return;
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  // Find the bounding box of all nodes
+  nodes.forEach(node => {
+    const pos = node.position();
+    const width = node.width();
+    const height = node.height();
+
+    minX = Math.min(minX, pos.x - width / 2);
+    maxX = Math.max(maxX, pos.x + width / 2);
+    minY = Math.min(minY, pos.y - height / 2);
+    maxY = Math.max(maxY, pos.y + height / 2);
+  });
+
+  // Calculate required width and height with padding
+  const padding = 300; // Extra padding around the content
+  const requiredWidth = Math.max(maxX - minX + padding, window.innerWidth * 0.5);
+  const requiredHeight = Math.max(maxY - minY + padding, window.innerHeight * 0.5);
+
+  // Update the cy-overview div dimensions
+  const cyOverview = document.getElementById('cy-overview');
+  const scrollContainer = document.getElementById('overview-scroll-container');
+  if (cyOverview) {
+    cyOverview.style.width = `${requiredWidth}px`;
+    cyOverview.style.height = `${requiredHeight}px`;
+  }
+
+  // Update scroll container based on layout direction
+  if (scrollContainer) {
+    if (LAYOUT_DIRECTION === 'horizontal') {
+      scrollContainer.style.overflowX = 'auto';
+      scrollContainer.style.overflowY = 'hidden';
+    } else {
+      scrollContainer.style.overflowX = 'hidden';
+      scrollContainer.style.overflowY = 'auto';
+    }
+  }
+}
+
 // Function to apply custom layout (exact copy from customLayout.js)
 function applyCustomLayout(cy) {
   const nodes = cy.nodes();
@@ -147,23 +218,42 @@ function applyCustomLayout(cy) {
       return itemA - itemB;
     });
 
-    // Each level becomes a column
-    const columnX = levelNum * DISTANCE_BETWEEN_LEVELS; // Configurable spacing between columns
+    if (LAYOUT_DIRECTION === 'horizontal') {
+      // Horizontal layout: levels are columns (x-axis), nodes stacked vertically (y-axis)
+      const columnX = levelNum * DISTANCE_BETWEEN_LEVELS; // Configurable spacing between columns
 
-    // Stack nodes vertically in each column
-    nodesInLevel.forEach((node, index) => {
-      // calculate nodeY from bottom to top
-      const nodeY = cy.height() - index * DISTANCE_BETWEEN_NODES_IN_LEVEL;
+      // Stack nodes vertically in each column
+      nodesInLevel.forEach((node, index) => {
+        // calculate nodeY from bottom to top
+        const nodeY = cy.height() - index * DISTANCE_BETWEEN_NODES_IN_LEVEL;
 
-      node.position({
-        x: columnX,
-        y: nodeY,
+        node.position({
+          x: columnX + INITIAL_HORIZONTAL_POSITION.X,
+          y: nodeY + INITIAL_HORIZONTAL_POSITION.Y,
+        });
       });
-    });
+    } else {
+      // Vertical layout: levels are rows (y-axis), nodes stacked horizontally (x-axis)
+      const rowY = levelNum * DISTANCE_BETWEEN_LEVELS; // Configurable spacing between rows
+
+      // Stack nodes horizontally in each row
+      nodesInLevel.forEach((node, index) => {
+        // calculate nodeX from left to right
+        const nodeX = index * DISTANCE_BETWEEN_NODES_IN_LEVEL;
+
+        node.position({
+          x: nodeX + INITIAL_VERTICAL_POSITION.X,
+          y: rowY + INITIAL_VERTICAL_POSITION.Y,
+        });
+      });
+    }
   });
 
   // Apply custom segment distances to edges
   applyCustomSegmentDistances(cy);
+
+  // Update the dimensions to accommodate all elements
+  updateCyOverviewDimensions(cy);
 }
 
 // Create overview-specific layout params without auto-fit (not used anymore)
@@ -192,6 +282,9 @@ var cy2 = cytoscape({
   boxSelectionEnabled: false,
   selectionType: 'single',
   autoungrabify: true,
+  zoom: 1,
+  minZoom: 1,
+  maxZoom: 1,
 });
 
 cy2.ready(() => {
@@ -207,7 +300,10 @@ cy2.ready(() => {
       applyCustomSegmentDistances(cy2);
     }, 10);
   });
-  window.addEventListener('resize', () => applyCustomSegmentDistances(cy2));
+  window.addEventListener('resize', () => {
+    applyCustomSegmentDistances(cy2);
+    updateCyOverviewDimensions(cy2);
+  });
 
   // Add hover effect to highlight all paths from root to hovered node
   cy2.on('mouseover', 'node', (evt) => {
@@ -356,8 +452,6 @@ function onPaneAdded(newPaneData) {
           'background-color': newPaneData.backgroundColor,
           opacity: 0.3,
           shape: 'rectangle',
-          width: 4,
-          height: 4,
         },
       },
     ],
@@ -365,6 +459,11 @@ function onPaneAdded(newPaneData) {
   };
 
   cy2.add(elements);
+
+  // Update dimensions after adding new elements
+  setTimeout(() => {
+    updateCyOverviewDimensions(cy2);
+  }, 10);
 
   // Calculate and set level and item data for the new node
   const newNode = cy2.getElementById(paneId);
@@ -554,6 +653,44 @@ function makeOverviewSettings() {
   const $nodeDistanceValue = h('span', { id: 'node-distance-value' }, [t(DISTANCE_BETWEEN_NODES_IN_LEVEL + 'px')]);
   const $nodeDistanceContainer = h('div', { class: 'ui input' }, [$nodeDistanceInput, $nodeDistanceValue]);
 
+  // Layout Direction Configuration
+  const $layoutDirectionLabel = h('label', { class: 'label label-info' }, [t('Layout Direction')]);
+
+  // Radio button for horizontal layout
+  const $horizontalRadio = h('input', {
+    type: 'radio',
+    id: 'layout-horizontal',
+    name: 'layout-direction',
+    value: 'horizontal',
+    checked: LAYOUT_DIRECTION === 'horizontal',
+  }, []);
+  const $horizontalLabel = h('label', { for: 'layout-horizontal', class: 'radio-label' }, [t('Horizontal')]);
+  const $horizontalContainer = h('div', { class: 'radio-option' }, [$horizontalRadio, $horizontalLabel]);
+
+  // Radio button for vertical layout
+  const $verticalRadio = h('input', {
+    type: 'radio',
+    id: 'layout-vertical',
+    name: 'layout-direction',
+    value: 'vertical',
+    checked: LAYOUT_DIRECTION === 'vertical',
+  }, []);
+  const $verticalLabel = h('label', { for: 'layout-vertical', class: 'radio-label' }, [t('Vertical')]);
+  const $verticalContainer = h('div', { class: 'radio-option' }, [$verticalRadio, $verticalLabel]);
+
+  const $layoutDirectionContainer = h('div', { class: 'radio-group' }, [$horizontalContainer, $verticalContainer]);
+
+  // Explicitly set the correct radio button as checked after DOM creation
+  setTimeout(() => {
+    if (LAYOUT_DIRECTION === 'horizontal') {
+      $horizontalRadio.checked = true;
+      $verticalRadio.checked = false;
+    } else {
+      $horizontalRadio.checked = false;
+      $verticalRadio.checked = true;
+    }
+  }, 0);
+
   // Fit and Center button event listeners
   $buttonFit.addEventListener('click', async () => {
     cy2.fit(undefined, 30);
@@ -596,6 +733,24 @@ function makeOverviewSettings() {
     // Reapply layout with new distance
     applyCustomLayout(cy2);
   });
+
+  // Layout Direction radio button event listeners
+  $verticalRadio.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      LAYOUT_DIRECTION = 'vertical';
+      // Reapply layout with new direction
+      applyCustomLayout(cy2);
+    }
+  });
+
+  $horizontalRadio.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      LAYOUT_DIRECTION = 'horizontal';
+      // Reapply layout with new direction
+      applyCustomLayout(cy2);
+    }
+  });
+
   $buttons.appendChild($buttonMerge);
   $buttons.appendChild($buttonRemove);
   $buttons2.appendChild($buttonDuplicate);
@@ -604,8 +759,8 @@ function makeOverviewSettings() {
   $buttons3.appendChild($buttonCollapse);
 
   // Add fit and center buttons to the top of the visualization
-  $overview_controls.appendChild($buttonFit);
-  $overview_controls.appendChild($buttonCenter);
+  // $overview_controls.appendChild($buttonFit);
+  // $overview_controls.appendChild($buttonCenter);
 
   // Add level distance configuration
   $levelDistanceConfig.appendChild($levelDistanceLabel);
@@ -616,10 +771,16 @@ function makeOverviewSettings() {
   $nodeDistanceConfig.appendChild($nodeDistanceLabel);
   $nodeDistanceConfig.appendChild($nodeDistanceContainer);
 
+  // Add layout direction configuration
+  const $layoutDirectionConfig = h('div', { class: 'param' }, []);
+  $layoutDirectionConfig.appendChild($layoutDirectionLabel);
+  $layoutDirectionConfig.appendChild($layoutDirectionContainer);
+
   // Add other buttons to the config section
-  $overview_graph_config?.appendChild($levelDistanceConfig);
-  $overview_graph_config?.appendChild($nodeDistanceConfig);
   $overview_graph_config?.appendChild($buttons3);
   $overview_graph_config?.appendChild($buttons);
   $overview_graph_config?.appendChild($buttons2);
+  $overview_graph_config?.appendChild($layoutDirectionConfig);
+  $overview_graph_config?.appendChild($levelDistanceConfig);
+  $overview_graph_config?.appendChild($nodeDistanceConfig);
 }

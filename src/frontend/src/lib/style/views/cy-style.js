@@ -184,49 +184,11 @@ const overviewStylesheet = [
       color: 'white',
       'font-size': '10px',
       'font-weight': 'bold',
-      width: '20px',
-      height: '20px',
+      width: 16,
+      height: 16,
       'border-width': 2,
       'border-color': '#333',
       'border-opacity': 0.8,
-    },
-  },
-  {
-    selector: 'node[level="0"]',
-    style: {
-      'background-color': '#e74c3c',
-      width: '40px',
-      height: '40px',
-    },
-  },
-  {
-    selector: 'node[level="1"]',
-    style: {
-      'background-color': '#3498db',
-    },
-  },
-  {
-    selector: 'node[level="2"]',
-    style: {
-      'background-color': '#2ecc71',
-    },
-  },
-  {
-    selector: 'node[level="3"]',
-    style: {
-      'background-color': '#f39c12',
-    },
-  },
-  {
-    selector: 'node[level="4"]',
-    style: {
-      'background-color': '#9b59b6',
-    },
-  },
-  {
-    selector: 'node[level="5"]',
-    style: {
-      'background-color': '#1abc9c',
     },
   },
   {
@@ -245,14 +207,14 @@ const overviewStylesheet = [
     selector: 'edge',
     style: {
       label: 'data(label)',
-      width: 2,
+      width: 3,
       'line-color': '#34495e',
       'target-arrow-color': '#34495e',
       'target-arrow-shape': 'triangle',
       'curve-style': 'round-segments',
       'segment-distances': [0, 100],
       'segment-weights': [0.5, 0.5],
-      'font-size': 8,
+      'font-size': 16,
       color: '#34495e',
       'text-outline-color': 'white',
       'text-outline-opacity': 1,
@@ -266,7 +228,7 @@ const overviewStylesheet = [
       'line-dash-pattern': [5, 5],
       'line-color': '#e67e22',
       'target-arrow-color': '#e67e22',
-      width: 3,
+      width: 12,
     },
   },
 ];
