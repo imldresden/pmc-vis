@@ -184,8 +184,8 @@ const overviewStylesheet = [
       color: 'white',
       'font-size': '10px',
       'font-weight': 'bold',
-      width: 16,
-      height: 16,
+      width: 4,
+      height: 4,
       'border-width': 2,
       'border-color': '#333',
       'border-opacity': 0.8,
@@ -225,10 +225,36 @@ const overviewStylesheet = [
     selector: 'edge.merge-edge',
     style: {
       'line-style': 'dashed',
-      'line-dash-pattern': [5, 5],
+      'line-dash-pattern': [4, 2],
       'line-color': '#e67e22',
       'target-arrow-color': '#e67e22',
-      width: 12,
+      width: 3,
+    },
+  },
+  {
+    selector: 'edge.duplicate-edge',
+    style: {
+      'line-style': 'dotted',
+      'line-dash-pattern': [3, 3],
+      'line-color': '#8e44ad',
+      'target-arrow-color': '#8e44ad',
+      width: 2,
+    },
+  },
+  {
+    selector: 'node[isDuplicate="true"]',
+    style: {
+      'border-color': '#8e44ad',
+      'border-width': 3,
+      'border-opacity': 1,
+    },
+  },
+  {
+    selector: 'node.selected',
+    style: {
+      'border-width': 4,
+      'border-color': '#e67e22',
+      'border-opacity': 1,
     },
   },
 ];

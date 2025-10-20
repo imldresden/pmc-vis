@@ -157,12 +157,16 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   panes[div.id] = pane;
   const paneKeysAfter = Object.keys(panes);
-  if (spawner && panes[spawner]) {
-    if (spawner.length > 0) {
-      // TODO, eg merged
-    }
-    panes[spawner].spawned ||= new Set();
-    panes[spawner].spawned.add(div.id); // remembers which panes were created from this one
+  
+  // Handle spawner relationships for both single and multiple spawners (merged panes)
+  if (spawner) {
+    const spawners = Array.isArray(spawner) ? spawner : [spawner];
+    spawners.forEach(spawnerId => {
+      if (panes[spawnerId]) {
+        panes[spawnerId].spawned ||= new Set();
+        panes[spawnerId].spawned.add(div.id); // remembers which panes were created from this one
+      }
+    });
   }
 
   enableDragBars();

@@ -29,6 +29,70 @@ function getColorForLevel(level) {
   return colors[level] || '#95a5a6'; // Default gray
 }
 
+// Helper function to calculate edge segment properties for a single edge
+function calculateEdgeSegments(sourceNode, targetNode) {
+  const AX = sourceNode.position('x');
+  const AY = sourceNode.position('y');
+  const BX = targetNode.position('x');
+  const BY = targetNode.position('y');
+
+  const P1Item = sourceNode.data('item') || 1;
+  const P1Color = getColorForLevel(P1Item);
+
+  let P1X;
+  let P1Y;
+  let P2X;
+  let P2Y;
+
+  if (LAYOUT_DIRECTION === 'horizontal') {
+    // Horizontal layout: edges curve horizontally
+    P1Y = AY;
+    P1X = BX - 10 * P1Item - 20;
+    P2Y = BY;
+    P2X = P1X;
+  } else {
+    // Vertical layout: edges curve vertically
+    P1X = AX;
+    P1Y = BY - 10 * P1Item - 20;
+    P2X = BX;
+    P2Y = P1Y;
+  }
+
+  // Calculate distances from P1 and P2 to line AB
+  const lineLength = Math.sqrt((BY - AY) ** 2 + (BX - AX) ** 2);
+
+  // Distance from P1 to line AB (with sign)
+  const distance1 = lineLength > 0
+    ? ((BY - AY) * P1X - (BX - AX) * P1Y + BX * AY - BY * AX) / lineLength : 0;
+
+  // Distance from P2 to line AB (with sign)
+  const distance2 = lineLength > 0
+    ? ((BY - AY) * P2X - (BX - AX) * P2Y + BX * AY - BY * AX) / lineLength : 0;
+
+  // Calculate projections of P1 and P2 onto line AB
+  const AB_length_squared = (BX - AX) ** 2 + (BY - AY) ** 2;
+
+  // Projection of P1 onto AB
+  const P1_projection = AB_length_squared > 0
+    ? ((P1X - AX) * (BX - AX) + (P1Y - AY) * (BY - AY)) / AB_length_squared : 0.5;
+
+  // Projection of P2 onto AB
+  const P2_projection = AB_length_squared > 0
+    ? ((P2X - AX) * (BX - AX) + (P2Y - AY) * (BY - AY)) / AB_length_squared : 0.5;
+
+  // Validate values before applying
+  const validDistance1 = isNaN(distance1) ? 0 : distance1;
+  const validDistance2 = isNaN(distance2) ? 0 : distance2;
+  const validProjection1 = isNaN(P1_projection) ? 0.5 : P1_projection;
+  const validProjection2 = isNaN(P2_projection) ? 0.5 : P2_projection;
+
+  return {
+    color: P1Color,
+    segmentDistances: [-validDistance1, -validDistance2],
+    segmentWeights: [validProjection1, validProjection2],
+  };
+}
+
 // Function to apply custom segment distances to edges (adapted from customLayout.js)
 function applyCustomSegmentDistances(cy) {
   let i = 0;
@@ -38,73 +102,12 @@ function applyCustomSegmentDistances(cy) {
     try {
       const sourceNode = edge.source();
       const targetNode = edge.target();
+      const segments = calculateEdgeSegments(sourceNode, targetNode);
 
-      const AX = sourceNode.position('x');
-      const AY = sourceNode.position('y');
-      const BX = targetNode.position('x');
-      const BY = targetNode.position('y');
-
-      const P1Item = sourceNode.data('item') || 1;
-      // Color the edges based on the item
-      const P1Color = getColorForLevel(P1Item);
-
-      let P1X;
-      let P1Y;
-      let P2X;
-      let P2Y;
-
-      if (LAYOUT_DIRECTION === 'horizontal') {
-        // Horizontal layout: edges curve horizontally
-        P1Y = AY;
-        P1X = BX - 10 * P1Item - 20;
-        P2Y = BY;
-        P2X = P1X;
-      } else {
-        // Vertical layout: edges curve vertically
-        P1X = AX;
-        P1Y = BY - 10 * P1Item - 20;
-        P2X = BX;
-        P2Y = P1Y;
-      }
-
-      // Calculate distances from P1 and P2 to line AB
-      // Line AB: from (AX, AY) to (BX, BY)
-      // P1: (P1X, P1Y), P2: (P2X, P2Y)
-
-      // Calculate the line length first
-      const lineLength = Math.sqrt((BY - AY) ** 2 + (BX - AX) ** 2);
-
-      // Distance from P1 to line AB (with sign)
-      const distance1 = lineLength > 0
-        ? ((BY - AY) * P1X - (BX - AX) * P1Y + BX * AY - BY * AX) / lineLength : 0;
-
-      // Distance from P2 to line AB (with sign)
-      const distance2 = lineLength > 0
-        ? ((BY - AY) * P2X - (BX - AX) * P2Y + BX * AY - BY * AX) / lineLength : 0;
-
-      // Calculate projections of P1 and P2 onto line AB
-      // Projection formula: t = ((P - A) · (B - A)) / ||B - A||²
-      const AB_length_squared = (BX - AX) ** 2 + (BY - AY) ** 2;
-
-      // Projection of P1 onto AB
-      const P1_projection = AB_length_squared > 0
-        ? ((P1X - AX) * (BX - AX) + (P1Y - AY) * (BY - AY)) / AB_length_squared : 0.5;
-
-      // Projection of P2 onto AB
-      const P2_projection = AB_length_squared > 0
-        ? ((P2X - AX) * (BX - AX) + (P2Y - AY) * (BY - AY)) / AB_length_squared : 0.5;
-
-      // Validate values before applying
-      const validDistance1 = isNaN(distance1) ? 0 : distance1;
-      const validDistance2 = isNaN(distance2) ? 0 : distance2;
-      const validProjection1 = isNaN(P1_projection) ? 0.5 : P1_projection;
-      const validProjection2 = isNaN(P2_projection) ? 0.5 : P2_projection;
-
-      edge.style('line-color', P1Color);
-      edge.style('target-arrow-color', P1Color);
-      // Apply custom segment distances and weights
-      edge.style('segment-distances', [-validDistance1, -validDistance2]);
-      edge.style('segment-weights', [validProjection1, validProjection2]);
+      edge.style('line-color', segments.color);
+      edge.style('target-arrow-color', segments.color);
+      edge.style('segment-distances', segments.segmentDistances);
+      edge.style('segment-weights', segments.segmentWeights);
     } catch (error) {
       console.error('Error applying segment distances to edge:', error);
     }
@@ -417,17 +420,20 @@ function onPaneAdded(newPaneData) {
   if (paneId !== 'pane-0') {
     const isDuplicate = paneId.includes('DUPLICATE');
     if (newPaneData.spawner && Array.isArray(newPaneData.spawner)) {
-      newPaneData.spawner.forEach((s, i) => {
+      // Handle multiple spawners (merged panes)
+      newPaneData.spawner.forEach((spawnerId) => {
         spawner.push({
           data: {
-            id: newPaneData.spawner[i] + paneId,
-            source: newPaneData.spawner[i],
+            id: spawnerId + paneId,
+            source: spawnerId,
             target: paneId,
             label: 'merged',
           },
+          classes: 'merge-edge',
         });
       });
-    } else {
+    } else if (newPaneData.spawner) {
+      // Handle single spawner
       spawner.push({
         data: {
           id: spawnerNodes?.join(', ') + paneId,
@@ -441,13 +447,66 @@ function onPaneAdded(newPaneData) {
     }
   }
 
+  // Calculate level and item data before adding the node
+  let level = 0;
+  if (newPaneData.spawner) {
+    // Handle both single spawner and array of spawners (for merged panes)
+    const spawners = Array.isArray(newPaneData.spawner)
+      ? newPaneData.spawner
+      : [newPaneData.spawner];
+
+    // Find the maximum level among all spawners and add 1
+    let maxParentLevel = -1;
+    spawners.forEach(spawnerId => {
+      const parentNode = cy2.getElementById(spawnerId);
+      if (parentNode.length > 0) {
+        const parentLevel = parentNode.data('level') || 0;
+        maxParentLevel = Math.max(maxParentLevel, parentLevel);
+      }
+    });
+
+    if (maxParentLevel >= 0) {
+      level = maxParentLevel + 1;
+    }
+  }
+
+  // Calculate item value (same logic as customLayout.js)
+  const nodesAtLevel = cy2.nodes().filter(n => n.data('level') === level);
+  const itemValue = nodesAtLevel.length + 1;
+
+  // Calculate initial position based on level and item
+  let initialPosition = { x: 0, y: 0 };
+
+  if (LAYOUT_DIRECTION === 'horizontal') {
+    // Horizontal layout: levels are columns (x-axis), nodes stacked vertically (y-axis)
+    const columnX = level * DISTANCE_BETWEEN_LEVELS;
+    const nodeY = cy2.height() - (itemValue - 1) * DISTANCE_BETWEEN_NODES_IN_LEVEL;
+
+    initialPosition = {
+      x: columnX + INITIAL_HORIZONTAL_POSITION.X,
+      y: nodeY + INITIAL_HORIZONTAL_POSITION.Y,
+    };
+  } else {
+    // Vertical layout: levels are rows (y-axis), nodes stacked horizontally (x-axis)
+    const rowY = level * DISTANCE_BETWEEN_LEVELS;
+    const nodeX = (itemValue - 1) * DISTANCE_BETWEEN_NODES_IN_LEVEL;
+
+    initialPosition = {
+      x: nodeX + INITIAL_VERTICAL_POSITION.X,
+      y: rowY + INITIAL_VERTICAL_POSITION.Y,
+    };
+  }
+
   const elements = {
     nodes: [
       {
         data: {
           id: paneId,
           label: paneId,
+          level: level,
+          item: itemValue,
         },
+        position: initialPosition,
         style: {
           'background-color': newPaneData.backgroundColor,
           opacity: 0.3,
@@ -460,29 +519,27 @@ function onPaneAdded(newPaneData) {
 
   cy2.add(elements);
 
+  // Apply edge segments immediately after adding elements to prevent flash
+  spawner.forEach(edgeData => {
+    if (edgeData.data.source && edgeData.data.target) {
+      const sourceNode = cy2.getElementById(edgeData.data.source);
+      const targetNode = cy2.getElementById(edgeData.data.target);
+      const edge = cy2.getElementById(edgeData.data.id);
+
+      if (sourceNode.length > 0 && targetNode.length > 0 && edge.length > 0) {
+        const segments = calculateEdgeSegments(sourceNode, targetNode);
+        edge.style('line-color', segments.color);
+        edge.style('target-arrow-color', segments.color);
+        edge.style('segment-distances', segments.segmentDistances);
+        edge.style('segment-weights', segments.segmentWeights);
+      }
+    }
+  });
+
   // Update dimensions after adding new elements
   setTimeout(() => {
     updateCyOverviewDimensions(cy2);
   }, 10);
-
-  // Calculate and set level and item data for the new node
-  const newNode = cy2.getElementById(paneId);
-  if (newNode.length > 0) {
-    // Calculate level based on parent node
-    let level = 0;
-    if (newPaneData.spawner) {
-      const parentNode = cy2.getElementById(newPaneData.spawner);
-      if (parentNode.length > 0) {
-        level = (parentNode.data('level') || 0) + 1;
-      }
-    }
-    newNode.data('level', level);
-
-    // Calculate item value (same logic as customLayout.js)
-    const nodesAtLevel = cy2.nodes().filter(n => n.data('level') === level && n.id() !== paneId);
-    const itemValue = nodesAtLevel.length + 1;
-    newNode.data('item', itemValue);
-  }
 
   cy2.nodes().forEach((node) => {
     const backgroundColor = node.style('background-color');
@@ -491,7 +548,7 @@ function onPaneAdded(newPaneData) {
     node.style('background-color', backgroundColor);
   });
 
-  // Apply custom layout after elements are added
+  // Apply custom layout after elements are added (for edge positioning and other adjustments)
   setTimeout(() => {
     applyCustomLayout(cy2);
   }, 50);
