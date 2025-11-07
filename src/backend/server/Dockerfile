@@ -6,7 +6,14 @@ RUN useradd -ms /bin/bash prismServer
 #Load dependencies
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y gcc build-essential cmake default-jdk git bc zsh maven && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y gcc build-essential cmake default-jdk git bc zsh maven curl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN install -d /usr/share/postgresql-common/pgdg
+RUN curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+RUN . /etc/os-release
+RUN sh -c "echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bullseye-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+RUN apt update && apt install -y postgresql-14 && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="$PATH:/usr/lib/postgresql/14/bin"
 
 #build prism
 
@@ -33,7 +40,13 @@ RUN mvn dependency:copy-dependencies
 
 RUN mvn package
 
-RUN sed -i 's/\r$//' bin/run && chmod +x bin/run
+RUN chown -R prismServer . && chown -R prismServer /var/run/postgresql
+
+RUN sed -i 's/\r$//' bin/run && chmod +x bin/run && chmod +x bin/initdb
+
+USER prismServer
+
+RUN ./bin/initdb
 
 ENTRYPOINT ["bin/run", "server", "DockerDefault.yml"]
 

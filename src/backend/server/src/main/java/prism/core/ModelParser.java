@@ -379,13 +379,14 @@ public class ModelParser {
     }
 
     public Graph getGraph() throws Exception {
-        List<parser.State> states = this.initials;
+        List<parser.State> states = new ArrayList<>(this.initials);
         List<parser.State> visited = new ArrayList<>();
 
         List<prism.api.State> outStates = new ArrayList<>();
         List<Transition> transitions = new ArrayList<>();
 
         while (!states.isEmpty()) {
+
             parser.State state = states.remove(0);
             outStates.add(convertApiState(state));
             visited.add(state);
@@ -410,6 +411,7 @@ public class ModelParser {
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
             }
         }
+
         return new Graph(parent, outStates, transitions);
     }
 

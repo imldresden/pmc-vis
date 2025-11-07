@@ -25,12 +25,10 @@ public class Database{
         this.jdbi = jdbi;
         this.debug = debug;
 
-        try(Handle handle = jdbi.open()){
-            handle.execute("pragma journal_mode = WAL;");
-            handle.execute("pragma synchronous = OFF;");
-            handle.execute("pragma temp_store = memory;");
-            handle.execute("pragma mmap_size = 30000000000;");
-        }
+//        try(Handle handle = jdbi.open()){
+//            handle.execute(String.format("CREATE SCHEMA IF NOT EXISTS \"project_%s\";", projectID));
+//            handle.execute(String.format("SET search_path TO \"project_%s\";", projectID));
+//        }
     }
 
     /*
@@ -204,11 +202,11 @@ public class Database{
             System.out.println("EXISTS: " + qry);
         }
         try(Handle handle = jdbi.open()) {
-            Optional<Boolean> result = handle.createQuery(qry).mapTo(Boolean.TYPE).findOne();
+            Optional<Boolean> result = handle.createQuery(String.format("SELECT EXISTS (%s)", qry.replaceAll(";", ""))).mapTo(Boolean.TYPE).findOne();
             if (debug){
-                System.out.println(result.isPresent());
+                System.out.println(result.orElse(false));
             }
-            return result.isPresent();
+            return result.orElse(false);
         }
     }
 

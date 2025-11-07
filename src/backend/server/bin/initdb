@@ -1,0 +1,9 @@
+#!/bin/bash
+
+mkdir -p db
+pg_ctl -D db initdb
+pg_ctl -D db start
+psql -c "CREATE USER admin SUPERUSER PASSWORD '8YyvlyVhDn';" postgres
+pg_ctl -D db stop
+
+

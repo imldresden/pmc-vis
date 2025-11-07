@@ -37,6 +37,8 @@ public class TaskManager implements Executor, Managed {
     private ExecutorService executor;
     private Task active;
 
+    private final Database adminConnection;
+
     public AtomicBoolean refreshing = new AtomicBoolean();
 
     private final SocketServer socketServer;
@@ -49,6 +51,15 @@ public class TaskManager implements Executor, Managed {
         this.executor = Executors.newSingleThreadExecutor();
         this.socketServer =  new SocketServer(configuration);
         this.activeProjects = new HashMap<>();
+
+        // Create a database Connection as admin for administrating other connections/projects in the db. This should be a superuser.
+        final JdbiFactory factory = new JdbiFactory();
+        DataSourceFactory dbfactory = configuration.getDataSourceFactory();
+        String url = dbfactory.getUrl();
+        dbfactory.setUrl(String.format("%s:postgres", url));
+        final Jdbi jdbi = factory.build(environment, dbfactory, "admin");
+        this.adminConnection = new Database(jdbi, configuration.getDebug());
+        dbfactory.setUrl(url);
 
         this.socketServer.addEventListener(Namespace.EVENT_STATUS, String.class, (client, data, ackRequest) -> {
             String id = (String) data;
@@ -74,6 +85,7 @@ public class TaskManager implements Executor, Managed {
         this.executor = Executors.newSingleThreadExecutor();
         this.socketServer = null;
         this.activeProjects = new HashMap<>();
+        this.adminConnection = null;
     }
 
     @Override
@@ -136,16 +148,31 @@ public class TaskManager implements Executor, Managed {
     }
 
     public void createProject(String id) throws Exception {
+        if (Namespace.PROJECTS_RESERVED.contains(id)) {
+            String warning = String.format("Project %s is a reserved name", id);
+            logger.info(warning);
+            throw new Exception(warning);
+        }
+
         logger.info("Creating project {}\n", id);
 
-        String databaseURL = String.format("jdbc:sqlite:%s/%s/%s", configuration.getPathTemplate(), id, Namespace.DATABASE_FILE);
+        if(!adminConnection.question(String.format("SELECT 1 FROM pg_roles WHERE rolname='%s';", id))){
+            adminConnection.execute(String.format("CREATE USER \"%s\";", id));
+            adminConnection.execute(String.format("CREATE DATABASE \"%s\" OWNER \"%s\";", id, id));
+        }
+        String url = configuration.getDataSourceFactory().getUrl();
+        String databaseURL = String.format("%s:%s", url, id);
 
         final JdbiFactory factory = new JdbiFactory();
         DataSourceFactory dbfactory = configuration.getDataSourceFactory();
         dbfactory.setUrl(databaseURL);
+        dbfactory.setUser(id);
+        dbfactory.setPassword(null);
 
         final Jdbi jdbi = factory.build(environment, dbfactory, id);
         Database database = new Database(jdbi, configuration.getDebug());
+
+        dbfactory.setUrl(url);
 
         Project newProject = new Project(id, configuration.getPathTemplate(), this, database, configuration);
         this.addProject(newProject);
@@ -178,6 +205,7 @@ public class TaskManager implements Executor, Managed {
         this.interruptTasks(projectID);
         activeProjects.get(projectID).removeFiles();
         activeProjects.remove(projectID);
+        this.adminConnection.execute(String.format("DROP DATABASE \"%s\"; DROP USER \"%s\"", projectID, projectID));
     }
 
     public void resetProject(String projectID) throws Exception {
@@ -190,6 +218,10 @@ public class TaskManager implements Executor, Managed {
     public void clearDatabase(String projectID) throws Exception {
         this.interruptTasks(projectID);
         activeProjects.get(projectID).clearTables();
+
+        for (String version : activeProjects.get(projectID).getVersions()) {
+            activeProjects.get(projectID).getDatabase().execute(String.format("DROP SCHEMA IF EXISTS \"%s\" CASCADE;", version));
+        }
     }
 
     public boolean containsTask(Task.Type type, String projectID){

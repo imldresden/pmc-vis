@@ -51,9 +51,9 @@ public abstract class Property implements Namespace {
 
         Map<String, VariableInfo> info = (Map<String, VariableInfo>) model.getInfo().getStateEntry(OUTPUT_RESULTS);
 
-        if (model.getDatabase().question(String.format("SELECT name FROM pragma_table_info('%s') WHERE name = '%s'", model.getTableStates(), this.getPropertyCollumn()))) {
+        if (model.getDatabase().question(String.format("SELECT column_name FROM information_schema.columns WHERE table_schema = '%s' AND table_name = '%s' AND column_name = '%s'", model.getVersion(), Namespace.TABLE_STATES_BASE, this.getPropertyCollumn()))) {
             this.newMaximum();
-            this.scheduler = Scheduler.loadScheduler(this.getName(), this.id);
+            this.scheduler = Scheduler.loadScheduler(this.getName(), this.id, model);
             model.addScheduler(scheduler);
             alreadyChecked = true;
             info.put(this.name, this.getPropertyInfo());

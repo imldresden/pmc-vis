@@ -1,4 +1,15 @@
-#!/bin/sh
+#!/bin/bash
+
+pg_ctl start -D db -l server.log | echo "Database Started" &
+
+shutdownDatabase() {
+  pg_ctl stop -D db
+  echo "Database stopped"
+}
+
+trap shutdownDatabase EXIT
+
+trap "exit" INT TERM
 
 # PRISM directory to link to
 if [ "$PRISM_DIR" = "" ]; then

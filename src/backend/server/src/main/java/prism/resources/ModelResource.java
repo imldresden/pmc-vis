@@ -104,7 +104,6 @@ public class ModelResource extends Resource {
 
     @Path("/initial")
     @GET
-    @Timed(name="initial")
     @Operation(summary = "Returns all initial nodes", description = "Returns all nodes that are marked as initial states")
     public Response getInitial(
             @Parameter(description = "identifier of project")
@@ -118,7 +117,6 @@ public class ModelResource extends Resource {
 
     @Path("/files")
     @GET
-    @Timed(name="initial")
     @Operation(summary = "Returns the project files", description = "Returns the filename of all files that are currently placed in the project")
     public Response getFileStructure(
             @Parameter(description = "identifier of project")
@@ -131,7 +129,6 @@ public class ModelResource extends Resource {
 
     @Path("/file:{file}")
     @GET
-    @Timed(name="initial")
     @Operation(summary = "Returns the project files", description = "Returns the filename of all files that are currently placed in the project")
     public Response getFileContent(
             @Parameter(description = "identifier of project")
@@ -141,6 +138,34 @@ public class ModelResource extends Resource {
     ) {
         refreshProject(projectID);
         return ok(tasks.getProject(projectID).getFileContent(fileID));
+    }
+
+    @Path("/schedulers")
+    @GET
+    @Operation(summary = "Returns the project files", description = "Returns the filename of all files that are currently placed in the project")
+    public Response getSchedulerIdentifier(
+            @Parameter(description = "identifier of project")
+            @PathParam("project_id") String projectID
+    ) {
+        refreshProject(projectID);
+        return ok(tasks.getProject(projectID).getSchedulers());
+    }
+
+    @Path("/scheduler:{scheduler}")
+    @GET
+    @Operation(summary = "Returns the project files", description = "Returns the filename of all files that are currently placed in the project")
+    public Response getScheduler(
+            @Parameter(description = "identifier of project")
+            @PathParam("project_id") String projectID,
+            @Parameter(description = "id of the targeted file")
+            @PathParam("scheduler") String schedulerID
+    ) {
+        try{
+        refreshProject(projectID);
+        return ok(tasks.getProject(projectID).getScheduler(schedulerID));
+        } catch (Exception e) {
+            return error(e);
+        }
     }
 
 //    @Path("/view:{type}")

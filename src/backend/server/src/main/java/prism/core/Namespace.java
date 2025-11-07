@@ -34,11 +34,13 @@ public interface Namespace {
 
     String ENTRY_SCH_ID = "id";
 
-    String TABLE_STATES_GEN = "STATES_%s";
-    String TABLE_TRANS_GEN = "TRANSITION_%s";
+    String TABLE_STATES_BASE = "states";
+    String TABLE_TRANS_BASE = "transitions";
+    String TABLE_SCHED_BASE = "scheduler";
 
-    String TABLE_SCHED_GEN = "SCHEDULER_INFO_%s";
-    String TABLE_RES_GEN = "INFORMATION_%s";
+    String TABLE_STATES_GEN = "\"%s\"." + TABLE_STATES_BASE;
+    String TABLE_TRANS_GEN = "\"%s\"." + TABLE_TRANS_BASE;
+    String TABLE_SCHED_GEN = "\"%s\"." + TABLE_SCHED_BASE;
 
     String TABLE_PANES = "PANES";
 
@@ -61,6 +63,8 @@ public interface Namespace {
     Set<String> FILES_RESERVED = new HashSet<>(Arrays.asList(PROJECT_MODEL, PROFEAT_MODEL, SCHEDULER_FILE, TEMP_FILE, STYLE_FILE, LOG_FILE, DATABASE_FILE, DATABASE_FILE + "-shm", DATABASE_FILE + "-wal"));
 
     Set<String> FILES_INVISIBLE = new HashSet<>(Arrays.asList(TEMP_FILE, STYLE_FILE, LOG_FILE, DATABASE_FILE, DATABASE_FILE + "-shm", DATABASE_FILE + "-wal"));
+
+    Set<String> PROJECTS_RESERVED = new HashSet<>(Arrays.asList("postgres", "template1"));
 
     String OUTPUT_RESULTS = "Model Checking Results";
 

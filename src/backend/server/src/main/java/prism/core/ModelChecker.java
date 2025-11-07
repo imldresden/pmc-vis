@@ -180,18 +180,7 @@ public class ModelChecker implements Namespace {
     }
 
     public boolean isBuilt() {
-        return (parent.getDatabase().question(String.format("SELECT name FROM sqlite_schema WHERE type='table' AND name='%s'", stateTable)) & parent.getDatabase().question(String.format("SELECT name FROM sqlite_schema WHERE type='table' AND name='%s'", transTable)));
-    }
-
-    public void reset() throws Exception {
-        this.model = null;
-        Database database = parent.getDatabase();
-
-        database.execute(String.format("DROP TABLE IF EXISTS %s", stateTable));
-        database.execute(String.format("DROP TABLE IF EXISTS %s", transTable));
-        database.execute(String.format("DROP TABLE IF EXISTS %s", schedTable));
-
-        parent.setBuilt(false);
+        return (parent.getDatabase().question(String.format("SELECT table_name FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s';", parent.getVersion(), Namespace.TABLE_STATES_BASE)) & parent.getDatabase().question(String.format("SELECT table_name FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s';", parent.getVersion(), Namespace.TABLE_TRANS_BASE)));
     }
 
     private class modelBuildTask implements Task {
@@ -224,13 +213,15 @@ public class ModelChecker implements Namespace {
             try (prism.core.Utility.Timer build = new Timer("Build Database", parent.getLog())) {
                 int numRewards = modulesFile.getNumRewardStructs();
                 try {
-                    database.execute(String.format("CREATE TABLE %s (%s TEXT PRIMARY KEY NOT NULL, %s TEXT, %s BOOLEAN)", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT));
-                    database.execute(String.format("CREATE TABLE %s (%s TEXT PRIMARY KEY NOT NULL, %s TEXT NOT NULL, %s TEXT, %s INTEGER);", transTable, ENTRY_T_ID, ENTRY_T_OUT, ENTRY_T_ACT, ENTRY_T_PROB));
-                    database.execute(String.format("CREATE TABLE %s (%s TEXT, %s TEXT)", schedTable, ENTRY_SCH_ID, ENTRY_SCH_NAME));
+                    database.execute(String.format("CREATE SCHEMA \"%s\"",  parent.getVersion()));
+
+                    database.execute(String.format("CREATE TABLE %s (%s TEXT PRIMARY KEY NOT NULL, %s TEXT, %s BOOLEAN);", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT));
+                    database.execute(String.format("CREATE TABLE %s (%s TEXT PRIMARY KEY NOT NULL, %s TEXT NOT NULL, %s TEXT, %s TEXT);", transTable, ENTRY_T_ID, ENTRY_T_OUT, ENTRY_T_ACT, ENTRY_T_PROB));
+                    database.execute(String.format("CREATE TABLE %s (%s TEXT, %s TEXT);", schedTable, ENTRY_SCH_ID, ENTRY_SCH_NAME));
 
                     for (int i = 0; i < numRewards; i++) {
-                        database.execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", stateTable, ENTRY_REW + i));
-                        database.execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT", transTable, ENTRY_REW + i));
+                        database.execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT;", stateTable, ENTRY_REW + i));
+                        database.execute(String.format("ALTER TABLE %s ADD COLUMN %s TEXT;", transTable, ENTRY_REW + i));
                     }
 
                 } catch (SQLException e) {
@@ -239,7 +230,7 @@ public class ModelChecker implements Namespace {
 
                 List<String> stateList = model.getReachableStates().exportToStringList();
 
-                String stateInsertCall = String.format("INSERT INTO %s (%s,%s,%s) VALUES(?,?,?)", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT);
+                String stateInsertCall = String.format("INSERT INTO %s (%s,%s,%s) VALUES(?,?,?::boolean)", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT);
                 String transitionInsertCall = String.format("INSERT INTO %s(%s,%s,%s,%s) VALUES (?,?,?,?)", transTable, ENTRY_T_ID, ENTRY_T_OUT, ENTRY_T_ACT, ENTRY_T_PROB);
                 if (numRewards > 0) {
                     String[] rewardHeader = new String[numRewards];
@@ -248,7 +239,7 @@ public class ModelChecker implements Namespace {
                         rewardHeader[i] = ENTRY_REW + i;
                         questionHeader[i] = "?";
                     }
-                    stateInsertCall = String.format("INSERT INTO %s (%s,%s,%s,%s) VALUES(?,?,?,%s)", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT, String.join(",", rewardHeader), String.join(",", questionHeader));
+                    stateInsertCall = String.format("INSERT INTO %s (%s,%s,%s,%s) VALUES(?,?,?::boolean,%s)", stateTable, ENTRY_S_ID, ENTRY_S_NAME, ENTRY_S_INIT, String.join(",", rewardHeader), String.join(",", questionHeader));
                     transitionInsertCall = String.format("INSERT INTO %s(%s,%s,%s,%s,%s) VALUES (?,?,?,?,%s)", transTable, ENTRY_T_ID, ENTRY_T_OUT, ENTRY_T_ACT, ENTRY_T_PROB, String.join(",", rewardHeader), String.join(",", questionHeader));
                 }
 
@@ -274,13 +265,13 @@ public class ModelChecker implements Namespace {
                             String[] inputs = new String[numRewards + 3];
                             inputs[0] = s_id;
                             inputs[1] = stateName;
-                            inputs[2] = initial ? "1" : "0";
+                            inputs[2] = initial ? "TRUE" : "FALSE";
                             for (int j = 0; j < numRewards; j++) {
                                 inputs[j + 3] = String.valueOf(rewards[j]);
                             }
                             toExecute.addToBatch(inputs);
                         } else {
-                            toExecute.addToBatch(s_id, stateName, initial ? "1" : "0");
+                            toExecute.addToBatch(s_id, stateName, initial ? "TRUE" : "FALSE");
                         }
                     }
                 } catch (SQLException e) {

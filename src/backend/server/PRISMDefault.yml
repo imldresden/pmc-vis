@@ -8,14 +8,20 @@ logging:
 
 database:
   # the name of your JDBC driver
-  driverClass: org.sqlite.JDBC
+  driverClass: org.postgresql.Driver
 
   # the JDBC URL
-  url: jdbc:sqlite:volume/database.db
+  url: jdbc:postgresql
 
   # any properties specific to your JDBC driver:
   properties:
     charSet: UTF-8
+
+  # the username
+  user: admin
+
+  # the password
+  password: 8YyvlyVhDn
 
   # the maximum amount of time to wait on an empty pool before throwing an exception
   maxWaitForConnection: 1s
