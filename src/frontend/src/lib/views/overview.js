@@ -1,4 +1,4 @@
-import { overviewStylesheet } from '../style/views/cy-style.js';
+import { overviewStylesheet } from '../style/views/overview-cy-style.js';
 import { h, t } from '../utils/utils.js';
 import { cytoscape } from './imports/import-cytoscape.js';
 import { socket } from './imports/import-socket.js';
@@ -19,12 +19,12 @@ const INITIAL_VERTICAL_POSITION = {
 // Helper function to get color for level (adapted from customLayout.js)
 function getColorForLevel(level) {
   const colors = {
-    0: '#e74c3c', // Red
-    1: '#3498db', // Blue
-    2: '#2ecc71', // Green
-    3: '#f39c12', // Orange
-    4: '#9b59b6', // Purple
-    5: '#1abc9c', // Turquoise
+    1: '#2ecc71', // Green
+    2: '#f39c12', // Orange
+    3: '#9b59b6', // Purple
+    4: '#e74c3c', // Red
+    5: '#3498db', // Blue
+    6: '#1abc9c', // Turquoise
   };
   return colors[level] || '#95a5a6'; // Default gray
 }

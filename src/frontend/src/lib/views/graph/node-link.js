@@ -3,9 +3,9 @@ import Swal from 'sweetalert2';
 
 import { info, BACKEND } from '../../main/main.js';
 import {
-  colors,
   stylesheet,
 } from '../../style/views/cy-style.js';
+import { COLORS } from '../../style/views/variables.js';
 import {
   getPanes,
   spawnPane,
@@ -847,13 +847,13 @@ function setSelectMode(cy, mode) {
   cy.nodes().unselect();
   // adjust selection styles
   if (mode === 's') { // states
-    cy.style().selector('core').css({ 'selection-box-color': colors.SELECTED_NODE_COLOR });
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.SELECTED_NODE_COLOR });
     cy.$('node.t').unselectify();
   } else if (mode === 't') { // actions / transitions
-    cy.style().selector('core').css({ 'selection-box-color': colors.SECONDARY_SELECTION });
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.SECONDARY_SELECTION });
     cy.$('node.s').unselectify();
   } else { // both
-    cy.style().selector('core').css({ 'selection-box-color': colors.DUAL_SELECTION });
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.DUAL_SELECTION });
   }
 
   cy.style().update();
