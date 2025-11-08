@@ -7,14 +7,15 @@ import { socket } from './imports/import-socket.js';
 let DISTANCE_BETWEEN_LEVELS = 180; // Default distance between levels in pixels
 let DISTANCE_BETWEEN_NODES_IN_LEVEL = 150; // Default distance between nodes in pixels
 let LAYOUT_DIRECTION = 'horizontal'; // 'horizontal' or 'vertical'
+
 const INITIAL_HORIZONTAL_POSITION = {
-  X: 100,
-  Y: -300,
+  X: 50,
+  Y: -50,
 };
 
 const INITIAL_VERTICAL_POSITION = {
-  X: 300,
-  Y: 200,
+  X: 50,
+  Y: 50,
 };
 
 // Helper function to get color for level
@@ -532,7 +533,7 @@ function onPaneAdded(newPaneData) {
   setTimeout(() => {
     updateCyOverviewDimensions(cy2);
   }, 10);
-  
+
   // Apply custom layout after elements are added (for edge positioning and other adjustments)
   setTimeout(() => {
     applyCustomLayout(cy2);
