@@ -6,7 +6,7 @@ import { socket } from './imports/import-socket.js';
 
 let DISTANCE_BETWEEN_LEVELS = 180; // Default distance between levels in pixels
 let DISTANCE_BETWEEN_NODES_IN_LEVEL = 150; // Default distance between nodes in pixels
-let LAYOUT_DIRECTION = 'horizontal'; // 'horizontal' or 'vertical'
+let LAYOUT_DIRECTION = 'vertical'; // 'horizontal' or 'vertical'
 
 const INITIAL_HORIZONTAL_POSITION = {
   X: 50,
