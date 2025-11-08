@@ -1,4 +1,5 @@
 import { overviewStylesheet } from '../style/views/overview-cy-style.js';
+import { OKABE_ITO_COLORS } from '../style/views/variables.js';
 import { h, t } from '../utils/utils.js';
 import { cytoscape } from './imports/import-cytoscape.js';
 import { socket } from './imports/import-socket.js';
@@ -16,17 +17,9 @@ const INITIAL_VERTICAL_POSITION = {
   Y: 200,
 };
 
-// Helper function to get color for level (adapted from customLayout.js)
+// Helper function to get color for level
 function getColorForLevel(level) {
-  const colors = {
-    1: '#2ecc71', // Green
-    2: '#f39c12', // Orange
-    3: '#9b59b6', // Purple
-    4: '#e74c3c', // Red
-    5: '#3498db', // Blue
-    6: '#1abc9c', // Turquoise
-  };
-  return colors[level] || '#95a5a6'; // Default gray
+  return OKABE_ITO_COLORS[parseInt(level) % OKABE_ITO_COLORS.length];
 }
 
 // Helper function to calculate edge segment properties for a single edge
@@ -508,7 +501,6 @@ function onPaneAdded(newPaneData) {
         },
         position: initialPosition,
         style: {
-          'background-color': newPaneData.backgroundColor,
           opacity: 0.3,
           shape: 'rectangle',
         },
@@ -540,14 +532,7 @@ function onPaneAdded(newPaneData) {
   setTimeout(() => {
     updateCyOverviewDimensions(cy2);
   }, 10);
-
-  cy2.nodes().forEach((node) => {
-    const backgroundColor = node.style('background-color');
-    // set node color one more time, because of a bug
-    // (node color won't set after several expansions)
-    node.style('background-color', backgroundColor);
-  });
-
+  
   // Apply custom layout after elements are added (for edge positioning and other adjustments)
   setTimeout(() => {
     applyCustomLayout(cy2);

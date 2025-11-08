@@ -22,7 +22,19 @@ const OUTLINES = {
   width_selected: 10,
 };
 
+const OKABE_ITO_COLORS = [
+  '#000000', // black
+  '#E69F00', // orange
+  '#56B4E9', // sky blue
+  '#009E73', // teal
+  '#F0E442', // yellow
+  '#0072B2', // blue
+  '#D55E00', // red
+  '#CC79A7', // pink
+];
+
 export {
   COLORS,
   OUTLINES,
+  OKABE_ITO_COLORS,
 };
