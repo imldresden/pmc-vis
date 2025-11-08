@@ -263,7 +263,7 @@ var isInitialized = false;
 
 const $ = document.querySelector.bind(document);
 const $overview_graph_config = $('#overview-graph-config');
-const $overview_controls = $('#overview-controls');
+
 window.addEventListener('load', () => {
   makeOverviewSettings();
 });
@@ -627,18 +627,6 @@ function makeOverviewSettings() {
   const $buttons3 = h('div', { class: 'buttons param' }, []);
   const $levelDistanceConfig = h('div', { class: 'param' }, []);
 
-  // Fit and Center buttons
-  const $buttonFit = h(
-    'button',
-    { class: 'ui button', id: 'fit-button' },
-    [h('i', { class: 'fa-solid fa-expand-arrows-alt button-icon' }, []), h('span', {}, [t('Fit')])],
-  );
-  const $buttonCenter = h(
-    'button',
-    { class: 'ui button', id: 'center-button' },
-    [h('i', { class: 'fa-solid fa-crosshairs button-icon' }, []), h('span', {}, [t('Center')])],
-  );
-
   const $buttonMerge = h(
     'button',
     { class: 'ui button', id: 'child-button' },
@@ -734,14 +722,6 @@ function makeOverviewSettings() {
     }
   }, 0);
 
-  // Fit and Center button event listeners
-  $buttonFit.addEventListener('click', async () => {
-    cy2.fit(undefined, 30);
-  });
-  $buttonCenter.addEventListener('click', async () => {
-    cy2.center();
-  });
-
   $buttonMerge.addEventListener('click', async () => {
     socket.emit('handle selection', 'merge');
   });
@@ -800,10 +780,6 @@ function makeOverviewSettings() {
   $buttons2.appendChild($buttonExport);
   $buttons3.appendChild($buttonExpand);
   $buttons3.appendChild($buttonCollapse);
-
-  // Add fit and center buttons to the top of the visualization
-  // $overview_controls.appendChild($buttonFit);
-  // $overview_controls.appendChild($buttonCenter);
 
   // Add level distance configuration
   $levelDistanceConfig.appendChild($levelDistanceLabel);
