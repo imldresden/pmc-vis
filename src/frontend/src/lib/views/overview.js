@@ -211,9 +211,59 @@ function renderEdgeBoxes(cy) {
     return;
   }
 
-  // Group edges by source node level
-  const edgesBySourceLevel = {};
+  // Separate merge edges from regular edges
+  const mergeEdges = [];
+  const regularEdges = [];
   edges.forEach(edge => {
+    if (edge.hasClass('merge-edge')) {
+      mergeEdges.push(edge);
+    } else {
+      regularEdges.push(edge);
+    }
+  });
+
+  // Group merge edges by target node (so merge edges with same target share one box)
+  // Then find the source node with smallest level for positioning
+  const mergeEdgesByTarget = {};
+  mergeEdges.forEach(edge => {
+    const targetNode = edge.target();
+    const targetId = targetNode.id();
+    mergeEdgesByTarget[targetId] ||= [];
+    mergeEdgesByTarget[targetId].push(edge);
+  });
+
+  // For each merge group, find the source node with smallest level
+  const mergeEdgesBySourceLevel = {};
+  Object.keys(mergeEdgesByTarget).forEach(targetId => {
+    const mergeEdgeGroup = mergeEdgesByTarget[targetId];
+    if (mergeEdgeGroup.length === 0) return;
+
+    // Find the source node with the smallest level
+    let minLevel = Infinity;
+    let minLevelSourceNode = null;
+    mergeEdgeGroup.forEach(edge => {
+      const sourceNode = edge.source();
+      const sourceLevel = sourceNode.data('level') || 0;
+      if (sourceLevel < minLevel) {
+        minLevel = sourceLevel;
+        minLevelSourceNode = sourceNode;
+      }
+    });
+
+    if (minLevelSourceNode) {
+      const sourceLevel = minLevelSourceNode.data('level') || 0;
+      mergeEdgesBySourceLevel[sourceLevel] ||= [];
+      mergeEdgesBySourceLevel[sourceLevel].push({
+        edges: mergeEdgeGroup,
+        sourceNode: minLevelSourceNode,
+        targetId: targetId,
+      });
+    }
+  });
+
+  // Group regular edges by source node level
+  const edgesBySourceLevel = {};
+  regularEdges.forEach(edge => {
     const sourceNode = edge.source();
     const sourceLevel = sourceNode.data('level') || 0;
 
@@ -236,13 +286,28 @@ function renderEdgeBoxes(cy) {
     // The y position should be a little less than the minimum y of nodes in the graph
     const boxY = minY - 60; // 60px above the minimum y
 
-    // Process each group of edges (by source level)
-    const sortedLevels = Object.keys(edgesBySourceLevel).sort((a, b) => parseInt(a) - parseInt(b));
-    sortedLevels.forEach(sourceLevel => {
-      const edgeGroup = edgesBySourceLevel[sourceLevel];
+    // Combine merge edges with regular edges by source level
+    const allEdgesBySourceLevel = { ...edgesBySourceLevel };
+    Object.keys(mergeEdgesBySourceLevel).forEach(sourceLevel => {
+      allEdgesBySourceLevel[sourceLevel] ||= [];
+      // Add merge edge groups as special entries
+      mergeEdgesBySourceLevel[sourceLevel].forEach(mergeGroup => {
+        allEdgesBySourceLevel[sourceLevel].push({ isMergeGroup: true, ...mergeGroup });
+      });
+    });
 
-      // Sort edges by source node's item value to maintain consistent order
-      edgeGroup.sort((a, b) => {
+    // Process each group of edges (by source level)
+    const sortedLevels = Object.keys(allEdgesBySourceLevel)
+      .sort((a, b) => parseInt(a) - parseInt(b));
+    sortedLevels.forEach(sourceLevel => {
+      const edgeGroup = allEdgesBySourceLevel[sourceLevel];
+
+      // Separate regular edges from merge groups
+      const regularEdgesInLevel = edgeGroup.filter(item => !item.isMergeGroup);
+      const mergeGroupsInLevel = edgeGroup.filter(item => item.isMergeGroup);
+
+      // Sort regular edges by source node's item value
+      regularEdgesInLevel.sort((a, b) => {
         const sourceA = a.source();
         const sourceB = b.source();
         const itemA = sourceA.data('item') || 0;
@@ -250,85 +315,189 @@ function renderEdgeBoxes(cy) {
         return itemA - itemB;
       });
 
-      // Get the first edge's source node position (for positioning the group)
-      const firstEdge = edgeGroup[0];
-      const firstSourceNode = firstEdge.source();
-      const sourcePos = firstSourceNode.position();
+      // Sort merge groups by source node's item value
+      mergeGroupsInLevel.sort((a, b) => {
+        const itemA = a.sourceNode.data('item') || 0;
+        const itemB = b.sourceNode.data('item') || 0;
+        return itemA - itemB;
+      });
 
-      // The x position of the first box should match the source node's x position
-      const firstBoxX = sourcePos.x;
+      // Combine sorted arrays: merge groups first, then regular edges
+      const allItems = [...mergeGroupsInLevel, ...regularEdgesInLevel];
+
+      // Find the first item's source node position for positioning
+      let firstBoxX;
+      if (allItems.length > 0) {
+        if (allItems[0].isMergeGroup) {
+          firstBoxX = allItems[0].sourceNode.position().x;
+        } else {
+          firstBoxX = allItems[0].source().position().x;
+        }
+      } else {
+        return; // Skip if no items
+      }
 
       // Box width for horizontal spacing (boxes to the right of first box)
       const boxSpacing = 56; // Spacing between boxes
 
-      // Create boxes for each edge in this group
-      edgeGroup.forEach((edge, index) => {
-        const edgeId = edge.id();
-        const edgeLabel = edge.data('label') || '';
-        const currentNote = edgeNotes.get(edgeId) || '';
-
-        // Calculate positions:
-        // X: first box at source node x, others to the right
+      // Create boxes for each item in this group
+      allItems.forEach((item, index) => {
         const boxX = firstBoxX + index * boxSpacing;
-        // Y: all boxes at the same y position (above all nodes)
 
-        // Create box container with absolute positioning and 90 degree rotation
-        const box = h('div', {
-          class: 'edge-box edge-box-horizontal',
-          'data-edge-id': edgeId,
-          style: `position: absolute; left: ${boxX}px; top: ${boxY}px; transform: rotate(-45deg); transform-origin: left top;`,
-        }, []);
+        if (item.isMergeGroup) {
+          // Handle merge group
+          const mergeEdgeGroup = item.edges;
+          const edgeIds = mergeEdgeGroup.map(e => e.id());
+          const edgeIdsStr = edgeIds.join(',');
 
-        // First part: edge label
-        const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
+          // Use the first edge's label or create a combined label
+          const firstEdge = mergeEdgeGroup[0];
+          const edgeLabel = firstEdge.data('label') || 'merged';
 
-        // Second part: input for notes
-        const noteInput = h('input', {
-          type: 'text',
-          class: 'edge-box-note-input',
-          value: currentNote,
-        }, []);
+          // Get note from first edge
+          const firstEdgeId = edgeIds[0];
+          const currentNote = edgeNotes.get(firstEdgeId) || '';
 
-        // Store note when user types
-        noteInput.addEventListener('input', (e) => {
-          edgeNotes.set(edgeId, e.target.value);
-        });
+          // Create box container with absolute positioning and 90 degree rotation
+          const box = h('div', {
+            class: 'edge-box edge-box-horizontal',
+            'data-edge-id': edgeIdsStr,
+            'data-is-merge': 'true',
+            style: `position: absolute; left: ${boxX}px; top: ${boxY}px; transform: rotate(-45deg); transform-origin: left top;`,
+          }, []);
 
-        const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+          // First part: edge label
+          const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
 
-        box.appendChild(labelPart);
-        box.appendChild(notePart);
+          // Second part: input for notes
+          const noteInput = h('input', {
+            type: 'text',
+            class: 'edge-box-note-input',
+            value: currentNote,
+          }, []);
 
-        // Add hover event listeners to highlight corresponding edge
-        box.addEventListener('mouseenter', () => {
-          // Only add hover highlight if not selected
-          if (selectedEdgeId !== edgeId) {
-            const correspondingEdge = cy.getElementById(edgeId);
-            if (correspondingEdge.length > 0) {
-              correspondingEdge.addClass('edge-highlighted');
+          // Store note when user types (store for all edges in the group)
+          noteInput.addEventListener('input', (e) => {
+            edgeIds.forEach(id => {
+              edgeNotes.set(id, e.target.value);
+            });
+          });
+
+          const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+          box.appendChild(labelPart);
+          box.appendChild(notePart);
+
+          // Add hover event listeners to highlight all corresponding edges
+          box.addEventListener('mouseenter', () => {
+            // Only add hover highlight if none of the edges are selected
+            if (!edgeIds.includes(selectedEdgeId)) {
+              edgeIds.forEach(edgeId => {
+                const correspondingEdge = cy.getElementById(edgeId);
+                if (correspondingEdge.length > 0) {
+                  correspondingEdge.addClass('edge-highlighted');
+                }
+              });
+              box.classList.add('edge-box-highlighted');
             }
-            box.classList.add('edge-box-highlighted');
-          }
-        });
+          });
 
-        box.addEventListener('mouseleave', () => {
-          // Only remove hover highlight if not selected
-          if (selectedEdgeId !== edgeId) {
-            const correspondingEdge = cy.getElementById(edgeId);
-            if (correspondingEdge.length > 0) {
-              correspondingEdge.removeClass('edge-highlighted');
+          box.addEventListener('mouseleave', () => {
+            // Only remove hover highlight if none of the edges are selected
+            if (!edgeIds.includes(selectedEdgeId)) {
+              edgeIds.forEach(edgeId => {
+                const correspondingEdge = cy.getElementById(edgeId);
+                if (correspondingEdge.length > 0) {
+                  correspondingEdge.removeClass('edge-highlighted');
+                }
+              });
+              box.classList.remove('edge-box-highlighted');
             }
-            box.classList.remove('edge-box-highlighted');
-          }
-        });
+          });
 
-        // Add click event listener to select edge
-        box.addEventListener('click', (e) => {
-          e.stopPropagation();
-          selectEdge(cy, edgeId);
-        });
+          // Add click event listener to highlight all edges in the merge group
+          box.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Clear previous selection
+            clearSelection(cy);
+            // Highlight all edges in the merge group
+            edgeIds.forEach(edgeId => {
+              const edge = cy.getElementById(edgeId);
+              if (edge.length > 0) {
+                edge.addClass('edge-selected');
+              }
+            });
+            box.classList.add('edge-box-selected');
+            // Store the first edge ID as selected (for compatibility)
+            selectedEdgeId = firstEdgeId;
+          });
 
-        edgeBoxesContainer.appendChild(box);
+          edgeBoxesContainer.appendChild(box);
+        } else {
+          // Handle regular edge
+          const edge = item;
+          const edgeId = edge.id();
+          const edgeLabel = edge.data('label') || '';
+          const currentNote = edgeNotes.get(edgeId) || '';
+
+          // Create box container with absolute positioning and 90 degree rotation
+          const box = h('div', {
+            class: 'edge-box edge-box-horizontal',
+            'data-edge-id': edgeId,
+            style: `position: absolute; left: ${boxX}px; top: ${boxY}px; transform: rotate(-45deg); transform-origin: left top;`,
+          }, []);
+
+          // First part: edge label
+          const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
+
+          // Second part: input for notes
+          const noteInput = h('input', {
+            type: 'text',
+            class: 'edge-box-note-input',
+            value: currentNote,
+          }, []);
+
+          // Store note when user types
+          noteInput.addEventListener('input', (e) => {
+            edgeNotes.set(edgeId, e.target.value);
+          });
+
+          const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+          box.appendChild(labelPart);
+          box.appendChild(notePart);
+
+          // Add hover event listeners to highlight corresponding edge
+          box.addEventListener('mouseenter', () => {
+            // Only add hover highlight if not selected
+            if (selectedEdgeId !== edgeId) {
+              const correspondingEdge = cy.getElementById(edgeId);
+              if (correspondingEdge.length > 0) {
+                correspondingEdge.addClass('edge-highlighted');
+              }
+              box.classList.add('edge-box-highlighted');
+            }
+          });
+
+          box.addEventListener('mouseleave', () => {
+            // Only remove hover highlight if not selected
+            if (selectedEdgeId !== edgeId) {
+              const correspondingEdge = cy.getElementById(edgeId);
+              if (correspondingEdge.length > 0) {
+                correspondingEdge.removeClass('edge-highlighted');
+              }
+              box.classList.remove('edge-box-highlighted');
+            }
+          });
+
+          // Add click event listener to select edge
+          box.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectEdge(cy, edgeId);
+          });
+
+          edgeBoxesContainer.appendChild(box);
+        }
       });
     });
   } else {
@@ -345,13 +514,28 @@ function renderEdgeBoxes(cy) {
 
     const boxX = maxX + 50; // 50px spacing from the rightmost node
 
-    // Process each group of edges (by source level)
-    const sortedLevels = Object.keys(edgesBySourceLevel).sort((a, b) => parseInt(a) - parseInt(b));
-    sortedLevels.forEach(sourceLevel => {
-      const edgeGroup = edgesBySourceLevel[sourceLevel];
+    // Combine merge edges with regular edges by source level
+    const allEdgesBySourceLevelVertical = { ...edgesBySourceLevel };
+    Object.keys(mergeEdgesBySourceLevel).forEach(sourceLevel => {
+      allEdgesBySourceLevelVertical[sourceLevel] ||= [];
+      // Add merge edge groups as special entries
+      mergeEdgesBySourceLevel[sourceLevel].forEach(mergeGroup => {
+        allEdgesBySourceLevelVertical[sourceLevel].push({ isMergeGroup: true, ...mergeGroup });
+      });
+    });
 
-      // Sort edges by source node's item value to maintain consistent order
-      edgeGroup.sort((a, b) => {
+    // Process each group of edges (by source level)
+    const sortedLevels = Object.keys(allEdgesBySourceLevelVertical)
+      .sort((a, b) => parseInt(a) - parseInt(b));
+    sortedLevels.forEach(sourceLevel => {
+      const edgeGroup = allEdgesBySourceLevelVertical[sourceLevel];
+
+      // Separate regular edges from merge groups
+      const regularEdgesInLevel = edgeGroup.filter(item => !item.isMergeGroup);
+      const mergeGroupsInLevel = edgeGroup.filter(item => item.isMergeGroup);
+
+      // Sort regular edges by source node's item value
+      regularEdgesInLevel.sort((a, b) => {
         const sourceA = a.source();
         const sourceB = b.source();
         const itemA = sourceA.data('item') || 0;
@@ -359,83 +543,189 @@ function renderEdgeBoxes(cy) {
         return itemA - itemB;
       });
 
-      // Get the first edge's source node position (for positioning the group)
-      const firstEdge = edgeGroup[0];
-      const firstSourceNode = firstEdge.source();
-      const sourcePos = firstSourceNode.position();
+      // Sort merge groups by source node's item value
+      mergeGroupsInLevel.sort((a, b) => {
+        const itemA = a.sourceNode.data('item') || 0;
+        const itemB = b.sourceNode.data('item') || 0;
+        return itemA - itemB;
+      });
 
-      // The y position of the first box should match the source node's y position
-      const firstBoxY = sourcePos.y;
+      // Combine sorted arrays: merge groups first, then regular edges
+      const allItems = [...mergeGroupsInLevel, ...regularEdgesInLevel];
+
+      // Find the first item's source node position for positioning
+      let firstBoxY;
+      if (allItems.length > 0) {
+        if (allItems[0].isMergeGroup) {
+          firstBoxY = allItems[0].sourceNode.position().y;
+        } else {
+          firstBoxY = allItems[0].source().position().y;
+        }
+      } else {
+        return; // Skip if no items
+      }
 
       // Box height for spacing (approximate, will be adjusted by actual box height)
       const boxHeight = 40;
 
-      // Create boxes for each edge in this group
-      edgeGroup.forEach((edge, index) => {
-        const edgeId = edge.id();
-        const edgeLabel = edge.data('label') || '';
-        const currentNote = edgeNotes.get(edgeId) || '';
-
-        // Calculate y position: first box at source node y, others stacked below
+      // Create boxes for each item in this group
+      allItems.forEach((item, index) => {
         const boxY = firstBoxY + index * boxHeight;
 
-        // Create box container with absolute positioning
-        const box = h('div', {
-          class: 'edge-box',
-          'data-edge-id': edgeId,
-          style: `position: absolute; left: ${boxX}px; top: ${boxY}px;`,
-        }, []);
+        if (item.isMergeGroup) {
+          // Handle merge group
+          const mergeEdgeGroup = item.edges;
+          const edgeIds = mergeEdgeGroup.map(e => e.id());
+          const edgeIdsStr = edgeIds.join(',');
 
-        // First part: edge label
-        const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
+          // Use the first edge's label or create a combined label
+          const firstEdge = mergeEdgeGroup[0];
+          const edgeLabel = firstEdge.data('label') || 'merged';
 
-        // Second part: input for notes
-        const noteInput = h('input', {
-          type: 'text',
-          class: 'edge-box-note-input',
-          value: currentNote,
-        }, []);
+          // Get note from first edge
+          const firstEdgeId = edgeIds[0];
+          const currentNote = edgeNotes.get(firstEdgeId) || '';
 
-        // Store note when user types
-        noteInput.addEventListener('input', (e) => {
-          edgeNotes.set(edgeId, e.target.value);
-        });
+          // Create box container with absolute positioning
+          const box = h('div', {
+            class: 'edge-box',
+            'data-edge-id': edgeIdsStr,
+            'data-is-merge': 'true',
+            style: `position: absolute; left: ${boxX}px; top: ${boxY}px;`,
+          }, []);
 
-        const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+          // First part: edge label
+          const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
 
-        box.appendChild(labelPart);
-        box.appendChild(notePart);
+          // Second part: input for notes
+          const noteInput = h('input', {
+            type: 'text',
+            class: 'edge-box-note-input',
+            value: currentNote,
+          }, []);
 
-        // Add hover event listeners to highlight corresponding edge
-        box.addEventListener('mouseenter', () => {
-          // Only add hover highlight if not selected
-          if (selectedEdgeId !== edgeId) {
-            const correspondingEdge = cy.getElementById(edgeId);
-            if (correspondingEdge.length > 0) {
-              correspondingEdge.addClass('edge-highlighted');
+          // Store note when user types (store for all edges in the group)
+          noteInput.addEventListener('input', (e) => {
+            edgeIds.forEach(id => {
+              edgeNotes.set(id, e.target.value);
+            });
+          });
+
+          const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+          box.appendChild(labelPart);
+          box.appendChild(notePart);
+
+          // Add hover event listeners to highlight all corresponding edges
+          box.addEventListener('mouseenter', () => {
+            // Only add hover highlight if none of the edges are selected
+            if (!edgeIds.includes(selectedEdgeId)) {
+              edgeIds.forEach(edgeId => {
+                const correspondingEdge = cy.getElementById(edgeId);
+                if (correspondingEdge.length > 0) {
+                  correspondingEdge.addClass('edge-highlighted');
+                }
+              });
+              box.classList.add('edge-box-highlighted');
             }
-            box.classList.add('edge-box-highlighted');
-          }
-        });
+          });
 
-        box.addEventListener('mouseleave', () => {
-          // Only remove hover highlight if not selected
-          if (selectedEdgeId !== edgeId) {
-            const correspondingEdge = cy.getElementById(edgeId);
-            if (correspondingEdge.length > 0) {
-              correspondingEdge.removeClass('edge-highlighted');
+          box.addEventListener('mouseleave', () => {
+            // Only remove hover highlight if none of the edges are selected
+            if (!edgeIds.includes(selectedEdgeId)) {
+              edgeIds.forEach(edgeId => {
+                const correspondingEdge = cy.getElementById(edgeId);
+                if (correspondingEdge.length > 0) {
+                  correspondingEdge.removeClass('edge-highlighted');
+                }
+              });
+              box.classList.remove('edge-box-highlighted');
             }
-            box.classList.remove('edge-box-highlighted');
-          }
-        });
+          });
 
-        // Add click event listener to select edge
-        box.addEventListener('click', (e) => {
-          e.stopPropagation();
-          selectEdge(cy, edgeId);
-        });
+          // Add click event listener to highlight all edges in the merge group
+          box.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Clear previous selection
+            clearSelection(cy);
+            // Highlight all edges in the merge group
+            edgeIds.forEach(edgeId => {
+              const edge = cy.getElementById(edgeId);
+              if (edge.length > 0) {
+                edge.addClass('edge-selected');
+              }
+            });
+            box.classList.add('edge-box-selected');
+            // Store the first edge ID as selected (for compatibility)
+            selectedEdgeId = firstEdgeId;
+          });
 
-        edgeBoxesContainer.appendChild(box);
+          edgeBoxesContainer.appendChild(box);
+        } else {
+          // Handle regular edge
+          const edge = item;
+          const edgeId = edge.id();
+          const edgeLabel = edge.data('label') || '';
+          const currentNote = edgeNotes.get(edgeId) || '';
+
+          // Create box container with absolute positioning
+          const box = h('div', {
+            class: 'edge-box',
+            'data-edge-id': edgeId,
+            style: `position: absolute; left: ${boxX}px; top: ${boxY}px;`,
+          }, []);
+
+          // First part: edge label
+          const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
+
+          // Second part: input for notes
+          const noteInput = h('input', {
+            type: 'text',
+            class: 'edge-box-note-input',
+            value: currentNote,
+          }, []);
+
+          // Store note when user types
+          noteInput.addEventListener('input', (e) => {
+            edgeNotes.set(edgeId, e.target.value);
+          });
+
+          const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+          box.appendChild(labelPart);
+          box.appendChild(notePart);
+
+          // Add hover event listeners to highlight corresponding edge
+          box.addEventListener('mouseenter', () => {
+            // Only add hover highlight if not selected
+            if (selectedEdgeId !== edgeId) {
+              const correspondingEdge = cy.getElementById(edgeId);
+              if (correspondingEdge.length > 0) {
+                correspondingEdge.addClass('edge-highlighted');
+              }
+              box.classList.add('edge-box-highlighted');
+            }
+          });
+
+          box.addEventListener('mouseleave', () => {
+            // Only remove hover highlight if not selected
+            if (selectedEdgeId !== edgeId) {
+              const correspondingEdge = cy.getElementById(edgeId);
+              if (correspondingEdge.length > 0) {
+                correspondingEdge.removeClass('edge-highlighted');
+              }
+              box.classList.remove('edge-box-highlighted');
+            }
+          });
+
+          // Add click event listener to select edge
+          box.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectEdge(cy, edgeId);
+          });
+
+          edgeBoxesContainer.appendChild(box);
+        }
       });
     });
   }
@@ -455,6 +745,25 @@ function renderEdgeBoxes(cy) {
   edgeBoxesContainer.style.pointerEvents = 'none'; // Allow clicks to pass through to cytoscape
 }
 
+// Helper function to find edge box by edge ID (handles both single and comma-separated IDs)
+function findEdgeBox(edgeId) {
+  // First try exact match
+  let box = document.querySelector(`[data-edge-id="${edgeId}"]`);
+  if (box) return box;
+
+  // Then try to find boxes with comma-separated IDs that include this edgeId
+  const allBoxes = Array.from(document.querySelectorAll('[data-edge-id]'));
+  const foundBox = allBoxes.find(b => {
+    const boxEdgeIds = b.getAttribute('data-edge-id');
+    if (boxEdgeIds && boxEdgeIds.includes(',')) {
+      const edgeIds = boxEdgeIds.split(',').map(id => id.trim());
+      return edgeIds.includes(edgeId);
+    }
+    return false;
+  });
+  return foundBox || null;
+}
+
 // Function to select an edge and its corresponding box
 function selectEdge(cy, edgeId) {
   // Clear previous selection
@@ -469,8 +778,8 @@ function selectEdge(cy, edgeId) {
     selectedEdge.addClass('edge-selected');
   }
 
-  // Highlight the corresponding box
-  const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+  // Highlight the corresponding box (handle merge edges)
+  const correspondingBox = findEdgeBox(edgeId);
   if (correspondingBox) {
     correspondingBox.classList.add('edge-box-selected');
   }
@@ -486,9 +795,22 @@ function clearSelection(cy) {
       selectedEdge.removeClass('edge-highlighted');
     }
 
-    // Remove selection and highlight from box
-    const correspondingBox = document.querySelector(`[data-edge-id="${selectedEdgeId}"]`);
+    // Remove selection and highlight from box (handle merge edges)
+    const correspondingBox = findEdgeBox(selectedEdgeId);
     if (correspondingBox) {
+      // Check if this is a merge group box
+      const boxEdgeIds = correspondingBox.getAttribute('data-edge-id');
+      if (boxEdgeIds && boxEdgeIds.includes(',')) {
+        // Clear all edges in the merge group
+        const edgeIds = boxEdgeIds.split(',').map(id => id.trim());
+        edgeIds.forEach(edgeId => {
+          const edge = cy.getElementById(edgeId);
+          if (edge.length > 0) {
+            edge.removeClass('edge-selected');
+            edge.removeClass('edge-highlighted');
+          }
+        });
+      }
       correspondingBox.classList.remove('edge-box-selected');
       correspondingBox.classList.remove('edge-box-highlighted');
     }
@@ -756,7 +1078,7 @@ cy2.ready(() => {
     const edgeId = hoveredEdge.id();
     // Only add hover highlight if not selected
     if (selectedEdgeId !== edgeId) {
-      const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+      const correspondingBox = findEdgeBox(edgeId);
       if (correspondingBox) {
         correspondingBox.classList.add('edge-box-highlighted');
         hoveredEdge.addClass('edge-highlighted');
@@ -769,7 +1091,7 @@ cy2.ready(() => {
     const edgeId = hoveredEdge.id();
     // Only remove hover highlight if not selected
     if (selectedEdgeId !== edgeId) {
-      const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+      const correspondingBox = findEdgeBox(edgeId);
       if (correspondingBox) {
         correspondingBox.classList.remove('edge-box-highlighted');
         hoveredEdge.removeClass('edge-highlighted');
