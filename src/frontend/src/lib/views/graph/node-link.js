@@ -258,7 +258,9 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
 
 function setNeedsHTML(d) {
   // allows checking for 'node[needsHTML = "true"]' to not create empty divs per node
-  const aps = d.details[CONSTANTS.atomicPropositions];
+  // Handle both cases: details at top level or inside data property
+  const details = d.details || (d.data && d.data.details) || {};
+  const aps = details[CONSTANTS.atomicPropositions];
   d.needsHTML = '' + (aps && (
     aps[CONSTANTS.ap_init]
     || aps[CONSTANTS.ap_deadlock]
@@ -1136,16 +1138,26 @@ async function exportCy(cy, selection) {
 }
 
 function duplicatePane(cy, initSpawner) {
+  // Normalize nodes from elementMapper - extract data if it's nested
+  const normalizedNodes = Array.from(cy.elementMapper.nodes.values()).map(node => {
+    // If node has structure { data: {...} }, extract the data
+    if (node.data && typeof node.data === 'object' && node.data.id) {
+      return node.data;
+    }
+    // Otherwise, return as is (should have details at top level)
+    return node;
+  });
+  
   const data = {
-    nodes: Array.from(cy.elementMapper.nodes.values()),
+    nodes: normalizedNodes,
     edges: Array.from(cy.elementMapper.edges.values()),
     info: info,
     cyImport: cy.json(),
   };
 
   const nodesIds = data.nodes
-    .map((node) => node.data?.id)
-    .filter((id) => !id.startsWith('t'));
+    .map((node) => node.id || node.data?.id)
+    .filter((id) => id && !id.startsWith('t'));
 
   const sourcePaneId = cy.container().parentElement.id;
 
@@ -1157,7 +1169,7 @@ function duplicatePane(cy, initSpawner) {
     {
       // spawner: cy.container().parentElement.id,
       spawner: initSpawner || paneData.spawner,
-      id: 'DUPLICATE-' + cy.paneId + '-' + Math.random(), // TODO make monotonically increasing instead of random
+      id: 'DUPLICATE-' + cy.paneId + '-' + Math.random().toString().replace('.', '-'), // Replace period with dash to avoid CSS selector issues
     },
     nodesIds,
     spawnerNodes,
