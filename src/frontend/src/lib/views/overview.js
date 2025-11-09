@@ -8,6 +8,12 @@ let DISTANCE_BETWEEN_LEVELS = 180; // Default distance between levels in pixels
 let DISTANCE_BETWEEN_NODES_IN_LEVEL = 150; // Default distance between nodes in pixels
 let LAYOUT_DIRECTION = 'vertical'; // 'horizontal' or 'vertical'
 
+// Store edge notes in memory
+const edgeNotes = new Map();
+
+// Track currently selected edge
+let selectedEdgeId = null;
+
 const INITIAL_HORIZONTAL_POSITION = {
   X: 50,
   Y: -50,
@@ -191,9 +197,388 @@ function updateCyOverviewDimensions(cy) {
   }
 }
 
+// Function to render edge boxes (only for vertical layout)
+function renderEdgeBoxes(cy) {
+  const edgeBoxesContainer = document.getElementById('edge-boxes-container');
+  if (!edgeBoxesContainer) return;
+
+  // Clear existing boxes
+  edgeBoxesContainer.innerHTML = '';
+
+  const edges = cy.edges();
+  if (edges.length === 0) {
+    edgeBoxesContainer.style.display = 'none';
+    return;
+  }
+
+  // Group edges by source node level
+  const edgesBySourceLevel = {};
+  edges.forEach(edge => {
+    const sourceNode = edge.source();
+    const sourceLevel = sourceNode.data('level') || 0;
+
+    edgesBySourceLevel[sourceLevel] ||= [];
+    edgesBySourceLevel[sourceLevel].push(edge);
+  });
+
+  if (LAYOUT_DIRECTION === 'horizontal') {
+    // Horizontal layout: boxes rotated 90 degrees, positioned at source node x
+    // Calculate minimum y position of all nodes in the graph
+    const allNodes = cy.nodes();
+    let minY = Infinity;
+    allNodes.forEach(node => {
+      const nodePos = node.position();
+      const nodeHeight = node.height();
+      const nodeY = nodePos.y - nodeHeight / 2; // Top of the node
+      minY = Math.min(minY, nodeY);
+    });
+
+    // The y position should be a little less than the minimum y of nodes in the graph
+    const boxY = minY - 60; // 60px above the minimum y
+
+    // Process each group of edges (by source level)
+    const sortedLevels = Object.keys(edgesBySourceLevel).sort((a, b) => parseInt(a) - parseInt(b));
+    sortedLevels.forEach(sourceLevel => {
+      const edgeGroup = edgesBySourceLevel[sourceLevel];
+
+      // Sort edges by source node's item value to maintain consistent order
+      edgeGroup.sort((a, b) => {
+        const sourceA = a.source();
+        const sourceB = b.source();
+        const itemA = sourceA.data('item') || 0;
+        const itemB = sourceB.data('item') || 0;
+        return itemA - itemB;
+      });
+
+      // Get the first edge's source node position (for positioning the group)
+      const firstEdge = edgeGroup[0];
+      const firstSourceNode = firstEdge.source();
+      const sourcePos = firstSourceNode.position();
+
+      // The x position of the first box should match the source node's x position
+      const firstBoxX = sourcePos.x;
+
+      // Box width for horizontal spacing (boxes to the right of first box)
+      const boxSpacing = 56; // Spacing between boxes
+
+      // Create boxes for each edge in this group
+      edgeGroup.forEach((edge, index) => {
+        const edgeId = edge.id();
+        const edgeLabel = edge.data('label') || '';
+        const currentNote = edgeNotes.get(edgeId) || '';
+
+        // Calculate positions:
+        // X: first box at source node x, others to the right
+        const boxX = firstBoxX + index * boxSpacing;
+        // Y: all boxes at the same y position (above all nodes)
+
+        // Create box container with absolute positioning and 90 degree rotation
+        const box = h('div', {
+          class: 'edge-box edge-box-horizontal',
+          'data-edge-id': edgeId,
+          style: `position: absolute; left: ${boxX}px; top: ${boxY}px; transform: rotate(-45deg); transform-origin: left top;`,
+        }, []);
+
+        // First part: edge label
+        const labelPart = h('div', { class: 'edge-box-label' }, [t(edgeLabel)]);
+
+        // Second part: input for notes
+        const noteInput = h('input', {
+          type: 'text',
+          class: 'edge-box-note-input',
+          value: currentNote,
+        }, []);
+
+        // Store note when user types
+        noteInput.addEventListener('input', (e) => {
+          edgeNotes.set(edgeId, e.target.value);
+        });
+
+        const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+        box.appendChild(labelPart);
+        box.appendChild(notePart);
+
+        // Add hover event listeners to highlight corresponding edge
+        box.addEventListener('mouseenter', () => {
+          // Only add hover highlight if not selected
+          if (selectedEdgeId !== edgeId) {
+            const correspondingEdge = cy.getElementById(edgeId);
+            if (correspondingEdge.length > 0) {
+              correspondingEdge.addClass('edge-highlighted');
+            }
+            box.classList.add('edge-box-highlighted');
+          }
+        });
+
+        box.addEventListener('mouseleave', () => {
+          // Only remove hover highlight if not selected
+          if (selectedEdgeId !== edgeId) {
+            const correspondingEdge = cy.getElementById(edgeId);
+            if (correspondingEdge.length > 0) {
+              correspondingEdge.removeClass('edge-highlighted');
+            }
+            box.classList.remove('edge-box-highlighted');
+          }
+        });
+
+        // Add click event listener to select edge
+        box.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectEdge(cy, edgeId);
+        });
+
+        edgeBoxesContainer.appendChild(box);
+      });
+    });
+  } else {
+    // Vertical layout: boxes in rows, positioned to the right of the graph
+    // Calculate x position - place boxes to the right of the graph
+    // Get the rightmost node position to determine where to place boxes
+    const allNodes = cy.nodes();
+    let maxX = 0;
+    allNodes.forEach(node => {
+      const nodePos = node.position();
+      const nodeWidth = node.width();
+      maxX = Math.max(maxX, nodePos.x + nodeWidth / 2);
+    });
+
+    const boxX = maxX + 50; // 50px spacing from the rightmost node
+
+    // Process each group of edges (by source level)
+    const sortedLevels = Object.keys(edgesBySourceLevel).sort((a, b) => parseInt(a) - parseInt(b));
+    sortedLevels.forEach(sourceLevel => {
+      const edgeGroup = edgesBySourceLevel[sourceLevel];
+
+      // Sort edges by source node's item value to maintain consistent order
+      edgeGroup.sort((a, b) => {
+        const sourceA = a.source();
+        const sourceB = b.source();
+        const itemA = sourceA.data('item') || 0;
+        const itemB = sourceB.data('item') || 0;
+        return itemA - itemB;
+      });
+
+      // Get the first edge's source node position (for positioning the group)
+      const firstEdge = edgeGroup[0];
+      const firstSourceNode = firstEdge.source();
+      const sourcePos = firstSourceNode.position();
+
+      // The y position of the first box should match the source node's y position
+      const firstBoxY = sourcePos.y;
+
+      // Box height for spacing (approximate, will be adjusted by actual box height)
+      const boxHeight = 40;
+
+      // Create boxes for each edge in this group
+      edgeGroup.forEach((edge, index) => {
+        const edgeId = edge.id();
+        const edgeLabel = edge.data('label') || '';
+        const currentNote = edgeNotes.get(edgeId) || '';
+
+        // Calculate y position: first box at source node y, others stacked below
+        const boxY = firstBoxY + index * boxHeight;
+
+        // Create box container with absolute positioning
+        const box = h('div', {
+          class: 'edge-box',
+          'data-edge-id': edgeId,
+          style: `position: absolute; left: ${boxX}px; top: ${boxY}px;`,
+        }, []);
+
+        // First part: edge label
+        const labelPart = h('div', { class: 'edge-box-label' }, [t(edgeLabel)]);
+
+        // Second part: input for notes
+        const noteInput = h('input', {
+          type: 'text',
+          class: 'edge-box-note-input',
+          value: currentNote,
+        }, []);
+
+        // Store note when user types
+        noteInput.addEventListener('input', (e) => {
+          edgeNotes.set(edgeId, e.target.value);
+        });
+
+        const notePart = h('div', { class: 'edge-box-note' }, [noteInput]);
+
+        box.appendChild(labelPart);
+        box.appendChild(notePart);
+
+        // Add hover event listeners to highlight corresponding edge
+        box.addEventListener('mouseenter', () => {
+          // Only add hover highlight if not selected
+          if (selectedEdgeId !== edgeId) {
+            const correspondingEdge = cy.getElementById(edgeId);
+            if (correspondingEdge.length > 0) {
+              correspondingEdge.addClass('edge-highlighted');
+            }
+            box.classList.add('edge-box-highlighted');
+          }
+        });
+
+        box.addEventListener('mouseleave', () => {
+          // Only remove hover highlight if not selected
+          if (selectedEdgeId !== edgeId) {
+            const correspondingEdge = cy.getElementById(edgeId);
+            if (correspondingEdge.length > 0) {
+              correspondingEdge.removeClass('edge-highlighted');
+            }
+            box.classList.remove('edge-box-highlighted');
+          }
+        });
+
+        // Add click event listener to select edge
+        box.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectEdge(cy, edgeId);
+        });
+
+        edgeBoxesContainer.appendChild(box);
+      });
+    });
+  }
+
+  // Make container visible and position it relative to cy-overview (same coordinate system)
+  edgeBoxesContainer.style.display = 'block';
+  edgeBoxesContainer.style.position = 'absolute';
+  edgeBoxesContainer.style.top = '0';
+  edgeBoxesContainer.style.left = '0';
+  edgeBoxesContainer.style.width = 'auto';
+  edgeBoxesContainer.style.height = 'auto';
+  edgeBoxesContainer.style.background = 'transparent';
+  edgeBoxesContainer.style.border = 'none';
+  edgeBoxesContainer.style.boxShadow = 'none';
+  edgeBoxesContainer.style.padding = '0';
+  edgeBoxesContainer.style.zIndex = '5';
+  edgeBoxesContainer.style.pointerEvents = 'none'; // Allow clicks to pass through to cytoscape
+}
+
+// Function to select an edge and its corresponding box
+function selectEdge(cy, edgeId) {
+  // Clear previous selection
+  clearSelection(cy);
+
+  // Set new selection
+  selectedEdgeId = edgeId;
+
+  // Highlight the selected edge
+  const selectedEdge = cy.getElementById(edgeId);
+  if (selectedEdge.length > 0) {
+    selectedEdge.addClass('edge-selected');
+  }
+
+  // Highlight the corresponding box
+  const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+  if (correspondingBox) {
+    correspondingBox.classList.add('edge-box-selected');
+  }
+}
+
+// Function to clear selection
+function clearSelection(cy) {
+  if (selectedEdgeId) {
+    // Remove selection from edge
+    const selectedEdge = cy.getElementById(selectedEdgeId);
+    if (selectedEdge.length > 0) {
+      selectedEdge.removeClass('edge-selected');
+      selectedEdge.removeClass('edge-highlighted');
+    }
+
+    // Remove selection and highlight from box
+    const correspondingBox = document.querySelector(`[data-edge-id="${selectedEdgeId}"]`);
+    if (correspondingBox) {
+      correspondingBox.classList.remove('edge-box-selected');
+      correspondingBox.classList.remove('edge-box-highlighted');
+    }
+
+    selectedEdgeId = null;
+  }
+
+  // Also clear any lingering highlighted states from all boxes and edges
+  const allBoxes = document.querySelectorAll('.edge-box');
+  allBoxes.forEach(box => {
+    box.classList.remove('edge-box-highlighted');
+    box.classList.remove('edge-box-selected');
+  });
+
+  cy.edges().forEach(edge => {
+    edge.removeClass('edge-highlighted');
+    edge.removeClass('edge-selected');
+  });
+}
+
+// Function to calculate level spacing adjustments based on edge note counts
+function calculateLevelSpacingAdjustments(cy) {
+  const edges = cy.edges();
+  const levelAdjustments = {}; // Maps level -> spacing adjustment needed before this level
+
+  // Group edges by source node level
+  const edgesBySourceLevel = {};
+  edges.forEach(edge => {
+    const sourceNode = edge.source();
+    const sourceLevel = sourceNode.data('level') || 0;
+
+    edgesBySourceLevel[sourceLevel] ||= [];
+    edgesBySourceLevel[sourceLevel].push(edge);
+  });
+
+  // Calculate adjustments for each level transition
+  Object.keys(edgesBySourceLevel).forEach(sourceLevel => {
+    const edgeGroup = edgesBySourceLevel[sourceLevel];
+
+    // If this group has more than 3 edge notes, add extra spacing
+    if (edgeGroup.length > 3) {
+      // Find all target levels for edges in this group
+      const targetLevels = new Set();
+      edgeGroup.forEach(edge => {
+        const targetNode = edge.target();
+        const targetLevel = targetNode.data('level') || 0;
+        targetLevels.add(targetLevel);
+      });
+
+      // Calculate extra spacing needed (additional space per edge note beyond 3)
+      const extraSpacing = (edgeGroup.length - 3) * (LAYOUT_DIRECTION === 'vertical' ? 20 : 60);
+
+      // Apply adjustment to target levels - we need to push these levels and all subsequent levels
+      targetLevels.forEach(targetLevel => {
+        const levelNum = parseInt(targetLevel);
+        const sourceLevelNum = parseInt(sourceLevel);
+
+        // Only add spacing if target level is greater than source level
+        if (levelNum > sourceLevelNum) {
+          // Store the maximum spacing needed before this level
+          levelAdjustments[levelNum] ||= 0;
+          levelAdjustments[levelNum] = Math.max(levelAdjustments[levelNum], extraSpacing);
+        }
+      });
+    }
+  });
+
+  // Convert to cumulative adjustments (each level gets spacing from all previous levels)
+  const cumulativeAdjustments = {};
+  let cumulative = 0;
+  const allLevels = cy.nodes().map(n => parseInt(n.data('level') || 0));
+  const maxLevel = Math.max(...allLevels, 0);
+
+  // Calculate cumulative spacing for each level
+  for (let level = 0; level <= maxLevel; level += 1) {
+    if (levelAdjustments[level]) {
+      cumulative += levelAdjustments[level];
+    }
+    cumulativeAdjustments[level] = cumulative;
+  }
+
+  return cumulativeAdjustments;
+}
+
 // Function to apply custom layout (exact copy from customLayout.js)
 function applyCustomLayout(cy) {
   const nodes = cy.nodes();
+
+  // Calculate level spacing adjustments based on edge note counts
+  const levelSpacingAdjustments = calculateLevelSpacingAdjustments(cy);
 
   // Group nodes by level
   const levelGroups = {};
@@ -215,9 +600,13 @@ function applyCustomLayout(cy) {
       return itemA - itemB;
     });
 
+    // Get spacing adjustment for this level
+    const spacingAdjustment = levelSpacingAdjustments[levelNum] || 0;
+
     if (LAYOUT_DIRECTION === 'horizontal') {
       // Horizontal layout: levels are columns (x-axis), nodes stacked vertically (y-axis)
-      const columnX = levelNum * DISTANCE_BETWEEN_LEVELS; // Configurable spacing between columns
+      // Add spacing adjustment to push levels with many edge notes
+      const columnX = levelNum * DISTANCE_BETWEEN_LEVELS + spacingAdjustment;
 
       // Stack nodes vertically in each column
       nodesInLevel.forEach((node, index) => {
@@ -231,7 +620,7 @@ function applyCustomLayout(cy) {
       });
     } else {
       // Vertical layout: levels are rows (y-axis), nodes stacked horizontally (x-axis)
-      const rowY = levelNum * DISTANCE_BETWEEN_LEVELS; // Configurable spacing between rows
+      const rowY = levelNum * DISTANCE_BETWEEN_LEVELS + spacingAdjustment; // Add spacing adjustment
 
       // Stack nodes horizontally in each row
       nodesInLevel.forEach((node, index) => {
@@ -251,6 +640,9 @@ function applyCustomLayout(cy) {
 
   // Update the dimensions to accommodate all elements
   updateCyOverviewDimensions(cy);
+
+  // Render edge boxes (only for vertical layout)
+  renderEdgeBoxes(cy);
 }
 
 // Create overview-specific layout params without auto-fit (not used anymore)
@@ -266,6 +658,24 @@ const $overview_graph_config = $('#overview-graph-config');
 
 window.addEventListener('load', () => {
   makeOverviewSettings();
+  // Create edge boxes container - place it inside the scroll container
+  // so it's in the same coordinate system
+  const scrollContainer = document.getElementById('overview-scroll-container');
+  if (scrollContainer && !document.getElementById('edge-boxes-container')) {
+    const edgeBoxesContainer = h('div', {
+      id: 'edge-boxes-container',
+      class: 'edge-boxes-container',
+    }, []);
+    scrollContainer.appendChild(edgeBoxesContainer);
+
+    // Add click listener to clear selection when clicking outside boxes
+    scrollContainer.addEventListener('click', (e) => {
+      // Only clear if clicking directly on the container, not on a box
+      if (e.target === edgeBoxesContainer || e.target === scrollContainer) {
+        clearSelection(cy2);
+      }
+    });
+  }
 });
 
 var cy2 = cytoscape({
@@ -300,7 +710,11 @@ cy2.ready(() => {
   window.addEventListener('resize', () => {
     applyCustomSegmentDistances(cy2);
     updateCyOverviewDimensions(cy2);
+    renderEdgeBoxes(cy2);
   });
+
+  // Initial render of edge boxes
+  renderEdgeBoxes(cy2);
 
   // Add hover effect to highlight all paths from root to hovered node
   cy2.on('mouseover', 'node', (evt) => {
@@ -334,6 +748,49 @@ cy2.ready(() => {
     // Restore full opacity to all nodes and edges
     cy2.nodes().style('opacity', 1);
     cy2.edges().style('opacity', 1);
+  });
+
+  // Add hover effect to highlight corresponding edge box when hovering over edge
+  cy2.on('mouseover', 'edge', (evt) => {
+    const hoveredEdge = evt.target;
+    const edgeId = hoveredEdge.id();
+    // Only add hover highlight if not selected
+    if (selectedEdgeId !== edgeId) {
+      const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+      if (correspondingBox) {
+        correspondingBox.classList.add('edge-box-highlighted');
+        hoveredEdge.addClass('edge-highlighted');
+      }
+    }
+  });
+
+  cy2.on('mouseout', 'edge', (evt) => {
+    const hoveredEdge = evt.target;
+    const edgeId = hoveredEdge.id();
+    // Only remove hover highlight if not selected
+    if (selectedEdgeId !== edgeId) {
+      const correspondingBox = document.querySelector(`[data-edge-id="${edgeId}"]`);
+      if (correspondingBox) {
+        correspondingBox.classList.remove('edge-box-highlighted');
+        hoveredEdge.removeClass('edge-highlighted');
+      }
+    }
+  });
+
+  // Add click event listener to select edge
+  cy2.on('click', 'edge', (evt) => {
+    const clickedEdge = evt.target;
+    const edgeId = clickedEdge.id();
+    selectEdge(cy2, edgeId);
+  });
+
+  // Add click event listener to clear selection when clicking on background
+  cy2.on('click', (evt) => {
+    // Only clear if clicking on background (not on edge or node)
+    // In Cytoscape, clicking on background means target is the core
+    if (evt.target === cy2) {
+      clearSelection(cy2);
+    }
   });
 });
 
@@ -537,6 +994,7 @@ function onPaneAdded(newPaneData) {
   // Apply custom layout after elements are added (for edge positioning and other adjustments)
   setTimeout(() => {
     applyCustomLayout(cy2);
+    renderEdgeBoxes(cy2);
   }, 50);
 }
 
@@ -597,19 +1055,25 @@ function onPaneAdded(newPaneData) {
 function removeNode(id) {
   const nodeIdToRemove = id;
 
-  // Remove associated edges
-  // cy2
-  //   .edges(`[source="${nodeIdToRemove}"], [target="${nodeIdToRemove}"]`)
-  //   .remove();
+  // Remove associated edges and their notes
+  const edgesToRemove = cy2.edges(`[source="${nodeIdToRemove}"], [target="${nodeIdToRemove}"]`);
+  edgesToRemove.forEach(edge => {
+    edgeNotes.delete(edge.id());
+  });
+  edgesToRemove.remove();
 
   // remove node
   cy2.remove('#' + nodeIdToRemove);
+
+  // Update edge boxes after removal
+  renderEdgeBoxes(cy2);
 }
 
 function bindListeners(cy2) {
   cy2.on('click', 'node', e => {
     var node = e.target;
-
+    // Clear edge selection when clicking on a node
+    clearSelection(cy2);
     socket.emit('overview node clicked', node.id());
   });
 
@@ -763,6 +1227,7 @@ function makeOverviewSettings() {
       LAYOUT_DIRECTION = 'vertical';
       // Reapply layout with new direction
       applyCustomLayout(cy2);
+      renderEdgeBoxes(cy2);
     }
   });
 
@@ -771,6 +1236,7 @@ function makeOverviewSettings() {
       LAYOUT_DIRECTION = 'horizontal';
       // Reapply layout with new direction
       applyCustomLayout(cy2);
+      renderEdgeBoxes(cy2);
     }
   });
 

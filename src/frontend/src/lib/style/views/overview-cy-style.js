@@ -54,7 +54,7 @@ const overviewStylesheet = [
   {
     selector: 'edge',
     style: {
-      label: 'data(label)',
+      label: '',
       width: 3,
       'line-color': '#34495e',
       'target-arrow-color': '#34495e',
@@ -103,6 +103,20 @@ const overviewStylesheet = [
       'border-width': 4,
       'border-color': '#e67e22',
       'border-opacity': 1,
+    },
+  },
+  {
+    selector: 'edge.edge-highlighted',
+    style: {
+      width: 5,
+      'z-index': 10,
+    },
+  },
+  {
+    selector: 'edge.edge-selected',
+    style: {
+      width: 5,
+      'z-index': 10,
     },
   },
 ];
