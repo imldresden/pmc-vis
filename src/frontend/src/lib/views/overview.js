@@ -280,7 +280,7 @@ function renderEdgeBoxes(cy) {
         }, []);
 
         // First part: edge label
-        const labelPart = h('div', { class: 'edge-box-label' }, [t(edgeLabel)]);
+        const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
 
         // Second part: input for notes
         const noteInput = h('input', {
@@ -387,7 +387,7 @@ function renderEdgeBoxes(cy) {
         }, []);
 
         // First part: edge label
-        const labelPart = h('div', { class: 'edge-box-label' }, [t(edgeLabel)]);
+        const labelPart = h('div', { class: 'edge-box-label', title: edgeLabel }, [t(edgeLabel)]);
 
         // Second part: input for notes
         const noteInput = h('input', {
