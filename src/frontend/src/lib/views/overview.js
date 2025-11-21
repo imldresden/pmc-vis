@@ -1130,6 +1130,8 @@ socket.on('pane added', (data) => {
   }
 });
 
+// Remove panes from overview only when manually removed by user
+// Keep them visible if destroyed due to max limit (so they can be restored)
 socket.on('pane removed', (data) => {
   removeNode(data);
 });

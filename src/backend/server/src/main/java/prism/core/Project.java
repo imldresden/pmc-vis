@@ -515,15 +515,35 @@ public class Project implements Namespace{
 
     public void storePane(String paneID, String content) throws SQLException {
         if(!paneTableExists()) createPaneTable();
-        this.database.execute(String.format("INSERT OR REPLACE INTO %s (%s,%s) VALUES(%s,'%s')", TABLE_PANES, ENTRY_P_ID, ENTRY_P_CONTENT, paneID, content));
+        // Use prepared statement with parameters to avoid SQL injection and special character issues
+        // PostgreSQL uses ON CONFLICT instead of INSERT OR REPLACE (SQLite syntax)
+        try (prism.db.Batch batch = this.database.createBatch(
+            String.format("INSERT INTO %s (%s,%s) VALUES(?,?) ON CONFLICT (%s) DO UPDATE SET %s = EXCLUDED.%s", 
+                TABLE_PANES, ENTRY_P_ID, ENTRY_P_CONTENT, ENTRY_P_ID, ENTRY_P_CONTENT, ENTRY_P_CONTENT), 2)) {
+            batch.addToBatch(paneID, content);
+        }
     }
 
     private boolean paneTableExists() {
-        return this.database.question(String.format("SELECT name FROM sqlite_schema WHERE type='table' AND name='%s'", TABLE_PANES));
+        // Use PostgreSQL-compatible query (information_schema stores table names in lowercase)
+        // The question() method wraps this in SELECT EXISTS (...)
+        try {
+            return this.database.question(String.format(
+                "SELECT 1 FROM information_schema.tables WHERE LOWER(table_name) = LOWER('%s')", TABLE_PANES));
+        } catch (Exception e) {
+            // Fallback for SQLite if needed
+            try {
+                return this.database.question(String.format(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='%s'", TABLE_PANES));
+            } catch (Exception e2) {
+                return false;
+            }
+        }
     }
 
     private void createPaneTable() throws SQLException {
-        this.database.execute(String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY NOT NULL, %s TEXT)", TABLE_PANES, ENTRY_P_ID, ENTRY_P_CONTENT));
+        // Changed id from INTEGER to TEXT to support string-based pane IDs
+        this.database.execute(String.format("CREATE TABLE %s (%s TEXT PRIMARY KEY NOT NULL, %s TEXT)", TABLE_PANES, ENTRY_P_ID, ENTRY_P_CONTENT));
     }
 
     public List<String> storedPanes(){

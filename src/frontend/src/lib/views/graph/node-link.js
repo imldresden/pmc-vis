@@ -1147,7 +1147,7 @@ function duplicatePane(cy, initSpawner) {
     // Otherwise, return as is (should have details at top level)
     return node;
   });
-  
+
   const data = {
     nodes: normalizedNodes,
     edges: Array.from(cy.elementMapper.edges.values()),
@@ -1391,7 +1391,7 @@ function mergePanes(panesToMerge, paneCy) {
             prevSpawners.push(paneData?.spawner);
           }
 
-          destroyPanes(id);
+          destroyPanes(id, { manualRemoval: true });
         });
         mergePane(panesToMerge, paneCy, prevSpawners);
       }
@@ -1408,7 +1408,7 @@ function handleMergePane() {
 function handleDeletePane() {
   if (selectedPanesData && selectedPanesData.selectedPanes.length > 0) {
     selectedPanesData.selectedPanes.forEach((pane) => {
-      destroyPanes(pane.paneId, { firstOnly: true });
+      destroyPanes(pane.paneId, { firstOnly: true, manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
     });
   }
 }
@@ -1717,9 +1717,9 @@ function ctxmenu(cy) {
               denyButtonText: 'Remove All From Selected',
             }).then((result) => {
               if (result.isConfirmed) {
-                destroyPanes(getPanes()[cy.paneId].id, { firstOnly: true });
+                destroyPanes(getPanes()[cy.paneId].id, { firstOnly: true, manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
               } else if (result.isDenied) {
-                destroyPanes(getPanes()[cy.paneId].id);
+                destroyPanes(getPanes()[cy.paneId].id, { manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
               }
             });
           }
