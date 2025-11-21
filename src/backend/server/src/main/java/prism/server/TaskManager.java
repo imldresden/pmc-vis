@@ -209,6 +209,10 @@ public class TaskManager implements Executor, Managed {
     }
 
     public void resetProject(String projectID) throws Exception {
+        if(!activeProjects.containsKey(projectID)){
+            socketServer.send(Namespace.EVENT_RESET, projectID);
+            return;
+        }
         this.clearDatabase(projectID);
         Project resetProject = Project.reset(activeProjects.get(projectID));
         socketServer.send(Namespace.EVENT_RESET, projectID);
@@ -218,7 +222,6 @@ public class TaskManager implements Executor, Managed {
     public void clearDatabase(String projectID) throws Exception {
         this.interruptTasks(projectID);
         activeProjects.get(projectID).clearTables();
-
         for (String version : activeProjects.get(projectID).getVersions()) {
             activeProjects.get(projectID).getDatabase().execute(String.format("DROP SCHEMA IF EXISTS \"%s\" CASCADE;", version));
         }

@@ -1,5 +1,6 @@
 package prism.core;
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import parser.ast.Expression;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
@@ -312,7 +313,7 @@ public class Model implements Namespace {
 
     public void loadPropertyFiles() throws Exception {
         boolean fileForModelCheckingFound = false;
-        for (File file : Objects.requireNonNull(new File(parent.getPath()).listFiles())) {
+        for (File file : parent.getPropertyFiles()) {
             if (!Namespace.FILES_RESERVED.contains(file.getName())) {
                 fileForModelCheckingFound = true;
                 if (this.debug) {

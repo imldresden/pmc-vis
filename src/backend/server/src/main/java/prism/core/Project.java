@@ -108,6 +108,10 @@ public class Project implements Namespace{
         }
     }
 
+    public List<File> getPropertyFiles(){
+        return new ArrayList<>(propertyFiles);
+    }
+
     public String createModel(File modelFile) throws Exception {
         String modelName = modelFile.getName().split("\\.")[0];
         return createModel(modelFile, modelName);

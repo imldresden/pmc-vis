@@ -46,7 +46,7 @@ RUN sed -i 's/\r$//' bin/run && chmod +x bin/run && chmod +x bin/initdb
 
 USER prismServer
 
-RUN ./bin/initdb
+RUN /bin/bash -c 'bin/initdb'
 
 ENTRYPOINT ["bin/run", "server", "DockerDefault.yml"]
 
