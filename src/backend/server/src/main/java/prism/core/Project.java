@@ -530,19 +530,8 @@ public class Project implements Namespace{
 
     private boolean paneTableExists() {
         // Use PostgreSQL-compatible query (information_schema stores table names in lowercase)
-        // The question() method wraps this in SELECT EXISTS (...)
-        try {
-            return this.database.question(String.format(
-                "SELECT 1 FROM information_schema.tables WHERE LOWER(table_name) = LOWER('%s')", TABLE_PANES));
-        } catch (Exception e) {
-            // Fallback for SQLite if needed
-            try {
-                return this.database.question(String.format(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='%s'", TABLE_PANES));
-            } catch (Exception e2) {
-                return false;
-            }
-        }
+        return this.database.question(String.format(
+            "SELECT 1 FROM information_schema.tables WHERE LOWER(table_name) = LOWER('%s')", TABLE_PANES));
     }
 
     private void createPaneTable() throws SQLException {
