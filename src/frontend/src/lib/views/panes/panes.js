@@ -181,7 +181,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   const numberOfPanes = document.getElementById('numberOfPanes');
 
   if (paneKeysAfter.length > numberOfPanes.value) {
-    // Don't await here to avoid blocking, but ensure storage happens
     destroyPanes(
       panes[paneKeysAfter[1]].id, // skip the first pane
       {
