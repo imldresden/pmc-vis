@@ -10,6 +10,7 @@
   background-color: var(--tool-color);
   padding: 4px;
   box-shadow: 0px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.12), 0 1px 5px 0 rgba(0, 0, 0, 0.2);
+  z-index: 20;
 }
 
 .overview-title {
@@ -23,56 +24,52 @@
   display: flex;
   overflow: hidden;
   width: calc(100% - var(--config-width));
+  transition: width 0.5s ease;
 }
 
-#overview-container {
-  flex: 1;
-  position: relative;
+#compact-layout-container {
+  width: 100%;
   height: 100%;
-  width: 100%;
-  margin: 8px;
+  position: relative;
+  overflow: auto;
 }
 
-.overview-page #overview-scroll-container {
+#biofabric-layout-container {
   width: 100%;
-  height: calc(100% - 28px);
-  overflow-x: auto;
-  overflow-y: hidden;
+  height: 100%;
   position: relative;
+  display: flex;
+  flex-direction: row;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: flex-start;
+  scrollbar-color: #cbd5e0 #f7fafc;
+  scrollbar-width: thin;
+}
+
+#biofabric-layout-container::-webkit-scrollbar {
+  width: 12px;
+  background-color: #f7fafc;
+}
+
+#biofabric-layout-container::-webkit-scrollbar-track {
+  background-color: #f7fafc;
+}
+
+#biofabric-layout-container::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 6px;
+  border: 2px solid #f7fafc;
+}
+
+#biofabric-layout-container::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
 }
 
 .overview-page #cy-overview {
   min-width: 100%;
   min-height: 100%;
   border: none;
-}
-
-.overview-controls {
-  display: flex;
-  flex-direction: row-reverse;
-  padding: 8px;
-  gap: 5px;
-}
-
-.overview-controls .ui.button {
-  padding: 8px 12px;
-  font-size: 12px;
-  background-color: rgba(255, 255, 255, 0.9);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-}
-
-.overview-controls .ui.button:hover {
-  background-color: rgba(255, 255, 255, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-}
-
-.overview-controls .ui.button:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Config sidebar positioning for overview page */
@@ -83,69 +80,157 @@
   bottom: 0;
   width: var(--config-width);
   z-index: 10;
+  transition: width 0.5s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--pane-background);
+  border-left: 1px solid black;
+  padding: 16px;
 }
 
-/* Level Distance Configuration Styling */
-.overview-page .param {
-  margin-bottom: 15px;
-}
-
-.overview-page .param .label {
+/* Normal content - visible by default */
+.overview-config-normal-content {
   display: block;
+}
+
+/* Collapsed content - hidden by default */
+.overview-config-collapsed-content {
+  display: none;
+}
+
+/* When config has collapsed class, hide normal content and show collapsed content */
+.overview-page .config.collapsed .overview-config-normal-content {
+  display: none;
+}
+
+.overview-page .config.collapsed .overview-config-collapsed-content {
+  display: block;
+}
+
+/* Hide the config heading when collapsed */
+.overview-page .config.collapsed #overview-config-span {
+  display: none;
+}
+
+/* Collapsed button rows - one button per row */
+.collapsed-button-row {
+  display: flex;
+  justify-content: center;
   margin-bottom: 8px;
-  font-weight: 500;
+}
+
+.icon-only-button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  min-width: 36px;
+}
+
+.icon-only-button i {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Collapsed sidebar - icon only mode */
+.overview-page.overview-config-collapsed .config {
+  width: var(--overview-config-closed-width);
+  transition: width 0.5s ease;
+}
+
+.overview-page.overview-config-collapsed .overview-main {
+  width: calc(100% - var(--overview-config-closed-width));
+}
+
+.overview-config-toggle {
+  position: absolute;
+  z-index: 50;
+  top: calc(var(--nav-height) + 20px);
+  cursor: pointer;
+
+  background-color: #fdfdfd;
+  right: calc(var(--config-width) - 1px);
+  border: 1px solid black;
+  border-right: 1px solid white;
+  transition: right .5s;
+
+  i {
+    position: relative;
+    right: calc(50% - 12px);
+  }
+}
+
+.overview-page.overview-config-collapsed .overview-config-toggle {
+  right: calc(var(--overview-config-closed-width) - 1px);
+  transition: right 0.5s ease;
+}
+
+.overview-page.overview-config-collapsed .overview-config-toggle i {
+  transform: rotate(180deg);
+}
+
+/* Icon-only sidebar content */
+#overview-config-icons {
+  display: none;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.overview-page.overview-config-collapsed #overview-config-icons {
+  display: flex;
+}
+
+.overview-config-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: 1px solid #ddd;
+  position: relative;
+}
+
+.overview-config-icon:hover {
+  background-color: var(--config-icon-color-active);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.overview-config-icon i {
+  font-size: 18px;
   color: var(--dark-text-color);
 }
 
-.overview-page .param .ui.input {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Tooltip for icons */
+.overview-config-icon::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
 }
 
-.overview-page .param .ui.slider {
-  -webkit-appearance: none;
-  flex: 1;
-  height: 4px;
-  border-radius: 5px;
-  background: var(--tool-color);
-  outline: none;
-  border: none;
-  padding: 1px;
-}
-
-.overview-page .param .ui.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 0;
-  background: var(--dark-text-color);
-  cursor: pointer;
-}
-
-.overview-page .param .ui.slider::-moz-range-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 0;
-  background: var(--dark-text-color);
-  cursor: pointer;
-}
-
-.overview-page .param #level-distance-value {
-  font-weight: 500;
-  color: var(--primary-color);
-  min-width: 50px;
-  text-align: right;
-}
-
-.overview-page .param #node-distance-value {
-  font-weight: 500;
-  color: var(--primary-color);
-  min-width: 50px;
-  text-align: right;
+.overview-config-icon:hover::after {
+  opacity: 1;
 }
 
 .overview-page .param .radio-group {
@@ -178,6 +263,63 @@
   color: var(--primary-color);
 }
 
+/* Biofabric panels */
+.biofabric-graph-panel {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  overflow-y: hidden;
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+}
+
+.biofabric-horizontal-scroll-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: fit-content;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+#d3-biofabric-container {
+  overflow: visible;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.biofabric-fixed-nodes-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+  pointer-events: none;
+}
+
+.biofabric-fixed-nodes-container > * {
+  pointer-events: auto;
+}
+
+.biofabric-edge-boxes-panel {
+  width: 350px;
+  min-width: 350px;
+  position: relative;
+  height: 100%;
+  border-left: 1px solid #ddd;
+  background-color: #f9f9f9;
+  padding: 0;
+  overflow: visible;
+}
+
 /* Edge Boxes Container - only visible in vertical layout */
 .edge-boxes-container {
   position: absolute;
@@ -190,21 +332,41 @@
   pointer-events: none; /* Allow clicks to pass through to cytoscape */
 }
 
+/* Biofabric edge boxes container - different styling */
+#biofabric-edge-boxes-container {
+  position: relative !important;
+  width: 100% !important;
+  pointer-events: auto !important;
+  display: block !important;
+  padding: 8px;
+  box-sizing: border-box;
+  overflow: visible;
+  background-color: #f9f9f9;
+}
+
 .edge-box {
   display: flex;
   flex-direction: row;
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: rgba(255, 255, 255, 0.95);
-  padding: 4px;
-  gap: 4px;
+  padding: 3px;
+  gap: 3px;
   align-items: center;
-  min-height: 40px;
-  width: 300px;
+  min-height: 32px;
   pointer-events: auto; /* Re-enable pointer events for the box itself */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   cursor: pointer;
+  box-sizing: border-box;
+}
+
+/* Edge boxes in biofabric right panel */
+#biofabric-edge-boxes-container .edge-box {
+  width: 90%;
+  max-width: 90%;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .edge-box-horizontal {
@@ -212,6 +374,12 @@
   /* The width and height are swapped visually after rotation */
   width: 300px;
   min-height: 40px;
+}
+
+.edge-box-vertical-rotated {
+  /* For bio fabric vertical mode: rotate 90 degrees counter-clockwise */
+  transform: rotate(-90deg);
+  transform-origin: center center;
 }
 
 .edge-box:hover {
@@ -224,11 +392,11 @@
   flex: 0 0 auto;
   min-width: 80px;
   max-width: 120px;
-  padding: 3px 4px;
+  padding: 2px 3px;
   background-color: #f5f5f5;
   border-radius: 3px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--dark-text-color);
   text-align: center;
   overflow: hidden;
@@ -243,7 +411,7 @@
 
 .edge-box-note-input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 4px 6px;
   border: 1px solid #ddd;
   border-radius: 3px;
   font-size: 12px;

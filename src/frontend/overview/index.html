@@ -19,23 +19,29 @@
     <h1 class="overview-title">Overview Graph</h3>
   </header>
   <main class="overview-main">
-    <div id="overview-container">
-      <div id="overview-scroll-container">
-        <div id="cy-overview"></div>
-      </div>
+    <!-- Compact Layout Container -->
+    <div id="compact-layout-container" style="display: none;"></div>
+    
+    <!-- Biofabric Layout Container -->
+    <div id="biofabric-layout-container" style="display: none;">
+        <div id="biofabric-graph-panel" class="biofabric-graph-panel"></div>
+        <div id="biofabric-edge-boxes-panel" class="biofabric-edge-boxes-panel"></div>
     </div>
   </main>
+
   
-  <aside id="config" class="config ui">
-    <div class="ui segment">
-        <h3 class="label label-info" id="overview-config-span">Selection Options</h3>
+  <a id="overview-config-toggle" class="overview-config-toggle" title="Toggle Sidebar">
+    <i class="icon fa-solid fa-chevron-right" aria-hidden="true"></i>
+  </a>
+  
+  <aside id="config" class="config">
+      <h3 class="label label-info" id="overview-config-span">Selection Options</h3>
       <div id="overview-graph-config">
         <!-- layout specific options are appended here-->
       </div>
-    </div>
   </aside>
   
-  <script src="../src/lib/views/overview.js" type="module"></script>
+  <script src="../src/lib/views/overview/index.js" type="module"></script>
 
 </body>
 
