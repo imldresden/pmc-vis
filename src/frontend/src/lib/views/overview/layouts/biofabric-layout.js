@@ -118,6 +118,12 @@ export function applyBioFabricLayout(
   svgContainer.innerHTML = '';
   svgContainer.style.display = 'block';
 
+  // Get markers container
+  const markersContainer = document.getElementById('biofabric-graph-markers');
+  if (markersContainer) {
+    markersContainer.innerHTML = '';
+  }
+
   const originalNodes = nodes.filter(n => !n.isBioFabricIntermediate);
 
   const sortedNodes = originalNodes.sort((a, b) => {
@@ -429,6 +435,50 @@ export function applyBioFabricLayout(
     .attr('stroke', COLOR_NODE_STROKE_DEFAULT)
     .attr('stroke-width', STROKE_WIDTH_EDGE_DEFAULT)
     .attr('rx', 2);
+
+  // Add chevron markers for each row
+  if (markersContainer) {
+    edgeData.forEach((edge, index) => {
+      const rowY = edge.edgeRowY;
+      
+      // Left chevron (start of row)
+      const leftChevron = h('i', {
+        class: 'fa-solid fa-chevron-right row-marker row-marker-left',
+        style: `
+          position: absolute;
+          left: 0;
+          top: ${rowY}px;
+          transform: translateY(-50%);
+          color: #666;
+          font-size: 16px;
+          pointer-events: none;
+          z-index: 10;
+        `,
+        'data-edge-id': edge.id,
+        'data-row-index': index,
+      }, []);
+      
+      // Right chevron (end of row)
+      const rightChevron = h('i', {
+        class: 'fa-solid fa-chevron-left row-marker row-marker-right',
+        style: `
+          position: absolute;
+          right: 0;
+          top: ${rowY}px;
+          transform: translateY(-50%);
+          color: #666;
+          font-size: 16px;
+          pointer-events: none;
+          z-index: 10;
+        `,
+        'data-edge-id': edge.id,
+        'data-row-index': index,
+      }, []);
+      
+      markersContainer.appendChild(leftChevron);
+      markersContainer.appendChild(rightChevron);
+    });
+  }
 
   // Render original nodes in the fixed container
   fixedG.selectAll('g.biofabric-node').remove();

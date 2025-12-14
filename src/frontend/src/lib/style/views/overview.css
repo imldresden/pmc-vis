@@ -455,3 +455,35 @@
   box-shadow: 0 3px 8px rgba(52, 152, 219, 0.4) !important;
   background-color: rgba(52, 152, 219, 0.12) !important;
 }
+
+.biofabric-graph-markers {
+  position: sticky;
+  left: 0;
+  top: 0;
+  width: 100%;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 15;
+  background-color: rgba(158, 69, 69, 0.3);
+}
+
+.row-marker {
+  position: absolute;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.row-marker:hover {
+  opacity: 1;
+}
+
+.row-marker-left {
+  left: 0;
+  padding-left: 8px;
+}
+
+.row-marker-right {
+  right: 0;
+  padding-right: 8px;
+}
