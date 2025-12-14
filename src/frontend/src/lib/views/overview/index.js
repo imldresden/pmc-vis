@@ -924,7 +924,7 @@ function makeOverviewSettings() {
   const $biofabricLabel = h('label', { for: 'layout-biofabric', class: 'radio-label' }, [t('Bio Fabric')]);
   const $biofabricContainer = h('div', { class: 'radio-option' }, [$biofabricRadio, $biofabricLabel]);
 
-  const $layoutTypeContainer = h('div', { class: 'radio-group' }, [$compactContainer, $biofabricContainer]);
+  const $layoutTypeContainer = h('div', { class: 'radio-group' }, [$biofabricContainer, $compactContainer]);
 
   // Layout Direction Configuration
   const $layoutDirectionLabel = h('label', { class: 'label label-info' }, [t('Layout Direction')]);
