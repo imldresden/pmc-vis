@@ -437,22 +437,26 @@ export function applyBioFabricLayout(
     .attr('rx', 2);
 
   // Add chevron markers for each row
+  const rowMarkers = new Map(); // Store markers for each edge
+  
   if (markersContainer) {
     edgeData.forEach((edge, index) => {
       const rowY = edge.edgeRowY;
       
       // Left chevron (start of row)
       const leftChevron = h('i', {
-        class: 'fa-solid fa-chevron-right row-marker row-marker-left',
+        class: 'fa-solid fa-circle-chevron-right row-marker row-marker-left',
         style: `
           position: absolute;
           left: 0;
           top: ${rowY}px;
           transform: translateY(-50%);
           color: #666;
-          font-size: 16px;
-          pointer-events: none;
+          font-size: 24px;
+          pointer-events: auto;
+          cursor: pointer;
           z-index: 10;
+          display: none;
         `,
         'data-edge-id': edge.id,
         'data-row-index': index,
@@ -460,25 +464,140 @@ export function applyBioFabricLayout(
       
       // Right chevron (end of row)
       const rightChevron = h('i', {
-        class: 'fa-solid fa-chevron-left row-marker row-marker-right',
+        class: 'fa-solid fa-circle-chevron-left row-marker row-marker-right',
         style: `
           position: absolute;
           right: 0;
           top: ${rowY}px;
           transform: translateY(-50%);
           color: #666;
-          font-size: 16px;
-          pointer-events: none;
+          font-size: 24px;
+          pointer-events: auto;
+          cursor: pointer;
           z-index: 10;
+          display: none;
         `,
         'data-edge-id': edge.id,
         'data-row-index': index,
       }, []);
       
+      // Add click handler for left arrow - scroll to show the edge
+      leftChevron.addEventListener('click', () => {
+        if (leftPanel) {
+          const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
+          const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
+          const edgeWidth = edgeRight - edgeLeft;
+          const panelWidth = leftPanel.getBoundingClientRect().width;
+          
+          // Calculate scroll position to center the edge or show it from the left
+          let targetScroll;
+          if (edgeWidth < panelWidth) {
+            // Edge fits in viewport - center it
+            targetScroll = edgeLeft - (panelWidth - edgeWidth) / 2;
+          } else {
+            // Edge is larger than viewport - show from left edge
+            targetScroll = edgeLeft - 50; // Small padding
+          }
+          
+          leftPanel.scrollTo({
+            left: Math.max(0, targetScroll),
+            behavior: 'smooth',
+          });
+        }
+      });
+      
+      // Add click handler for right arrow - scroll to show the edge
+      rightChevron.addEventListener('click', () => {
+        if (leftPanel) {
+          const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
+          const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
+          const edgeWidth = edgeRight - edgeLeft;
+          const panelWidth = leftPanel.getBoundingClientRect().width;
+          
+          // Calculate scroll position to center the edge or show it from the right
+          let targetScroll;
+          if (edgeWidth < panelWidth) {
+            // Edge fits in viewport - center it
+            targetScroll = edgeLeft - (panelWidth - edgeWidth) / 2;
+          } else {
+            // Edge is larger than viewport - show from left edge
+            targetScroll = edgeLeft - 50; // Small padding
+          }
+          
+          leftPanel.scrollTo({
+            left: Math.max(0, targetScroll),
+            behavior: 'smooth',
+          });
+        }
+      });
+      
       markersContainer.appendChild(leftChevron);
       markersContainer.appendChild(rightChevron);
+      
+      // Store references to markers for this edge
+      rowMarkers.set(edge.id, {
+        leftChevron,
+        rightChevron,
+        edge,
+      });
     });
   }
+  
+  /**
+   * Function to determine if an edge is visible in the viewport and which side it's on
+   * @param {Object} edge - The edge data object
+   * @returns {Object} - { isVisible: boolean, side: 'left' | 'right' | null }
+   */
+  const checkEdgeVisibility = (edge) => {
+    if (!leftPanel) return { isVisible: true, side: null };
+    
+    const panelRect = leftPanel.getBoundingClientRect();
+    const scrollLeft = leftPanel.scrollLeft;
+    const viewportLeft = scrollLeft;
+    const viewportRight = scrollLeft + panelRect.width;
+    
+    const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
+    const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
+    
+    // Check if any part of the edge is visible in the viewport
+    const isAnyPartVisible = !(edgeRight < viewportLeft || edgeLeft > viewportRight);
+    
+    if (isAnyPartVisible) {
+      // If any part of the edge is visible, don't show arrows
+      return { isVisible: true, side: null };
+    }
+    
+    // Edge is completely outside viewport - determine which side
+    if (edgeRight < viewportLeft) {
+      return { isVisible: false, side: 'left' };
+    } else {
+      return { isVisible: false, side: 'right' };
+    }
+  };
+  
+  /**
+   * Update arrow visibility for all rows based on current scroll position
+   */
+  const updateArrowVisibility = () => {
+    rowMarkers.forEach((markers) => {
+      const { leftChevron, rightChevron, edge } = markers;
+      const { isVisible, side } = checkEdgeVisibility(edge);
+      
+      if (isVisible) {
+        // Edge has at least some part visible, hide both arrows
+        leftChevron.style.display = 'none';
+        rightChevron.style.display = 'none';
+      } else if (side === 'left') {
+        // Edge is completely to the left of viewport
+        leftChevron.style.display = 'block';
+        rightChevron.style.display = 'none';
+      } else if (side === 'right') {
+        // Edge is completely to the right of viewport
+        leftChevron.style.display = 'none';
+        rightChevron.style.display = 'block';
+      }
+    });
+  };
 
   // Render original nodes in the fixed container
   fixedG.selectAll('g.biofabric-node').remove();
@@ -1237,13 +1356,15 @@ export function applyBioFabricLayout(
     const syncHorizontalScroll = () => {
       const scrollLeft = leftPanel.scrollLeft;
       fixedNodesContainer.style.transform = `translateX(-${scrollLeft}px)`;
+      // Update arrow visibility on scroll
+      updateArrowVisibility();
     };
 
     // Remove existing listeners to avoid duplicates
     leftPanel.removeEventListener('scroll', syncHorizontalScroll);
     leftPanel.addEventListener('scroll', syncHorizontalScroll, { passive: true });
 
-    // Initial sync
+    // Initial sync and arrow visibility update
     syncHorizontalScroll();
   }
 
@@ -1273,4 +1394,18 @@ export function applyBioFabricLayout(
       }
     });
   }
+  
+  // Update arrow visibility on window resize
+  const handleResize = () => {
+    updateArrowVisibility();
+  };
+  
+  window.addEventListener('resize', handleResize);
+  
+  // Initial arrow visibility check after a short delay to ensure layout is complete
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      updateArrowVisibility();
+    }, 100);
+  });
 }
