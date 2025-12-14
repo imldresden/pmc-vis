@@ -310,8 +310,7 @@
 }
 
 .biofabric-edge-boxes-panel {
-  width: 350px;
-  min-width: 350px;
+  width: 300px;
   position: relative;
   height: 100%;
   border-left: 1px solid #ddd;
@@ -390,8 +389,7 @@
 
 .edge-box-label {
   flex: 0 0 auto;
-  min-width: 80px;
-  max-width: 120px;
+  width: 72px;
   padding: 2px 3px;
   background-color: #f5f5f5;
   border-radius: 3px;
