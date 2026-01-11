@@ -79,7 +79,7 @@
   top: 35px;
   bottom: 0;
   width: var(--config-width);
-  z-index: 10;
+  z-index: 100;
   transition: width 0.5s ease;
   overflow-y: auto;
   overflow-x: hidden;
@@ -146,7 +146,7 @@
 
 .overview-config-toggle {
   position: absolute;
-  z-index: 50;
+  z-index: 101;
   top: calc(var(--nav-height) + 20px);
   cursor: pointer;
 
@@ -296,7 +296,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1;
+  z-index: 16;
   background-color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   margin-bottom: 0;
@@ -326,7 +326,7 @@
   left: 0;
   width: auto;
   height: auto;
-  z-index: 5;
+  z-index: 20;
   display: none;
   pointer-events: none; /* Allow clicks to pass through to cytoscape */
 }
@@ -486,4 +486,16 @@
 .row-marker-right {
   right: 0;
   padding-right: 8px;
+}
+
+/* Column chevron markers */
+.column-marker {
+  position: absolute;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  pointer-events: auto;
+}
+
+.column-marker:hover {
+  opacity: 1;
 }

@@ -4,9 +4,8 @@ import d3 from '../../imports/import-d3.js';
 // ============================================================================
 // LAYOUT CONSTANTS - Spacings
 // ============================================================================
-const NODE_SPACING = 75;
-// const EDGE_SPACING = 45;
-const EDGE_SPACING = 45;
+const NODE_SPACING = 80;
+const EDGE_SPACING = 60;
 const START_OFFSET = 100;
 const NODE_SIZE = 8;
 const NODE_SIZE_FOR_SELECTION = 12;
@@ -150,10 +149,11 @@ export function applyBioFabricLayout(
   const numEdgeRows = sortedEdges.length;
 
   contentWidth = START_OFFSET + numNodes * NODE_SPACING + START_OFFSET;
-  // Adjust content height: nodes are fixed, so edges start from top
-  contentHeight = (numEdgeRows + 1) * EDGE_SPACING +  200;
+  // Adjust content height: nodes are fixed at START_OFFSET (100px), edges start after that
+  contentHeight = START_OFFSET + (numEdgeRows + 1) * EDGE_SPACING + 200;
   totalWidth = contentWidth; // Use content width to fit content without extra space
-  totalHeight = Math.max(contentHeight, window.innerHeight);
+  // IMPORTANT: Use max of contentHeight and window.innerHeight to ensure vertical scrolling is possible
+  totalHeight = Math.max(contentHeight, window.innerHeight + 500); // Add extra space for scrolling
 
   edgeData = sortedEdges
     .map((edge, originalIndex) => {
@@ -438,6 +438,7 @@ export function applyBioFabricLayout(
 
   // Add chevron markers for each row
   const rowMarkers = new Map(); // Store markers for each edge
+  const columnMarkers = new Map(); // Store markers for each column
   
   if (markersContainer) {
     edgeData.forEach((edge, index) => {
@@ -596,6 +597,44 @@ export function applyBioFabricLayout(
         leftChevron.style.display = 'none';
         rightChevron.style.display = 'block';
       }
+    });
+    
+    // Update column markers visibility - check scroll on layoutContainer (vertical scroll)
+    if (!layoutContainer) {
+      return;
+    }
+    
+    const scrollTop = layoutContainer.scrollTop;
+    const viewportHeight = layoutContainer.getBoundingClientRect().height;
+    const viewportTop = scrollTop;
+    const viewportBottom = scrollTop + viewportHeight;
+    
+    columnMarkers.forEach((markers, nodeId) => {
+      const { topChevron, bottomChevron, nodeIndex, colX } = markers;
+      
+      // Find all edges that involve this node (as source or target)
+      const nodeEdges = edgeData.filter(edge => 
+        edge.sourceId === nodeId || edge.targetId === nodeId
+      );
+      
+      if (nodeEdges.length === 0) {
+        // No edges for this column, hide both arrows
+        topChevron.style.display = 'none';
+        bottomChevron.style.display = 'none';
+        return;
+      }
+      
+      // Check if any edges are above the viewport
+      const hasEdgesAbove = nodeEdges.some(edge => edge.edgeRowY < viewportTop);
+      
+      // Check if any edges are below the viewport
+      const hasEdgesBelow = nodeEdges.some(edge => edge.edgeRowY > viewportBottom);
+      
+      // Show top arrow if there are edges above the viewport
+      topChevron.style.display = hasEdgesAbove ? 'block' : 'none';
+      
+      // Show bottom arrow if there are edges below the viewport
+      bottomChevron.style.display = hasEdgesBelow ? 'block' : 'none';
     });
   };
 
@@ -1329,6 +1368,111 @@ export function applyBioFabricLayout(
     });
   });
 
+  // Add chevron markers for each column
+  sortedNodes.forEach((node, nodeIndex) => {
+    const colX = START_OFFSET + nodeIndex * NODE_SPACING;
+    
+    // Top chevron (chevron-down icon)
+    const topChevron = h('i', {
+      class: 'fa-solid fa-circle-chevron-down column-marker column-marker-top',
+      style: `
+        position: absolute;
+        left: ${colX}px;
+        top: 128px;
+        transform: translateX(-50%);
+        color: #666;
+        font-size: 24px;
+        pointer-events: auto;
+        cursor: pointer;
+        z-index: 10;
+        display: none;
+      `,
+      'data-node-id': node.id,
+      'data-node-index': nodeIndex,
+    }, []);
+    
+    // Bottom chevron (chevron-up icon)
+    const bottomChevron = h('i', {
+      class: 'fa-solid fa-circle-chevron-up column-marker column-marker-bottom',
+      style: `
+        position: absolute;
+        left: ${colX}px;
+        top: ${window.innerHeight - 28}px;
+        transform: translateX(-50%);
+        color: #666;
+        font-size: 24px;
+        pointer-events: auto;
+        cursor: pointer;
+        z-index: 10;
+        display: none;
+      `,
+      'data-node-id': node.id,
+      'data-node-index': nodeIndex,
+    }, []);
+    
+    // Add click handler for top chevron - scroll to topmost edge in this column
+    topChevron.addEventListener('click', () => {
+      if (layoutContainer) {
+        const nodeEdges = edgeData.filter(edge => 
+          edge.sourceId === node.id || edge.targetId === node.id
+        );
+        
+        if (nodeEdges.length > 0) {
+          // Find the topmost edge (minimum edgeRowY)
+          const topmostEdge = nodeEdges.reduce((min, edge) => 
+            edge.edgeRowY < min.edgeRowY ? edge : min
+          );
+          
+          // Scroll to position the topmost edge near the top of the viewport (with some padding)
+          const scrollPadding = 200; // Padding to show content above the edge
+          const targetScroll = Math.max(0, topmostEdge.edgeRowY - scrollPadding);
+          
+          layoutContainer.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth',
+          });
+        }
+      }
+    });
+    
+    // Add click handler for bottom chevron - scroll to bottommost edge in this column
+    bottomChevron.addEventListener('click', () => {
+      if (layoutContainer) {
+        const nodeEdges = edgeData.filter(edge => 
+          edge.sourceId === node.id || edge.targetId === node.id
+        );
+        
+        if (nodeEdges.length > 0) {
+          // Find the bottommost edge (maximum edgeRowY)
+          const bottommostEdge = nodeEdges.reduce((max, edge) => 
+            edge.edgeRowY > max.edgeRowY ? edge : max
+          );
+          
+          // Scroll to position the bottommost edge near the bottom of the viewport (with some padding)
+          const viewportHeight = layoutContainer.getBoundingClientRect().height;
+          const scrollPadding = 200; // Padding to show content below the edge
+          const targetScroll = Math.max(0, bottommostEdge.edgeRowY - viewportHeight + scrollPadding);
+          
+          layoutContainer.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth',
+          });
+        }
+      }
+    });
+    
+    fixedNodesContainer.appendChild(topChevron);
+    fixedNodesContainer.appendChild(bottomChevron);
+    
+    // Store references to markers for this column
+    columnMarkers.set(node.id, {
+      topChevron,
+      bottomChevron,
+      nodeIndex,
+      colX,
+    });
+  });
+
   // Set container height dynamically based on content
   svgContainer.style.height = `${totalHeight}px`;
   svgContainer.style.width = `${totalWidth}px`;
@@ -1352,20 +1496,31 @@ export function applyBioFabricLayout(
   }
 
   // Sync horizontal scrolling between graph panel and fixed nodes container
+  // Also listen for vertical scroll on layoutContainer to update column arrow visibility
   if (leftPanel && fixedNodesContainer) {
-    const syncHorizontalScroll = () => {
+    const syncScroll = () => {
       const scrollLeft = leftPanel.scrollLeft;
       fixedNodesContainer.style.transform = `translateX(-${scrollLeft}px)`;
-      // Update arrow visibility on scroll
+      // Update arrow visibility on any scroll (horizontal or vertical)
       updateArrowVisibility();
     };
 
     // Remove existing listeners to avoid duplicates
-    leftPanel.removeEventListener('scroll', syncHorizontalScroll);
-    leftPanel.addEventListener('scroll', syncHorizontalScroll, { passive: true });
+    leftPanel.removeEventListener('scroll', syncScroll);
+    leftPanel.addEventListener('scroll', syncScroll, { passive: true });
 
     // Initial sync and arrow visibility update
-    syncHorizontalScroll();
+    syncScroll();
+  }
+
+  // Listen for vertical scroll on layoutContainer to update column chevron visibility
+  if (layoutContainer) {
+    const handleVerticalScroll = () => {
+      updateArrowVisibility();
+    };
+
+    layoutContainer.removeEventListener('scroll', handleVerticalScroll);
+    layoutContainer.addEventListener('scroll', handleVerticalScroll, { passive: true });
   }
 
   const compactEdgeBoxesContainer = document.getElementById('edge-boxes-container');
