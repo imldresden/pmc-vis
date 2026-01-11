@@ -804,7 +804,7 @@ export function applyBioFabricLayout(
   fixedNodeSelection.on('mouseout', handleMouseOut);
 
   const updateNodeAppearance = () => {
-    const updateEachNode = function (event, d) {
+    const updateEachNode = function (d) {
       const isSelected = graphDataStore.isNodeSelected(d.nodeId);
       const isHighlighted = highlightedNodes.has(d.nodeId);
       const rect = d3.select(this).select('rect');
