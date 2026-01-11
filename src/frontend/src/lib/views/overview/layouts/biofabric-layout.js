@@ -171,7 +171,9 @@ export function applyBioFabricLayout(
       const sourceColX = START_OFFSET + sourceIndex * NODE_SPACING;
       const targetColX = START_OFFSET + targetIndex * NODE_SPACING;
 
-      const isDuplicateEdge = sourceNode.id.includes('DUPLICATE') || targetNode.id.includes('DUPLICATE');
+      // Only treat edges as duplicate when the TARGET node is a duplicate.
+      // This ensures panes spawned from a duplicate are styled as normal.
+      const isDuplicateEdge = targetNode.id.includes('DUPLICATE');
 
       return {
         id: edge.id,
