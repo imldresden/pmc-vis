@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2/dist/sweetalert2.all.min.js';
 import { overviewStylesheet } from '../../style/views/overview-cy-style.js';
 import { OKABE_ITO_COLORS } from '../../style/views/variables.js';
 import { h, t } from '../../utils/utils.js';
@@ -978,6 +979,7 @@ function makeOverviewSettings() {
     if (LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
       // For biofabric layout, get selection from data store
       finalSelectedIDs = graphDataStore.getSelectedNodeIds();
+      console.log('finalSelectedIDs: ', finalSelectedIDs);
     } else {
       // For compact layout, get selection from Cytoscape
       const selectedNodes = cy2.$('node:selected');
@@ -1014,6 +1016,39 @@ function makeOverviewSettings() {
   });
   $buttonDuplicate.addEventListener('click', async () => {
     ensureSelectionEmitted();
+    
+    let selectedCount = 0;
+    if (LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+      selectedCount = graphDataStore.getSelectedNodeIds().length;
+    } else {
+      const selectedNodes = cy2.$('node:selected');
+      selectedCount = selectedNodes.length;
+      if (selectedCount === 0) {
+        const allNodes = cy2.nodes();
+        allNodes.forEach(n => {
+          if (n.hasClass('selected')) {
+            selectedCount++;
+          }
+        });
+      }
+    }
+
+    if (selectedCount === 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No pane selected',
+        html: 'Please select exactly one pane to duplicate',
+      });
+      return;
+    } else if (selectedCount > 1) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Multiple panes selected',
+        html: 'Please select exactly one pane to duplicate',
+      });
+      return;
+    }
+    
     socket.emit('handle selection', 'duplicate');
   });
   $buttonExport.addEventListener('click', async () => {
@@ -1043,6 +1078,46 @@ function makeOverviewSettings() {
   });
   $collapsedButtonDuplicate.addEventListener('click', async () => {
     ensureSelectionEmitted();
+    
+    // Get the count of selected nodes
+    let selectedCount = 0;
+    if (LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+      selectedCount = graphDataStore.getSelectedNodeIds().length;
+    } else {
+      const selectedNodes = cy2.$('node:selected');
+      selectedCount = selectedNodes.length;
+      if (selectedCount === 0) {
+        // Also check for nodes with selected class
+        const allNodes = cy2.nodes();
+        allNodes.forEach(n => {
+          if (n.hasClass('selected')) {
+            selectedCount++;
+          }
+        });
+      }
+    }
+    
+    // Validate selection count
+    if (selectedCount === 0) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No pane selected',
+        html: 'Please select exactly one pane to duplicate',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+      return;
+    } else if (selectedCount > 1) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Multiple panes selected',
+        html: 'Please select exactly one pane to duplicate',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+      return;
+    }
+    
     socket.emit('handle selection', 'duplicate');
   });
   $collapsedButtonExport.addEventListener('click', async () => {
