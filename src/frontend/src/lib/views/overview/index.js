@@ -625,8 +625,9 @@ function onPaneAdded(newPaneData) {
   const spawnerNodes = newPaneData.spawnerNodes;
   const spawner = [];
 
+  const isDuplicate = paneId.includes('DUPLICATE');
+  
   if (paneId !== 'pane-0') {
-    const isDuplicate = paneId.includes('DUPLICATE');
     if (newPaneData.spawner && Array.isArray(newPaneData.spawner)) {
       // Handle multiple spawners (merged panes)
       newPaneData.spawner.forEach((spawnerId) => {
@@ -668,7 +669,16 @@ function onPaneAdded(newPaneData) {
 
   // Calculate level and item data before adding the node
   let level = 0;
-  if (newPaneData.spawner) {
+  
+  // For biofabric layout, duplicates should be added as the rightmost node
+  // This means they need the maximum level AND maximum item value
+  if (isDuplicate && LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+    const allNodes = graphDataStore.getAllNodes();
+    // Set level to the maximum level across all nodes
+    const maxLevel = allNodes.reduce((max, node) => Math.max(max, node.level || 0), 0);
+    level = maxLevel;
+  } else if (newPaneData.spawner) {
+    // Normal behavior: calculate level based on parent
     // Handle both single spawner and array of spawners (for merged panes)
     const spawners = Array.isArray(newPaneData.spawner)
       ? newPaneData.spawner
@@ -689,8 +699,17 @@ function onPaneAdded(newPaneData) {
     }
   }
 
-  const nodesAtLevel = graphDataStore.filterNodes(n => n.level === level);
-  const itemValue = nodesAtLevel.length + 1;
+  // Calculate item value
+  let itemValue;
+  if (isDuplicate && LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+    // For duplicates in biofabric, place at the end of the maximum level
+    const nodesAtMaxLevel = graphDataStore.filterNodes(n => n.level === level);
+    itemValue = nodesAtMaxLevel.length + 1;
+  } else {
+    // Normal behavior: add to the end of the current level
+    const nodesAtLevel = graphDataStore.filterNodes(n => n.level === level);
+    itemValue = nodesAtLevel.length + 1;
+  }
 
   let initialPosition = { x: 0, y: 0 };
 
