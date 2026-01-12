@@ -4,14 +4,6 @@ import { socket } from '../imports/import-socket.js';
 import { applyBioFabricLayout } from './layouts/biofabric-layout.js';
 import { graphDataStore } from './graph-data.js';
 
-let DISTANCE_BETWEEN_LEVELS = 180;
-let DISTANCE_BETWEEN_NODES_IN_LEVEL = 150;
-
-const INITIAL_VERTICAL_POSITION = {
-  X: 50,
-  Y: 50,
-};
-
 function applyLayout() {
   const biofabricLayoutContainer = document.getElementById('biofabric-layout-container');
 
@@ -166,60 +158,9 @@ function onPaneAdded(newPaneData) {
     }
   }
 
-  let level = 0;
-
-  if (isDuplicate) {
-    const allNodes = graphDataStore.getAllNodes();
-    const maxLevel = allNodes.reduce((max, node) => Math.max(max, node.level || 0), 0);
-    level = maxLevel;
-  } else if (newPaneData.spawner) {
-    const spawners = Array.isArray(newPaneData.spawner)
-      ? newPaneData.spawner
-      : [newPaneData.spawner];
-
-    let maxParentLevel = -1;
-    spawners.forEach(spawnerId => {
-      const parentNode = graphDataStore.getNode(spawnerId);
-      if (parentNode) {
-        const parentLevel = parentNode.level || 0;
-        maxParentLevel = Math.max(maxParentLevel, parentLevel);
-      }
-    });
-
-    if (maxParentLevel >= 0) {
-      level = maxParentLevel + 1;
-    }
-  }
-
-  let itemValue;
-  if (isDuplicate) {
-    const nodesAtMaxLevel = graphDataStore.filterNodes(n => n.level === level);
-    itemValue = nodesAtMaxLevel.length + 1;
-  } else {
-    const nodesAtLevel = graphDataStore.filterNodes(n => n.level === level);
-    itemValue = nodesAtLevel.length + 1;
-  }
-
-  let initialPosition = { x: 0, y: 0 };
-
-  const rowY = level * DISTANCE_BETWEEN_LEVELS;
-  const nodeX = (itemValue - 1) * DISTANCE_BETWEEN_NODES_IN_LEVEL;
-
-  initialPosition = {
-    x: nodeX + INITIAL_VERTICAL_POSITION.X,
-    y: rowY + INITIAL_VERTICAL_POSITION.Y,
-  };
-
   graphDataStore.addNode(paneId, {
     id: paneId,
     label: paneId,
-    level: level,
-    item: itemValue,
-    position: initialPosition,
-    style: {
-      opacity: 0.3,
-      shape: 'rectangle',
-    },
   });
 
   spawner.forEach(edgeData => {
