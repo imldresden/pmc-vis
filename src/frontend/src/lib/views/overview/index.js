@@ -833,6 +833,8 @@ function removeNode(id) {
 
   // Update edge boxes after removal
   renderEdgeBoxesWrapper(cy2);
+
+  applyLayout(cy2);
 }
 
 function bindListeners(cy2) {
@@ -1031,6 +1033,21 @@ function makeOverviewSettings() {
   });
   $buttonRemove.addEventListener('click', async () => {
     ensureSelectionEmitted();
+    
+    // Remove selected nodes from the overview
+    let selectedNodeIds = [];
+    if (LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+      selectedNodeIds = graphDataStore.getSelectedNodeIds();
+    } else {
+      const selectedNodes = cy2.$('node:selected');
+      selectedNodeIds = selectedNodes.map(node => node.id());
+    }
+    
+    // Remove each selected node from the graph
+    selectedNodeIds.forEach(nodeId => {
+      removeNode(nodeId);
+    });
+    
     socket.emit('handle selection', 'delete');
   });
   $buttonDuplicate.addEventListener('click', async () => {
@@ -1093,6 +1110,21 @@ function makeOverviewSettings() {
   });
   $collapsedButtonRemove.addEventListener('click', async () => {
     ensureSelectionEmitted();
+    
+    // Remove selected nodes from the overview
+    let selectedNodeIds = [];
+    if (LAYOUT_TYPE === LAYOUT_TYPES.BIOFABRIC) {
+      selectedNodeIds = graphDataStore.getSelectedNodeIds();
+    } else {
+      const selectedNodes = cy2.$('node:selected');
+      selectedNodeIds = selectedNodes.map(node => node.id());
+    }
+    
+    // Remove each selected node from the graph
+    selectedNodeIds.forEach(nodeId => {
+      removeNode(nodeId);
+    });
+    
     socket.emit('handle selection', 'delete');
   });
   $collapsedButtonDuplicate.addEventListener('click', async () => {
