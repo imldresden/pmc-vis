@@ -27,13 +27,6 @@
   transition: width 0.5s ease;
 }
 
-#compact-layout-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: auto;
-}
-
 #biofabric-layout-container {
   width: 100%;
   height: 100%;
@@ -66,13 +59,6 @@
   background-color: #a0aec0;
 }
 
-.overview-page #cy-overview {
-  min-width: 100%;
-  min-height: 100%;
-  border: none;
-}
-
-/* Config sidebar positioning for overview page */
 .overview-page .config {
   position: absolute;
   right: 0;
@@ -88,17 +74,14 @@
   padding: 16px;
 }
 
-/* Normal content - visible by default */
 .overview-config-normal-content {
   display: block;
 }
 
-/* Collapsed content - hidden by default */
 .overview-config-collapsed-content {
   display: none;
 }
 
-/* When config has collapsed class, hide normal content and show collapsed content */
 .overview-page .config.collapsed .overview-config-normal-content {
   display: none;
 }
@@ -107,12 +90,10 @@
   display: block;
 }
 
-/* Hide the config heading when collapsed */
 .overview-page .config.collapsed #overview-config-span {
   display: none;
 }
 
-/* Collapsed button rows - one button per row */
 .collapsed-button-row {
   display: flex;
   justify-content: center;
@@ -134,7 +115,6 @@
   margin: 0;
 }
 
-/* Collapsed sidebar - icon only mode */
 .overview-page.overview-config-collapsed .config {
   width: var(--overview-config-closed-width);
   transition: width 0.5s ease;
@@ -171,7 +151,6 @@
   transform: rotate(180deg);
 }
 
-/* Icon-only sidebar content */
 #overview-config-icons {
   display: none;
   flex-direction: column;
@@ -210,7 +189,6 @@
   color: var(--dark-text-color);
 }
 
-/* Tooltip for icons */
 .overview-config-icon::after {
   content: attr(title);
   position: absolute;
@@ -263,7 +241,6 @@
   color: var(--primary-color);
 }
 
-/* Biofabric panels */
 .biofabric-graph-panel {
   flex: 1;
   position: relative;
@@ -318,7 +295,6 @@
   overflow: visible;
 }
 
-/* Edge Boxes Container - only visible in vertical layout */
 .edge-boxes-container {
   position: absolute;
   top: 0;
@@ -327,10 +303,9 @@
   height: auto;
   z-index: 20;
   display: none;
-  pointer-events: none; /* Allow clicks to pass through to cytoscape */
+  pointer-events: none;
 }
 
-/* Biofabric edge boxes container - different styling */
 #biofabric-edge-boxes-container {
   position: relative !important;
   width: 100% !important;
@@ -352,14 +327,13 @@
   gap: 3px;
   align-items: center;
   min-height: 32px;
-  pointer-events: auto; /* Re-enable pointer events for the box itself */
+  pointer-events: auto;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   cursor: pointer;
   box-sizing: border-box;
 }
 
-/* Edge boxes in biofabric right panel */
 #biofabric-edge-boxes-container .edge-box {
   width: 90%;
   max-width: 90%;
@@ -368,14 +342,11 @@
 }
 
 .edge-box-horizontal {
-  /* For horizontal layout, boxes are rotated 90 degrees */
-  /* The width and height are swapped visually after rotation */
   width: 300px;
   min-height: 40px;
 }
 
 .edge-box-vertical-rotated {
-  /* For bio fabric vertical mode: rotate 90 degrees counter-clockwise */
   transform: rotate(-90deg);
   transform-origin: center center;
 }
@@ -428,7 +399,6 @@
   color: #999;
 }
 
-/* Highlighted edge box styles */
 .edge-box-highlighted {
   border-color: #3498db !important;
   box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3) !important;
@@ -442,7 +412,6 @@
   background-color: rgba(52, 152, 219, 0.12) !important;
 }
 
-/* Selected edge box styles - same as highlighted */
 .edge-box-selected {
   border-color: #3498db !important;
   box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3) !important;
@@ -487,7 +456,6 @@
   padding-right: 8px;
 }
 
-/* Column chevron markers */
 .column-marker {
   position: absolute;
   opacity: 0.6;
