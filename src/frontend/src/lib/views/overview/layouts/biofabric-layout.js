@@ -1,18 +1,11 @@
 import { h, t } from '../../../utils/utils.js';
 import d3 from '../../imports/import-d3.js';
-
-// ============================================================================
-// LAYOUT CONSTANTS - Spacings
-// ============================================================================
 const NODE_SPACING = 80;
 const EDGE_SPACING = 60;
 const START_OFFSET = 100;
 const NODE_SIZE = 8;
 const NODE_SIZE_FOR_SELECTION = 12;
 
-// ============================================================================
-// COLOR CONSTANTS
-// ============================================================================
 const COLOR_EDGE_DEFAULT = '#666';
 const COLOR_EDGE_DUPLICATE = '#8e44ad';
 const COLOR_EDGE_MERGE = '#e67e22';
@@ -21,29 +14,98 @@ const COLOR_NODE_FILL = '#95a5a6';
 const COLOR_NODE_STROKE_DEFAULT = '#333';
 const COLOR_HIGHLIGHT_SELECTED = '#0066ff';
 
-// ============================================================================
-// STROKE WIDTH CONSTANTS
-// ============================================================================
 const STROKE_WIDTH_EDGE_DEFAULT = 2;
 const STROKE_WIDTH_EDGE_MERGE = 2.5;
 const STROKE_WIDTH_NODE_HOVER = 3;
 const STROKE_WIDTH_HIGHLIGHTED = 4;
 
-// ============================================================================
-// OPACITY CONSTANTS
-// ============================================================================
 const OPACITY_EDGE_CONNECTOR_DEFAULT = 0.2;
 const OPACITY_EDGE_CONNECTOR_HIGHLIGHTED = 0.5;
 const OPACITY_NODE_DEFAULT = 0.8;
 const OPACITY_FULL = 1;
 
-// ============================================================================
-// STROKE DASH ARRAY CONSTANTS
-// ============================================================================
 const DASH_ARRAY_DUPLICATE_EDGE = '3,3';
 const DASH_ARRAY_MERGE_EDGE = '2,3';
 
-// ============================================================================
+function edgeStrokeProps(edgeData) {
+  if (edgeData.isDuplicateEdge) {
+    return {
+      color: COLOR_EDGE_DUPLICATE,
+      width: STROKE_WIDTH_EDGE_DEFAULT,
+      dash: DASH_ARRAY_DUPLICATE_EDGE,
+    };
+  }
+  if (edgeData.isMergeEdge) {
+    return {
+      color: COLOR_EDGE_MERGE,
+      width: STROKE_WIDTH_EDGE_MERGE,
+      dash: DASH_ARRAY_MERGE_EDGE,
+    };
+  }
+  return { color: COLOR_EDGE_DEFAULT, width: STROKE_WIDTH_EDGE_DEFAULT, dash: null };
+}
+
+function applyDefaultEdgeStyle(svgLines) {
+  const props = edgeStrokeProps(svgLines.edgeData);
+  svgLines.mainLine
+    .attr('stroke', props.color)
+    .attr('stroke-width', props.width)
+    .attr('opacity', OPACITY_FULL)
+    .classed('edge-svg-selected', false)
+    .classed('edge-svg-highlighted', false);
+  if (props.dash) svgLines.mainLine.attr('stroke-dasharray', props.dash);
+  svgLines.sourceConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
+    .classed('edge-svg-selected', false)
+    .classed('edge-svg-highlighted', false);
+  svgLines.targetConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
+    .classed('edge-svg-selected', false)
+    .classed('edge-svg-highlighted', false);
+}
+
+function applySelectedEdgeStyle(svgLines) {
+  svgLines.mainLine
+    .attr('stroke', COLOR_HIGHLIGHT_SELECTED)
+    .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
+    .attr('opacity', OPACITY_FULL)
+    .classed('edge-svg-selected', true);
+  const props = edgeStrokeProps(svgLines.edgeData);
+  if (svgLines.edgeData.isMergeEdge || svgLines.edgeData.isDuplicateEdge) {
+    svgLines.mainLine.attr('stroke-dasharray', props.dash);
+  }
+  svgLines.sourceConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+    .classed('edge-svg-selected', true);
+  svgLines.targetConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+    .classed('edge-svg-selected', true);
+}
+
+function applyHighlightedEdgeStyle(svgLines) {
+  svgLines.mainLine
+    .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
+    .attr('opacity', OPACITY_FULL)
+    .classed('edge-svg-highlighted', true);
+  svgLines.sourceConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+    .classed('edge-svg-highlighted', true);
+  svgLines.targetConnector
+    .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+    .classed('edge-svg-highlighted', true);
+}
+
+function isEdgeForNode(edge, nodeId) {
+  return edge.sourceId === nodeId || edge.targetId === nodeId;
+}
+
+function getTopmostEdge(edges) {
+  return edges.reduce((min, e) => (e.edgeRowY < min.edgeRowY ? e : min));
+}
+
+function getBottommostEdge(edges) {
+  return edges.reduce((max, e) => (e.edgeRowY > max.edgeRowY ? e : max));
+}
 
 export function applyBioFabricLayout(
   graphDataStore,
@@ -61,7 +123,6 @@ export function applyBioFabricLayout(
     cyContainer.style.display = 'none';
   }
 
-  // Get containers from HTML
   const layoutContainer = document.getElementById('biofabric-layout-container');
   const leftPanel = document.getElementById('biofabric-graph-panel');
   const svgContainer = document.getElementById('d3-biofabric-container');
@@ -72,38 +133,32 @@ export function applyBioFabricLayout(
     return;
   }
 
-  // Create horizontal scroll wrapper if it doesn't exist
   let horizontalScrollWrapper = document.getElementById('biofabric-horizontal-scroll-wrapper');
   if (!horizontalScrollWrapper) {
     horizontalScrollWrapper = h('div', {
       id: 'biofabric-horizontal-scroll-wrapper',
       class: 'biofabric-horizontal-scroll-wrapper',
     }, []);
-    // Move existing svgContainer into wrapper if it exists
     if (svgContainer && svgContainer.parentElement === leftPanel) {
       leftPanel.removeChild(svgContainer);
     }
     leftPanel.appendChild(horizontalScrollWrapper);
   }
 
-  // Create or get fixed nodes container - place it as a direct child of layout container
   let fixedNodesContainer = document.getElementById('biofabric-fixed-nodes-container');
   if (!fixedNodesContainer) {
     fixedNodesContainer = h('div', {
       id: 'biofabric-fixed-nodes-container',
       class: 'biofabric-fixed-nodes-container',
     }, []);
-    // Insert before leftPanel so it's a sibling, not a child
     layoutContainer.insertBefore(fixedNodesContainer, leftPanel);
   } else if (fixedNodesContainer.parentElement !== layoutContainer) {
-    // Ensure it's a direct child of layout container, not inside graph panel
     if (fixedNodesContainer.parentElement) {
       fixedNodesContainer.parentElement.removeChild(fixedNodesContainer);
     }
     layoutContainer.insertBefore(fixedNodesContainer, leftPanel);
   }
 
-  // Ensure svgContainer is inside the wrapper (move it if needed)
   if (svgContainer && svgContainer.parentElement !== horizontalScrollWrapper) {
     if (svgContainer.parentElement) {
       svgContainer.parentElement.removeChild(svgContainer);
@@ -111,13 +166,11 @@ export function applyBioFabricLayout(
     horizontalScrollWrapper.appendChild(svgContainer);
   }
 
-  // Clear containers
   fixedNodesContainer.innerHTML = '';
   fixedNodesContainer.style.display = 'block';
   svgContainer.innerHTML = '';
   svgContainer.style.display = 'block';
 
-  // Get markers container
   const markersContainer = document.getElementById('biofabric-graph-markers');
   if (markersContainer) {
     markersContainer.innerHTML = '';
@@ -149,11 +202,9 @@ export function applyBioFabricLayout(
   const numEdgeRows = sortedEdges.length;
 
   contentWidth = START_OFFSET + numNodes * NODE_SPACING + START_OFFSET;
-  // Adjust content height: nodes are fixed at START_OFFSET (100px), edges start after that
   contentHeight = START_OFFSET + (numEdgeRows + 1) * EDGE_SPACING + 200;
-  totalWidth = contentWidth; // Use content width to fit content without extra space
-  // IMPORTANT: Use max of contentHeight and window.innerHeight to ensure vertical scrolling is possible
-  totalHeight = Math.max(contentHeight, window.innerHeight + 500); // Add extra space for scrolling
+  totalWidth = contentWidth;
+  totalHeight = Math.max(contentHeight, window.innerHeight + 500);
 
   edgeData = sortedEdges
     .map((edge, originalIndex) => {
@@ -166,13 +217,10 @@ export function applyBioFabricLayout(
         return null;
       }
 
-      // Edge rows start from top (after fixed nodes area)
       const edgeRowY = START_OFFSET + (originalIndex + 1) * EDGE_SPACING;
       const sourceColX = START_OFFSET + sourceIndex * NODE_SPACING;
       const targetColX = START_OFFSET + targetIndex * NODE_SPACING;
 
-      // Only treat edges as duplicate when the TARGET node is a duplicate.
-      // This ensures panes spawned from a duplicate are styled as normal.
       const isDuplicateEdge = targetNode.id.includes('DUPLICATE');
 
       return {
@@ -211,7 +259,6 @@ export function applyBioFabricLayout(
     });
   });
 
-  // Create fixed SVG for pinned nodes
   const fixedSvgSelection = d3.select(fixedNodesContainer);
   fixedSvgSelection.selectAll('svg').remove();
 
@@ -255,22 +302,11 @@ export function applyBioFabricLayout(
   edgeData.forEach(edge => {
     const isMergeEdge = edge.isMergeEdge;
     const isDuplicateEdge = edge.isDuplicateEdge;
-
-    let mainStrokeColor = COLOR_EDGE_DEFAULT;
-    let mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-    let mainStrokeDashArray = null;
-
-    if (isDuplicateEdge) {
-      mainStrokeColor = COLOR_EDGE_DUPLICATE;
-      mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-      mainStrokeDashArray = DASH_ARRAY_DUPLICATE_EDGE;
-    } else if (isMergeEdge) {
-      mainStrokeColor = COLOR_EDGE_MERGE;
-      mainStrokeWidth = STROKE_WIDTH_EDGE_MERGE;
-      mainStrokeDashArray = DASH_ARRAY_MERGE_EDGE;
-    }
-
-    // Connector lines start from START_OFFSET to align with fixed nodes at top
+    const {
+      color: mainStrokeColor,
+      width: mainStrokeWidth,
+      dash: mainStrokeDashArray,
+    } = edgeStrokeProps({ isDuplicateEdge, isMergeEdge });
     const sourceConnector = g.append('line')
       .attr('x1', edge.sourceColX)
       .attr('y1', START_OFFSET)
@@ -292,11 +328,7 @@ export function applyBioFabricLayout(
       .attr('class', 'edge-main-line')
       .attr('data-edge-id', edge.id);
 
-    if (mainStrokeDashArray) {
-      mainLine.attr('stroke-dasharray', mainStrokeDashArray);
-    }
-
-    // Target connector goes from edge row back to START_OFFSET (where fixed nodes are)
+    if (mainStrokeDashArray) mainLine.attr('stroke-dasharray', mainStrokeDashArray);
     const targetConnector = g.append('line')
       .attr('x1', edge.targetColX)
       .attr('y1', edge.edgeRowY)
@@ -438,15 +470,13 @@ export function applyBioFabricLayout(
     .attr('stroke-width', STROKE_WIDTH_EDGE_DEFAULT)
     .attr('rx', 2);
 
-  // Add chevron markers for each row
-  const rowMarkers = new Map(); // Store markers for each edge
-  const columnMarkers = new Map(); // Store markers for each column
-  
+  const rowMarkers = new Map();
+  const columnMarkers = new Map();
+
   if (markersContainer) {
     edgeData.forEach((edge, index) => {
       const rowY = edge.edgeRowY;
-      
-      // Left chevron (start of row)
+
       const leftChevron = h('i', {
         class: 'fa-solid fa-circle-chevron-right row-marker row-marker-left',
         style: `
@@ -464,8 +494,7 @@ export function applyBioFabricLayout(
         'data-edge-id': edge.id,
         'data-row-index': index,
       }, []);
-      
-      // Right chevron (end of row)
+
       const rightChevron = h('i', {
         class: 'fa-solid fa-circle-chevron-left row-marker row-marker-right',
         style: `
@@ -483,61 +512,50 @@ export function applyBioFabricLayout(
         'data-edge-id': edge.id,
         'data-row-index': index,
       }, []);
-      
-      // Add click handler for left arrow - scroll to show the edge
+
       leftChevron.addEventListener('click', () => {
         if (leftPanel) {
           const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
           const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
           const edgeWidth = edgeRight - edgeLeft;
           const panelWidth = leftPanel.getBoundingClientRect().width;
-          
-          // Calculate scroll position to center the edge or show it from the left
           let targetScroll;
           if (edgeWidth < panelWidth) {
-            // Edge fits in viewport - center it
             targetScroll = edgeLeft - (panelWidth - edgeWidth) / 2;
           } else {
-            // Edge is larger than viewport - show from left edge
             targetScroll = edgeLeft - 50; // Small padding
           }
-          
+
           leftPanel.scrollTo({
             left: Math.max(0, targetScroll),
             behavior: 'smooth',
           });
         }
       });
-      
-      // Add click handler for right arrow - scroll to show the edge
+
       rightChevron.addEventListener('click', () => {
         if (leftPanel) {
           const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
           const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
           const edgeWidth = edgeRight - edgeLeft;
           const panelWidth = leftPanel.getBoundingClientRect().width;
-          
-          // Calculate scroll position to center the edge or show it from the right
           let targetScroll;
           if (edgeWidth < panelWidth) {
-            // Edge fits in viewport - center it
             targetScroll = edgeLeft - (panelWidth - edgeWidth) / 2;
           } else {
-            // Edge is larger than viewport - show from left edge
             targetScroll = edgeLeft - 50; // Small padding
           }
-          
+
           leftPanel.scrollTo({
             left: Math.max(0, targetScroll),
             behavior: 'smooth',
           });
         }
       });
-      
+
       markersContainer.appendChild(leftChevron);
       markersContainer.appendChild(rightChevron);
-      
-      // Store references to markers for this edge
+
       rowMarkers.set(edge.id, {
         leftChevron,
         rightChevron,
@@ -545,102 +563,75 @@ export function applyBioFabricLayout(
       });
     });
   }
-  
-  /**
-   * Function to determine if an edge is visible in the viewport and which side it's on
-   * @param {Object} edge - The edge data object
-   * @returns {Object} - { isVisible: boolean, side: 'left' | 'right' | null }
-   */
   const checkEdgeVisibility = (edge) => {
     if (!leftPanel) return { isVisible: true, side: null };
-    
+
     const panelRect = leftPanel.getBoundingClientRect();
     const scrollLeft = leftPanel.scrollLeft;
     const viewportLeft = scrollLeft;
     const viewportRight = scrollLeft + panelRect.width;
-    
+
     const edgeLeft = Math.min(edge.sourceColX, edge.targetColX);
     const edgeRight = Math.max(edge.sourceColX, edge.targetColX);
-    
-    // Check if any part of the edge is visible in the viewport
+
     const isAnyPartVisible = !(edgeRight < viewportLeft || edgeLeft > viewportRight);
-    
+
     if (isAnyPartVisible) {
-      // If any part of the edge is visible, don't show arrows
       return { isVisible: true, side: null };
     }
-    
-    // Edge is completely outside viewport - determine which side
     if (edgeRight < viewportLeft) {
       return { isVisible: false, side: 'left' };
     } else {
       return { isVisible: false, side: 'right' };
     }
   };
-  
-  /**
-   * Update arrow visibility for all rows based on current scroll position
-   */
   const updateArrowVisibility = () => {
     rowMarkers.forEach((markers) => {
       const { leftChevron, rightChevron, edge } = markers;
       const { isVisible, side } = checkEdgeVisibility(edge);
-      
+
       if (isVisible) {
-        // Edge has at least some part visible, hide both arrows
         leftChevron.style.display = 'none';
         rightChevron.style.display = 'none';
       } else if (side === 'left') {
-        // Edge is completely to the left of viewport
         leftChevron.style.display = 'block';
         rightChevron.style.display = 'none';
       } else if (side === 'right') {
-        // Edge is completely to the right of viewport
         leftChevron.style.display = 'none';
         rightChevron.style.display = 'block';
       }
     });
-    
-    // Update column markers visibility - check scroll on layoutContainer (vertical scroll)
+
     if (!layoutContainer) {
       return;
     }
-    
+
     const scrollTop = layoutContainer.scrollTop;
     const viewportHeight = layoutContainer.getBoundingClientRect().height;
     const viewportTop = scrollTop;
     const viewportBottom = scrollTop + viewportHeight;
-    
+
     columnMarkers.forEach((markers, nodeId) => {
-      const { topChevron, bottomChevron, nodeIndex, colX } = markers;
-      
-      // Find all edges that involve this node (as source or target)
-      const nodeEdges = edgeData.filter(edge => 
-        edge.sourceId === nodeId || edge.targetId === nodeId
-      );
-      
+      const { topChevron, bottomChevron } = markers;
+
+      const nodeEdges = edgeData.filter(edge => isEdgeForNode(edge, nodeId));
+
       if (nodeEdges.length === 0) {
-        // No edges for this column, hide both arrows
         topChevron.style.display = 'none';
         bottomChevron.style.display = 'none';
         return;
       }
-      
-      // Check if any edges are above the viewport
+
       const hasEdgesAbove = nodeEdges.some(edge => edge.edgeRowY < viewportTop);
-      
-      // Check if any edges are below the viewport
+
       const hasEdgesBelow = nodeEdges.some(edge => edge.edgeRowY > viewportBottom);
-      
-      // Show top arrow if there are edges above the viewport
+
       topChevron.style.display = hasEdgesAbove ? 'block' : 'none';
-      
-      // Show bottom arrow if there are edges below the viewport
+
       bottomChevron.style.display = hasEdgesBelow ? 'block' : 'none';
     });
   };
 
-  // Render original nodes in the fixed container
   fixedG.selectAll('g.biofabric-node').remove();
 
   const fixedNodeSelection = fixedG.selectAll('g.biofabric-node')
@@ -653,7 +644,7 @@ export function applyBioFabricLayout(
     .style('cursor', 'pointer')
     .style('pointer-events', 'all');
 
-  fixedNodeSelection.each(function (d) {
+  fixedNodeSelection.each(function setNodeSvgElement(d) {
     nodeSvgElements.set(d.nodeId, d3.select(this));
   });
 
@@ -668,7 +659,6 @@ export function applyBioFabricLayout(
     .attr('rx', 2)
     .attr('opacity', OPACITY_NODE_DEFAULT);
 
-  // Also keep nodes in the main SVG for connector lines alignment
   g.selectAll('g.biofabric-node').remove();
 
   const nodeSelection = g.selectAll('g.biofabric-node')
@@ -695,7 +685,6 @@ export function applyBioFabricLayout(
 
   const highlightedNodes = new Set();
 
-  // This function will be defined when edge boxes container is created
   let deselectAllEdgeBoxes = () => {};
 
   fixedNodeSelection.on('click', (event, d) => {
@@ -710,43 +699,11 @@ export function applyBioFabricLayout(
       return;
     }
 
-    // Deselect all edge boxes when clicking on a node
     deselectAllEdgeBoxes();
 
     selectedEdgesForHighlighting.forEach(edgeId => {
       const svgLines = edgeSvgLines.get(edgeId);
-      if (svgLines) {
-        const edgeData = svgLines.edgeData;
-        const isDuplicateEdge = edgeData.isDuplicateEdge;
-        let mainStrokeColor = COLOR_EDGE_DEFAULT;
-        let mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-        let mainStrokeDashArray = null;
-
-        if (isDuplicateEdge) {
-          mainStrokeColor = COLOR_EDGE_DUPLICATE;
-          mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-          mainStrokeDashArray = DASH_ARRAY_DUPLICATE_EDGE;
-        } else if (edgeData.isMergeEdge) {
-          mainStrokeColor = COLOR_EDGE_MERGE;
-          mainStrokeWidth = STROKE_WIDTH_EDGE_MERGE;
-          mainStrokeDashArray = DASH_ARRAY_MERGE_EDGE;
-        }
-
-        svgLines.mainLine
-          .attr('stroke', mainStrokeColor)
-          .attr('stroke-width', mainStrokeWidth)
-          .attr('opacity', OPACITY_FULL)
-          .classed('edge-svg-selected', false);
-        if (mainStrokeDashArray) {
-          svgLines.mainLine.attr('stroke-dasharray', mainStrokeDashArray);
-        }
-        svgLines.sourceConnector
-          .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-          .classed('edge-svg-selected', false);
-        svgLines.targetConnector
-          .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-          .classed('edge-svg-selected', false);
-      }
+      if (svgLines) applyDefaultEdgeStyle(svgLines);
       highlightNodesForEdge(edgeId, false);
     });
     selectedEdgesForHighlighting.clear();
@@ -784,7 +741,7 @@ export function applyBioFabricLayout(
     updateNodeAppearance();
   });
 
-  const handleMouseOver = function () {
+  const handleMouseOver = function handleMouseOver() {
     const rect = d3.select(this).select('rect');
     rect.attr('stroke', COLOR_HIGHLIGHT_SELECTED)
       .attr('stroke-width', STROKE_WIDTH_NODE_HOVER)
@@ -792,7 +749,7 @@ export function applyBioFabricLayout(
   };
   fixedNodeSelection.on('mouseover', handleMouseOver);
 
-  const handleMouseOut = function (event, d) {
+  const handleMouseOut = function handleMouseOut(event, d) {
     const isSelected = graphDataStore.isNodeSelected(d.nodeId);
     const isHighlighted = highlightedNodes.has(d.nodeId);
     const rect = d3.select(this).select('rect');
@@ -810,7 +767,7 @@ export function applyBioFabricLayout(
   fixedNodeSelection.on('mouseout', handleMouseOut);
 
   const updateNodeAppearance = () => {
-    const updateEachNode = function (d) {
+    const updateEachNode = function updateEachNode(d) {
       const isSelected = graphDataStore.isNodeSelected(d.nodeId);
       const isHighlighted = highlightedNodes.has(d.nodeId);
       const rect = d3.select(this).select('rect');
@@ -834,58 +791,14 @@ export function applyBioFabricLayout(
     connectedEdges.forEach(edge => {
       const edgeId = edge.id;
       const svgLines = edgeSvgLines.get(edgeId);
-      if (svgLines) {
-        if (highlight) {
-          if (!selectedEdgesForHighlighting.has(edgeId)) {
-            svgLines.mainLine
-              .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
-              .attr('opacity', OPACITY_FULL)
-              .classed('edge-svg-highlighted', true);
-            svgLines.sourceConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-              .classed('edge-svg-highlighted', true);
-            svgLines.targetConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-              .classed('edge-svg-highlighted', true);
-            highlightedEdgesForNodes.add(edgeId);
-          }
-        } else {
-          const edgeData = svgLines.edgeData;
-          const isMergeEdge = edgeData.isMergeEdge;
-          const isDuplicateEdge = edgeData.isDuplicateEdge;
-
-          if (!selectedEdgesForHighlighting.has(edgeId)) {
-            let mainStrokeColor = COLOR_EDGE_DEFAULT;
-            let mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-            let mainStrokeDashArray = null;
-
-            if (isDuplicateEdge) {
-              mainStrokeColor = COLOR_EDGE_DUPLICATE;
-              mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-              mainStrokeDashArray = DASH_ARRAY_DUPLICATE_EDGE;
-            } else if (isMergeEdge) {
-              mainStrokeColor = COLOR_EDGE_MERGE;
-              mainStrokeWidth = STROKE_WIDTH_EDGE_MERGE;
-              mainStrokeDashArray = DASH_ARRAY_MERGE_EDGE;
-            }
-
-            svgLines.mainLine
-              .attr('stroke', mainStrokeColor)
-              .attr('stroke-width', mainStrokeWidth)
-              .attr('opacity', OPACITY_FULL)
-              .classed('edge-svg-highlighted', false);
-            if (mainStrokeDashArray) {
-              svgLines.mainLine.attr('stroke-dasharray', mainStrokeDashArray);
-            }
-            svgLines.sourceConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-              .classed('edge-svg-highlighted', false);
-            svgLines.targetConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-              .classed('edge-svg-highlighted', false);
-            highlightedEdgesForNodes.delete(edgeId);
-          }
-        }
+      if (!svgLines) return;
+      const notSelected = !selectedEdgesForHighlighting.has(edgeId);
+      if (highlight && notSelected) {
+        applyHighlightedEdgeStyle(svgLines);
+        highlightedEdgesForNodes.add(edgeId);
+      } else if (!highlight && notSelected) {
+        applyDefaultEdgeStyle(svgLines);
+        highlightedEdgesForNodes.delete(edgeId);
       }
     });
   };
@@ -940,50 +853,16 @@ export function applyBioFabricLayout(
       const svgLines = edgeSvgLines.get(edgeId);
       if (svgLines) {
         if (highlight) {
-          svgLines.mainLine
-            .attr('stroke', COLOR_HIGHLIGHT_SELECTED)
-            .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
-            .attr('opacity', OPACITY_FULL)
-            .classed('edge-svg-selected', true);
-          svgLines.sourceConnector
-            .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-            .classed('edge-svg-selected', true);
-          svgLines.targetConnector
-            .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-            .classed('edge-svg-selected', true);
+          applySelectedEdgeStyle(svgLines);
           selectedEdgesForHighlighting.add(edgeId);
           if (svgLines.edgeData.isMergeEdge) {
             targetIds.add(svgLines.edgeData.targetId);
           }
         } else {
-          const edgeData = svgLines.edgeData;
-          const isDuplicateEdge = edgeData.isDuplicateEdge;
-
-          let mainStrokeColor = COLOR_EDGE_MERGE;
-          let mainStrokeWidth = STROKE_WIDTH_EDGE_MERGE;
-          let mainStrokeDashArray = DASH_ARRAY_MERGE_EDGE;
-
-          if (isDuplicateEdge) {
-            mainStrokeColor = COLOR_EDGE_DUPLICATE;
-            mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-            mainStrokeDashArray = DASH_ARRAY_DUPLICATE_EDGE;
-          }
-
-          svgLines.mainLine
-            .attr('stroke', mainStrokeColor)
-            .attr('stroke-width', mainStrokeWidth)
-            .attr('opacity', OPACITY_FULL)
-            .attr('stroke-dasharray', mainStrokeDashArray)
-            .classed('edge-svg-selected', false);
-          svgLines.sourceConnector
-            .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-            .classed('edge-svg-selected', false);
-          svgLines.targetConnector
-            .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-            .classed('edge-svg-selected', false);
+          applyDefaultEdgeStyle(svgLines);
           selectedEdgesForHighlighting.delete(edgeId);
-          if (edgeData.isMergeEdge) {
-            targetIds.add(edgeData.targetId);
+          if (svgLines.edgeData.isMergeEdge) {
+            targetIds.add(svgLines.edgeData.targetId);
           }
         }
       }
@@ -1074,37 +953,8 @@ export function applyBioFabricLayout(
     edgesToClear.forEach(edgeId => {
       const svgLines = edgeSvgLines.get(edgeId);
       if (svgLines) {
-        const edgeData = svgLines.edgeData;
-        const isDuplicateEdge = edgeData.isDuplicateEdge;
-        let mainStrokeColor = COLOR_EDGE_DEFAULT;
-        let mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-        let mainStrokeDashArray = null;
-
-        if (isDuplicateEdge) {
-          mainStrokeColor = COLOR_EDGE_DUPLICATE;
-          mainStrokeWidth = STROKE_WIDTH_EDGE_DEFAULT;
-          mainStrokeDashArray = DASH_ARRAY_DUPLICATE_EDGE;
-        } else if (edgeData.isMergeEdge) {
-          mainStrokeColor = COLOR_EDGE_MERGE;
-          mainStrokeWidth = STROKE_WIDTH_EDGE_MERGE;
-          mainStrokeDashArray = DASH_ARRAY_MERGE_EDGE;
-          targetIdsToClear.add(edgeData.targetId);
-        }
-
-        svgLines.mainLine
-          .attr('stroke', mainStrokeColor)
-          .attr('stroke-width', mainStrokeWidth)
-          .attr('opacity', OPACITY_FULL)
-          .classed('edge-svg-selected', false);
-        if (mainStrokeDashArray) {
-          svgLines.mainLine.attr('stroke-dasharray', mainStrokeDashArray);
-        }
-        svgLines.sourceConnector
-          .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-          .classed('edge-svg-selected', false);
-        svgLines.targetConnector
-          .attr('opacity', OPACITY_EDGE_CONNECTOR_DEFAULT)
-          .classed('edge-svg-selected', false);
+        applyDefaultEdgeStyle(svgLines);
+        if (svgLines.edgeData.isMergeEdge) targetIdsToClear.add(svgLines.edgeData.targetId);
       }
       highlightNodesForEdge(edgeId, false);
     });
@@ -1125,7 +975,7 @@ export function applyBioFabricLayout(
     });
   };
 
-  svg.on('click', function (event) {
+  svg.on('click', function svgRootClick(event) {
     const target = event.target;
     const svgNode = svg.node();
 
@@ -1141,7 +991,7 @@ export function applyBioFabricLayout(
     }
   });
 
-  fixedSvg.on('click', function (event) {
+  fixedSvg.on('click', function fixedSvgRootClick(event) {
     const target = event.target;
     const svgNode = fixedSvg.node();
 
@@ -1192,7 +1042,6 @@ export function applyBioFabricLayout(
   biofabricEdgeBoxesContainer.innerHTML = '';
   biofabricEdgeBoxesContainer.style.display = 'block';
 
-  // Helper function to deselect all edge boxes
   deselectAllEdgeBoxes = () => {
     const allEdgeBoxes = biofabricEdgeBoxesContainer.querySelectorAll('.edge-box');
     allEdgeBoxes.forEach(edgeBox => {
@@ -1295,7 +1144,7 @@ export function applyBioFabricLayout(
         box.addEventListener('click', (e) => {
           e.stopPropagation();
           const isCurrentlySelected = box.classList.contains('edge-box-selected');
-          
+
           if (isCurrentlySelected) {
             // If already selected, unselect it
             deselectAllEdgeBoxes();
@@ -1372,7 +1221,7 @@ export function applyBioFabricLayout(
         box.addEventListener('click', (e) => {
           e.stopPropagation();
           const isCurrentlySelected = box.classList.contains('edge-box-selected');
-          
+
           if (isCurrentlySelected) {
             // If already selected, unselect it
             deselectAllEdgeBoxes();
@@ -1422,11 +1271,8 @@ export function applyBioFabricLayout(
     });
   });
 
-  // Add click handler to container for deselecting all edge boxes when clicking on empty area
   biofabricEdgeBoxesContainer.addEventListener('click', (event) => {
-    // Check if the click target is the container itself or an empty area
     if (event.target === biofabricEdgeBoxesContainer) {
-      // Remove edge-box-selected class from all edge boxes
       deselectAllEdgeBoxes();
       clearCorrespondenceHighlights();
       graphDataStore.clearSelection();
@@ -1436,11 +1282,9 @@ export function applyBioFabricLayout(
     }
   });
 
-  // Add chevron markers for each column
   sortedNodes.forEach((node, nodeIndex) => {
     const colX = START_OFFSET + nodeIndex * NODE_SPACING;
-    
-    // Top chevron (chevron-down icon)
+
     const topChevron = h('i', {
       class: 'fa-solid fa-circle-chevron-down column-marker column-marker-top',
       style: `
@@ -1458,8 +1302,7 @@ export function applyBioFabricLayout(
       'data-node-id': node.id,
       'data-node-index': nodeIndex,
     }, []);
-    
-    // Bottom chevron (chevron-up icon)
+
     const bottomChevron = h('i', {
       class: 'fa-solid fa-circle-chevron-up column-marker column-marker-bottom',
       style: `
@@ -1477,24 +1320,17 @@ export function applyBioFabricLayout(
       'data-node-id': node.id,
       'data-node-index': nodeIndex,
     }, []);
-    
-    // Add click handler for top chevron - scroll to topmost edge in this column
+
     topChevron.addEventListener('click', () => {
       if (layoutContainer) {
-        const nodeEdges = edgeData.filter(edge => 
-          edge.sourceId === node.id || edge.targetId === node.id
-        );
-        
+        const nodeEdges = edgeData.filter(edge => isEdgeForNode(edge, node.id));
+
         if (nodeEdges.length > 0) {
-          // Find the topmost edge (minimum edgeRowY)
-          const topmostEdge = nodeEdges.reduce((min, edge) => 
-            edge.edgeRowY < min.edgeRowY ? edge : min
-          );
-          
-          // Scroll to position the topmost edge near the top of the viewport (with some padding)
+          const topmostEdge = getTopmostEdge(nodeEdges);
+
           const scrollPadding = 200; // Padding to show content above the edge
           const targetScroll = Math.max(0, topmostEdge.edgeRowY - scrollPadding);
-          
+
           layoutContainer.scrollTo({
             top: targetScroll,
             behavior: 'smooth',
@@ -1502,25 +1338,21 @@ export function applyBioFabricLayout(
         }
       }
     });
-    
-    // Add click handler for bottom chevron - scroll to bottommost edge in this column
+
     bottomChevron.addEventListener('click', () => {
       if (layoutContainer) {
-        const nodeEdges = edgeData.filter(edge => 
-          edge.sourceId === node.id || edge.targetId === node.id
-        );
-        
+        const nodeEdges = edgeData.filter(edge => isEdgeForNode(edge, node.id));
+
         if (nodeEdges.length > 0) {
-          // Find the bottommost edge (maximum edgeRowY)
-          const bottommostEdge = nodeEdges.reduce((max, edge) => 
-            edge.edgeRowY > max.edgeRowY ? edge : max
-          );
-          
-          // Scroll to position the bottommost edge near the bottom of the viewport (with some padding)
+          const bottommostEdge = getBottommostEdge(nodeEdges);
+
           const viewportHeight = layoutContainer.getBoundingClientRect().height;
           const scrollPadding = 200; // Padding to show content below the edge
-          const targetScroll = Math.max(0, bottommostEdge.edgeRowY - viewportHeight + scrollPadding);
-          
+          const targetScroll = Math.max(
+            0,
+            bottommostEdge.edgeRowY - viewportHeight + scrollPadding,
+          );
+
           layoutContainer.scrollTo({
             top: targetScroll,
             behavior: 'smooth',
@@ -1528,11 +1360,10 @@ export function applyBioFabricLayout(
         }
       }
     });
-    
+
     fixedNodesContainer.appendChild(topChevron);
     fixedNodesContainer.appendChild(bottomChevron);
-    
-    // Store references to markers for this column
+
     columnMarkers.set(node.id, {
       topChevron,
       bottomChevron,
@@ -1541,15 +1372,12 @@ export function applyBioFabricLayout(
     });
   });
 
-  // Set container height dynamically based on content
   svgContainer.style.height = `${totalHeight}px`;
   svgContainer.style.width = `${totalWidth}px`;
   svgContainer.style.minWidth = `${totalWidth}px`;
 
-  // Set edge boxes container height dynamically to match
   biofabricEdgeBoxesContainer.style.height = `${totalHeight}px`;
 
-  // Set horizontal scroll wrapper width and height to match content
   if (horizontalScrollWrapper) {
     horizontalScrollWrapper.style.width = `${totalWidth}px`;
     horizontalScrollWrapper.style.minWidth = `${totalWidth}px`;
@@ -1557,19 +1385,15 @@ export function applyBioFabricLayout(
     horizontalScrollWrapper.style.minHeight = `${totalHeight}px`;
   }
 
-  // Set fixed nodes container width to match content width
   if (fixedNodesContainer) {
     fixedNodesContainer.style.width = `${totalWidth}px`;
     fixedNodesContainer.style.minWidth = `${totalWidth}px`;
   }
 
-  // Sync horizontal scrolling between graph panel and fixed nodes container
-  // Also listen for vertical scroll on layoutContainer to update column arrow visibility
   if (leftPanel && fixedNodesContainer) {
     const syncScroll = () => {
       const scrollLeft = leftPanel.scrollLeft;
       fixedNodesContainer.style.transform = `translateX(-${scrollLeft}px)`;
-      // Update arrow visibility on any scroll (horizontal or vertical)
       updateArrowVisibility();
     };
 
@@ -1581,7 +1405,6 @@ export function applyBioFabricLayout(
     syncScroll();
   }
 
-  // Listen for vertical scroll on layoutContainer to update column chevron visibility
   if (layoutContainer) {
     const handleVerticalScroll = () => {
       updateArrowVisibility();
@@ -1596,18 +1419,13 @@ export function applyBioFabricLayout(
     compactEdgeBoxesContainer.style.display = 'none';
   }
 
-  // Scroll to the rightmost pane (newest pane)
-  // The rightmost node is at the highest nodeIndex, which corresponds to the rightmost X position
   if (sortedNodes.length > 0) {
     const rightmostNodeIndex = sortedNodes.length - 1;
     const rightmostX = START_OFFSET + rightmostNodeIndex * NODE_SPACING;
 
-    // Scroll the container to show the rightmost pane
-    // Add some padding to ensure the pane is fully visible
     const scrollPadding = 10;
     const scrollTarget = rightmostX + scrollPadding;
 
-    // Use requestAnimationFrame to ensure the DOM is fully updated before scrolling
     requestAnimationFrame(() => {
       if (leftPanel) {
         leftPanel.scrollTo({
@@ -1617,15 +1435,13 @@ export function applyBioFabricLayout(
       }
     });
   }
-  
-  // Update arrow visibility on window resize
+
   const handleResize = () => {
     updateArrowVisibility();
   };
-  
+
   window.addEventListener('resize', handleResize);
-  
-  // Initial arrow visibility check after a short delay to ensure layout is complete
+
   requestAnimationFrame(() => {
     setTimeout(() => {
       updateArrowVisibility();
