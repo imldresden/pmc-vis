@@ -10,11 +10,10 @@ import { socket } from '../imports/import-socket.js';
 
 const MIN_FLEX_GROW = 0.005;
 const MIN_SIZE = 10;
-const panes = {}; // governs the pane-based exploration
-const allPanesRegistry = {}; // registry of all panes (including destroyed ones) for overview
-const tracker = {}; // keeps track of already seen nodes, marks, etc.
+const panes = {};
+const allPanesRegistry = {};
+const tracker = {};
 
-// let width;
 let height;
 const maxheight = () => height - MIN_SIZE * 2;
 
@@ -49,8 +48,8 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     dragbar: uid(),
     // width: dims.width,
     height,
-    split: 0.3, // defines how much height the pcp has
-    cy: undefined, // must be set later!,
+    split: 0.3,
+    cy: undefined,
     backgroundColor,
     nodesIds: new Set(nodesIds),
     spawner,
@@ -69,14 +68,12 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   pane.details = pane.container + '-details';
 
-  // pane div
   const div = document.createElement('div');
   div.className = 'cy-s flex-item pane';
   div.id = pane.id;
   div.style.flex = paneKeysBefore.length + 1;
   div.style.height = pane.height + 'px';
 
-  // add the node-link diagram view
   const cyContainer = document.createElement('div');
   cyContainer.id = pane.container;
   cyContainer.className = 'cy';
@@ -88,7 +85,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   const buttons = createPaneControls(pane);
 
-  // add the pane for the detail view (pcp)
   const details = document.createElement('div');
   details.className = 'detail-inspector';
   details.id = pane.details;
@@ -157,22 +153,18 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   }
 
   panes[div.id] = pane;
-  // Add to registry for overview (always keep track of all panes)
   allPanesRegistry[pane.id] = {
     ...pane,
     destroyed: false,
   };
-  // Store pane to server when created (will be updated when graph is spawned)
-  // We'll store it again after the graph is created with full data
   const paneKeysAfter = Object.keys(panes);
 
-  // Handle spawner relationships for both single and multiple spawners (merged panes)
   if (spawner) {
     const spawners = Array.isArray(spawner) ? spawner : [spawner];
     spawners.forEach(spawnerId => {
       if (panes[spawnerId]) {
         panes[spawnerId].spawned ||= new Set();
-        panes[spawnerId].spawned.add(div.id); // remembers which panes were created from this one
+        panes[spawnerId].spawned.add(div.id);
       }
     });
   }
@@ -182,7 +174,7 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   if (paneKeysAfter.length > numberOfPanes.value) {
     destroyPanes(
-      panes[paneKeysAfter[1]].id, // skip the first pane
+      panes[paneKeysAfter[1]].id,
       {
         firstOnly: true,
         pre: true,
@@ -284,7 +276,6 @@ function enableDragBars() {
   enableSplitDragBars();
 }
 
-// https://stackoverflow.com/questions/28767221/flexbox-resizing
 function enablePaneDragBars() {
   const dragbars = Array.from(document.getElementsByClassName('dragbar'));
   let dragging = false;
@@ -297,7 +288,6 @@ function enablePaneDragBars() {
   dragbars.forEach(d => {
     d.onmousedown = (e) => {
       const resizer = e.target;
-      // e.button === 0 means left click
       if (e.button > 0 || !resizer.classList.contains('dragbar')) {
         return;
       }
@@ -322,7 +312,6 @@ function enablePaneDragBars() {
 
       e.preventDefault();
 
-      // Avoid cursor flickering (reset in onMouseUp)
       document.body.style.cursor = getComputedStyle(resizer).cursor;
 
       let prevSize = prev[sizeProp];
@@ -389,7 +378,6 @@ function enableSplitDragBars() {
       const elementId = e.target ? e.target.id : e.srcElement.id;
       const bar = document.getElementById(elementId);
 
-      // e.button === 0 means left click
       if (e.button > 0 || !bar) {
         return;
       }
@@ -407,7 +395,7 @@ function enableSplitDragBars() {
     };
     d.ondblclick = null;
     if (d && d.previousElementSibling && d.parentElement) {
-      makeCtxMenu(d, d.previousElementSibling); // pane is: panes[d.parentElement.id]
+      makeCtxMenu(d, d.previousElementSibling);
     }
   });
 }
@@ -419,7 +407,6 @@ function getPanes() {
 function updatePanes(newPanesData) {
   Object.keys(newPanesData).forEach((k) => {
     panes[k] = newPanesData[k];
-    // Update registry
     if (allPanesRegistry[k]) {
       allPanesRegistry[k] = {
         ...allPanesRegistry[k],
@@ -427,16 +414,12 @@ function updatePanes(newPanesData) {
         destroyed: false,
       };
     } else {
-      // Add to registry if it doesn't exist
       allPanesRegistry[k] = {
         ...newPanesData[k],
         destroyed: false,
       };
     }
-    // Store to server when pane is updated (debounced to avoid too many requests)
-    // Store even if cy is not available yet - basic pane info is still valuable
     if (panes[k]) {
-      // Debounce storage to avoid too many requests
       clearTimeout(panes[k]._storeTimeout);
       panes[k]._storeTimeout = setTimeout(() => {
         storePaneToServer(k, panes[k]).catch(error => {
@@ -450,7 +433,6 @@ function updatePanes(newPanesData) {
 // Store pane data to server
 async function storePaneToServer(paneId, paneData) {
   try {
-    // Prepare pane info - always include basic data even if cy is not available
     const paneInfo = {
       id: paneId,
       nodesIds: Array.from(paneData.nodesIds || []),
@@ -460,11 +442,7 @@ async function storePaneToServer(paneId, paneData) {
       cyData: paneData.cy ? paneData.cy.json() : null,
     };
 
-    // Convert to JSON string - server expects a string in the body
-    // Backend now uses prepared statements, so no escaping needed
     const content = JSON.stringify(paneInfo);
-
-    // Escape the paneId in the URL query parameter
     const encodedPaneId = encodeURIComponent(paneId);
 
     const response = await fetch(`${BACKEND}/${PROJECT}/pane/store?pane_id=${encodedPaneId}`, {
@@ -484,7 +462,7 @@ async function storePaneToServer(paneId, paneData) {
     console.log(`Successfully stored pane ${paneId} to server`);
   } catch (error) {
     console.error(`Error storing pane ${paneId} to server:`, error);
-    throw error; // Re-throw so caller knows it failed
+    throw error;
   }
 }
 
@@ -494,26 +472,18 @@ async function fetchPaneFromServer(paneId) {
     const response = await fetch(`${BACKEND}/${PROJECT}/pane?pane_id=${paneId}`);
     if (!response.ok) {
       if (response.status === 404 || response.status === 500) {
-        // Pane not found or server error
         return null;
       }
       return null;
     }
     const data = await response.json();
-    // Server returns Map<String, ObjectNode>, so we need to parse the JSON string
     if (data && typeof data === 'object') {
-      // The data structure from server is { paneId: ObjectNode }
       const paneData = data[paneId];
       if (paneData) {
-        // If it's already parsed, return it; otherwise parse the JSON string
         if (typeof paneData === 'string') {
-          // Backend now uses prepared statements, so data should be clean JSON
-          // But try to handle old base64-encoded data for backward compatibility
           try {
-            // Try parsing as regular JSON first (new format)
             return JSON.parse(paneData);
           } catch {
-            // If that fails, try base64 decode (old format)
             try {
               const decoded = decodeURIComponent(escape(atob(paneData)));
               return JSON.parse(decoded);
@@ -533,7 +503,6 @@ async function fetchPaneFromServer(paneId) {
   }
 }
 
-// recursively destroy every pane starting from an id
 async function destroyPanes(firstId, {
   firstOnly = false, pre = false, manualRemoval = false,
 } = {}) {
@@ -542,7 +511,6 @@ async function destroyPanes(firstId, {
   if (pane) {
     if (panes[firstId] && panes[firstId].spawned?.size > 0) {
       if (!firstOnly) {
-        // Wait for child panes to be destroyed
         const spawnedArray = Array.from(panes[firstId].spawned);
         for (let i = 0; i < spawnedArray.length; i += 1) {
           await destroyPanes(spawnedArray[i], { manualRemoval });
@@ -550,7 +518,6 @@ async function destroyPanes(firstId, {
       }
     }
 
-    // Store pane to server before destroying - wait for it to complete
     if (panes[firstId]) {
       try {
         await storePaneToServer(firstId, panes[firstId]);
@@ -567,11 +534,9 @@ async function destroyPanes(firstId, {
     pane.remove();
 
     if (manualRemoval) {
-      // If manually removed, remove from registry and notify overview
       delete allPanesRegistry[firstId];
       socket.emit('pane removed', firstId);
     } else if (allPanesRegistry[firstId]) {
-      // If destroyed due to max limit, mark as destroyed but keep in registry for overview
       allPanesRegistry[firstId].destroyed = true;
     }
 
@@ -591,7 +556,6 @@ async function destroyPanes(firstId, {
 }
 
 async function restorePaneFromServer(paneId) {
-  // Check if pane exists in registry but is destroyed
   if (!allPanesRegistry[paneId] || !allPanesRegistry[paneId].destroyed) {
     console.log(`Pane ${paneId} is not in destroyed state, skipping restore`);
     return false;
@@ -605,11 +569,9 @@ async function restorePaneFromServer(paneId) {
     console.warn(`Error fetching pane ${paneId} from server:`, error);
   }
 
-  // Import spawnGraph function and params
   const { spawnGraph } = await import('../graph/node-link.js');
   const { params } = await import('../graph/layout-options/klay.js');
 
-  // Restore pane data - use server data if available, otherwise fallback to registry
   const registryPane = allPanesRegistry[paneId];
   const nodesIds = serverData?.nodesIds || Array.from(registryPane.nodesIds || []);
 
@@ -618,7 +580,6 @@ async function restorePaneFromServer(paneId) {
     return false;
   }
 
-  // Create the pane again
   const pane = spawnPane(
     {
       spawner: registryPane.spawner,
@@ -629,7 +590,6 @@ async function restorePaneFromServer(paneId) {
     registryPane.spawnerNodes,
   );
 
-  // Restore graph if we have cyData from server
   if (serverData?.cyData && spawnGraph) {
     try {
       const data = {
@@ -641,14 +601,11 @@ async function restorePaneFromServer(paneId) {
       spawnGraph(pane, data, layoutParams);
     } catch (error) {
       console.warn(`Error restoring graph for pane ${paneId}:`, error);
-      // Continue anyway - pane is created even if graph restore fails
     }
   } else if (nodesIds.length > 0) {
-    // If we have node IDs but no cyData, try to fetch the graph data
     console.log(`Pane ${paneId} has no stored graph data, will need to expand nodes`);
   }
 
-  // Mark as not destroyed in registry
   if (allPanesRegistry[paneId]) {
     allPanesRegistry[paneId].destroyed = false;
   }
@@ -658,9 +615,7 @@ async function restorePaneFromServer(paneId) {
 }
 
 async function highlightPaneById(paneId) {
-  // Check if pane exists in main view
   if (!panes[paneId]) {
-    // Try to restore from server
     const restored = await restorePaneFromServer(paneId);
     if (!restored) {
       console.warn(`Pane ${paneId} not found and could not be restored`);
@@ -685,10 +640,7 @@ async function highlightPaneById(paneId) {
 }
 
 function updateDocDims() {
-  // width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-
   const navHeight = parseInt(
-    // turns NNpx into NN
     window.getComputedStyle(document.body).getPropertyValue('--nav-height'),
   );
 
@@ -697,7 +649,6 @@ function updateDocDims() {
       || document.documentElement.clientHeight
       || document.body.clientHeight);
 
-  // width -= document.getElementById("config")?.clientWidth;
   updateHeights();
 }
 
@@ -731,7 +682,6 @@ addEventListener('global-action', (e) => {
         tracker[e.detail.action],
       );
     } else {
-      // "undo-"
       e.detail.elements.forEach(
         tracker[e.detail.action].delete,
         tracker[e.detail.action],

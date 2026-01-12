@@ -1138,13 +1138,11 @@ async function exportCy(cy, selection) {
 }
 
 function duplicatePane(cy, initSpawner) {
-  // Normalize nodes from elementMapper - extract data if it's nested
   const normalizedNodes = Array.from(cy.elementMapper.nodes.values()).map(node => {
-    // If node has structure { data: {...} }, extract the data
     if (node.data && typeof node.data === 'object' && node.data.id) {
       return node.data;
     }
-    // Otherwise, return as is (should have details at top level)
+
     return node;
   });
 
