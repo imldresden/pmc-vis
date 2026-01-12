@@ -695,6 +695,9 @@ export function applyBioFabricLayout(
 
   const highlightedNodes = new Set();
 
+  // This function will be defined when edge boxes container is created
+  let deselectAllEdgeBoxes = () => {};
+
   fixedNodeSelection.on('click', (event, d) => {
     const nativeEvent = event.sourceEvent || event;
     const isShiftPressed = nativeEvent.shiftKey || false;
@@ -706,6 +709,9 @@ export function applyBioFabricLayout(
     if (!nodeData) {
       return;
     }
+
+    // Deselect all edge boxes when clicking on a node
+    deselectAllEdgeBoxes();
 
     selectedEdgesForHighlighting.forEach(edgeId => {
       const svgLines = edgeSvgLines.get(edgeId);
@@ -1124,6 +1130,7 @@ export function applyBioFabricLayout(
     const svgNode = svg.node();
 
     if (target === svgNode && target.tagName === 'svg') {
+      deselectAllEdgeBoxes();
       graphDataStore.clearSelection();
       clearCorrespondenceHighlights();
       highlightedNodes.clear();
@@ -1139,6 +1146,7 @@ export function applyBioFabricLayout(
     const svgNode = fixedSvg.node();
 
     if (target === svgNode && target.tagName === 'svg') {
+      deselectAllEdgeBoxes();
       graphDataStore.clearSelection();
       clearCorrespondenceHighlights();
       highlightedNodes.clear();
@@ -1183,6 +1191,15 @@ export function applyBioFabricLayout(
 
   biofabricEdgeBoxesContainer.innerHTML = '';
   biofabricEdgeBoxesContainer.style.display = 'block';
+
+  // Helper function to deselect all edge boxes
+  deselectAllEdgeBoxes = () => {
+    const allEdgeBoxes = biofabricEdgeBoxesContainer.querySelectorAll('.edge-box');
+    allEdgeBoxes.forEach(edgeBox => {
+      edgeBox.classList.remove('edge-box-selected');
+      edgeBox.classList.remove('edge-box-highlighted');
+    });
+  };
 
   const mergeEdgeLabels = edgeLabelData.filter(e => e.isMergeEdge);
   const regularEdgeLabels = edgeLabelData.filter(e => !e.isMergeEdge);
@@ -1277,14 +1294,31 @@ export function applyBioFabricLayout(
 
         box.addEventListener('click', (e) => {
           e.stopPropagation();
-          clearCorrespondenceHighlights();
-          graphDataStore.clearSelectedEdge();
-          highlightMergeEdges(edgeIds, true);
-          edgeIds.forEach(edgeId => {
-            highlightNodesForEdge(edgeId, true);
-          });
-          box.classList.add('edge-box-selected');
-          graphDataStore.setSelectedEdgeId(firstEdgeId);
+          const isCurrentlySelected = box.classList.contains('edge-box-selected');
+          
+          if (isCurrentlySelected) {
+            // If already selected, unselect it
+            deselectAllEdgeBoxes();
+            clearCorrespondenceHighlights();
+            graphDataStore.clearSelection();
+            graphDataStore.clearSelectedEdge();
+            highlightedNodes.clear();
+            updateNodeAppearance();
+          } else {
+            // Select this box and deselect others
+            deselectAllEdgeBoxes();
+            clearCorrespondenceHighlights();
+            graphDataStore.clearSelection();
+            graphDataStore.clearSelectedEdge();
+            highlightMergeEdges(edgeIds, true);
+            edgeIds.forEach(edgeId => {
+              highlightNodesForEdge(edgeId, true);
+            });
+            box.classList.add('edge-box-selected');
+            graphDataStore.setSelectedEdgeId(firstEdgeId);
+            highlightedNodes.clear();
+            updateNodeAppearance();
+          }
         });
 
         biofabricEdgeBoxesContainer.appendChild(box);
@@ -1337,37 +1371,69 @@ export function applyBioFabricLayout(
 
         box.addEventListener('click', (e) => {
           e.stopPropagation();
-          clearCorrespondenceHighlights();
-          graphDataStore.setSelectedEdgeId(edgeLabel.edgeId);
-          highlightNodesForEdge(edgeLabel.edgeId, true);
-          const svgLines = edgeSvgLines.get(edgeLabel.edgeId);
-          if (svgLines) {
-            svgLines.mainLine
-              .attr('stroke', COLOR_HIGHLIGHT_SELECTED)
-              .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
-              .attr('opacity', OPACITY_FULL)
-              .classed('edge-svg-selected', true);
-            const edgeData = svgLines.edgeData;
-            const isDuplicateEdge = edgeData.isDuplicateEdge;
-            if (edgeData.isMergeEdge || isDuplicateEdge) {
-              const mainStrokeDashArray = isDuplicateEdge
-                ? DASH_ARRAY_DUPLICATE_EDGE
-                : DASH_ARRAY_MERGE_EDGE;
-              svgLines.mainLine.attr('stroke-dasharray', mainStrokeDashArray);
+          const isCurrentlySelected = box.classList.contains('edge-box-selected');
+          
+          if (isCurrentlySelected) {
+            // If already selected, unselect it
+            deselectAllEdgeBoxes();
+            clearCorrespondenceHighlights();
+            graphDataStore.clearSelection();
+            graphDataStore.clearSelectedEdge();
+            highlightedNodes.clear();
+            updateNodeAppearance();
+          } else {
+            // Select this box and deselect others
+            deselectAllEdgeBoxes();
+            clearCorrespondenceHighlights();
+            graphDataStore.clearSelection();
+            graphDataStore.setSelectedEdgeId(edgeLabel.edgeId);
+            highlightNodesForEdge(edgeLabel.edgeId, true);
+            const svgLines = edgeSvgLines.get(edgeLabel.edgeId);
+            if (svgLines) {
+              svgLines.mainLine
+                .attr('stroke', COLOR_HIGHLIGHT_SELECTED)
+                .attr('stroke-width', STROKE_WIDTH_HIGHLIGHTED)
+                .attr('opacity', OPACITY_FULL)
+                .classed('edge-svg-selected', true);
+              const edgeData = svgLines.edgeData;
+              const isDuplicateEdge = edgeData.isDuplicateEdge;
+              if (edgeData.isMergeEdge || isDuplicateEdge) {
+                const mainStrokeDashArray = isDuplicateEdge
+                  ? DASH_ARRAY_DUPLICATE_EDGE
+                  : DASH_ARRAY_MERGE_EDGE;
+                svgLines.mainLine.attr('stroke-dasharray', mainStrokeDashArray);
+              }
+              svgLines.sourceConnector
+                .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+                .classed('edge-svg-selected', true);
+              svgLines.targetConnector
+                .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
+                .classed('edge-svg-selected', true);
+              selectedEdgesForHighlighting.add(edgeLabel.edgeId);
             }
-            svgLines.sourceConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-              .classed('edge-svg-selected', true);
-            svgLines.targetConnector
-              .attr('opacity', OPACITY_EDGE_CONNECTOR_HIGHLIGHTED)
-              .classed('edge-svg-selected', true);
-            selectedEdgesForHighlighting.add(edgeLabel.edgeId);
+            box.classList.add('edge-box-selected');
+            highlightedNodes.clear();
+            updateNodeAppearance();
           }
         });
 
         biofabricEdgeBoxesContainer.appendChild(box);
       }
     });
+  });
+
+  // Add click handler to container for deselecting all edge boxes when clicking on empty area
+  biofabricEdgeBoxesContainer.addEventListener('click', (event) => {
+    // Check if the click target is the container itself or an empty area
+    if (event.target === biofabricEdgeBoxesContainer) {
+      // Remove edge-box-selected class from all edge boxes
+      deselectAllEdgeBoxes();
+      clearCorrespondenceHighlights();
+      graphDataStore.clearSelection();
+      graphDataStore.clearSelectedEdge();
+      highlightedNodes.clear();
+      updateNodeAppearance();
+    }
   });
 
   // Add chevron markers for each column
