@@ -57,6 +57,10 @@
   <div id="config" class="config ui padded grid">
     <div class="ui column">
       <h3 class="label label-info">Legend </h3>
+      
+      <div id="info-box">
+      </div>
+      
       <div style="display:flex">
         <div style="float:right">  
           <b>Nodes</b>
@@ -97,10 +101,6 @@
           <span class="legend-edge not-chosen-edge"></span>
           <p class="legend-p">Other path(s)</p>
         </div>
-      </div>
-
-      <div id="info-box">
-
       </div>
 
       <div class="param">
@@ -215,6 +215,26 @@
       
       <div id="overview-config">
         <!-- layout specific options are appended here-->
+      </div>
+      <div class="ui divider"></div>
+
+      <h3 class="label label-info" id="graph-comparison-config-span">Graph Comparison</h3>
+
+      <div class="ui negative message to-do">
+        <i class="close icon"></i>
+        <div class="header">
+          TODO: Missing / potential controls: 
+        </div>  
+        <ul class="list">
+          <li>[MUST] define comparison criteria (e.g., nodes, edges, metrics)</li>
+          <li>[COULD] file input: upload second graph/model</li>
+          <li>[COULD] toggle: highlight differences vs similarities</li>
+          <li>[COULD] export comparison report</li>
+        </ul>   
+      </div>
+      
+      <div id="graph-comparison-config">
+        <!-- graph comparison specific options are appended here-->
       </div>
     </div>
   </div>

@@ -5,7 +5,6 @@
 :root {
   --config-width: 350px;
   --config-closed-width: 5px;
-  --overview-config-closed-width: 60px;
   --nav-height: 35px;
 }
 
@@ -30,6 +29,11 @@ body {
   ::-webkit-scrollbar-thumb {
     border-radius: 0px !important;
   }
+}
+
+/* Ensure global popups are always above view overlays (e.g. matrix mode uses z-index: 9999). */
+.swal2-container {
+  z-index: 20000 !important;
 }
 
 ::-moz-scrollbar-button,
@@ -96,10 +100,6 @@ a {
 
 a:hover {
   color: var(--dark-text-color);
-}
-
-.button-icon {
-  margin-right: 8px;
 }
 
 nav {

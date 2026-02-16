@@ -19,10 +19,12 @@ import {
 import { handleEditorSelection } from '../editor.js';
 import { fixed } from '../../utils/utils.js';
 import {
-  makeTippy,
   hideAllTippies,
   setPane,
   PROJECT,
+  updateGraphComparison,
+  updateCurvedConnectors,
+  updateSidebarLegends,
 } from '../../utils/controls.js';
 import { parallelCoords } from '../attributes/parallel-coords.js';
 import { ndl_to_pcp } from '../format.js';
@@ -108,9 +110,7 @@ async function renewInfo(cy) {
     const ids = nodes.open.join('&id=');
     const idus = nodes.closed.join('&idu=');
 
-    const call = `${BACKEND}/${PROJECT}/reset?${
-      ids.length > 0 ? '&id=' + ids : ''}${
-      idus.length > 0 ? '&idu=' + idus : ''}`;
+    const call = `${BACKEND}/${PROJECT}/reset?${ids.length > 0 ? '&id=' + ids : ''}${idus.length > 0 ? '&idu=' + idus : ''}`;
 
     return await (await fetch(call)).json();
   }
@@ -226,6 +226,18 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
     const panes = getPanes();
     panes[cy.paneId].nodesIds = new Set([...(panes[cy.paneId].nodesIds || []), ...nodesIds]);
     updatePanes(panes);
+
+    // trigger graph comparison update if enabled
+    const checkbox = document.getElementById('checkbox-graph-comparison');
+    if (checkbox?.checked) {
+      updateGraphComparison(true);
+    }
+
+    // trigger curved connectors update if enabled
+    const curvedCheckbox = document.getElementById('checkbox-curved-connectors');
+    if (curvedCheckbox?.checked) {
+      updateCurvedConnectors(true);
+    }
   }
 
   const limit = document.getElementById('nodesPerPane').value;
@@ -269,7 +281,7 @@ function setNeedsHTML(d) {
   return d;
 }
 
-const initHTML = _.debounce((cy) =>{
+const initHTML = _.debounce((cy) => {
   const html = document.getElementById(cy.container().id);
 
   Array.from(html.childNodes[0].childNodes).forEach((d, i) => {
@@ -621,6 +633,12 @@ function spawnPCP(cy, order = undefined) {
   const selector = m === 's+t' ? '' : '.' + m;
   let selected = 0;
 
+  // Preserve overlay state from existing PCP if it exists
+  let preservedOverlayState = null;
+  if (cy.pcp && cy.pcp.getOverlayState) {
+    preservedOverlayState = cy.pcp.getOverlayState();
+  }
+
   const { pl, pld } = ndl_to_pcp(
     {
       nodes: cy.$(`node${selector}`).map(n => {
@@ -684,49 +702,454 @@ function unbindListeners(cy) {
   }
 }
 
-function buildDetailsTooltipFromNode(cy, n) {
+let nodeDetailsWindowZ = 10000;
+let nodeDetailsWindowCount = 0;
+
+function openDraggableDetailsWindow({ titleHtml, contentEl, originalEvent }) {
+  const winId = `node-details-window-${Date.now()}-${nodeDetailsWindowCount++}`;
+  const $win = document.createElement('div');
+  $win.id = winId;
+  $win.style.cssText = `
+    position: fixed;
+    width: 760px;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: ${++nodeDetailsWindowZ};
+  `;
+
+  const $header = document.createElement('div');
+  $header.style.cssText = `
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    cursor: grab;
+    user-select: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  `;
+
+  const $title = document.createElement('div');
+  $title.style.cssText = 'font-weight: 600; font-size: 13px; line-height: 1.2;';
+  $title.innerHTML = titleHtml;
+
+  const $close = document.createElement('button');
+  $close.type = 'button';
+  $close.setAttribute('aria-label', 'Close');
+  $close.style.cssText = `
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 28px;
+    color: #6b7280;
+  `;
+  $close.textContent = '×';
+
+  const $body = document.createElement('div');
+  $body.style.cssText = 'padding: 12px; overflow: auto; max-height: calc(100vh - 120px);';
+  $body.appendChild(contentEl);
+
+  $header.appendChild($title);
+  $header.appendChild($close);
+  $win.appendChild($header);
+  $win.appendChild($body);
+
+  // Initial positioning
+  const margin = 20;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const baseX = typeof originalEvent?.clientX === 'number' ? originalEvent.clientX : Math.floor(viewportW / 2);
+  const baseY = typeof originalEvent?.clientY === 'number' ? originalEvent.clientY : Math.floor(viewportH / 2);
+  const cascade = (nodeDetailsWindowCount % 10) * 18;
+
+  // Place near cursor, clamped into viewport (use translate so we can measure after append)
+  $win.style.left = Math.max(margin, Math.min(viewportW - margin - 760, baseX + 10 + cascade)) + 'px';
+  $win.style.top = Math.max(margin, Math.min(viewportH - margin - 400, baseY + 10 + cascade)) + 'px';
+
+  document.body.appendChild($win);
+
+  const bringToFront = () => {
+    $win.style.zIndex = String(++nodeDetailsWindowZ);
+  };
+  $win.addEventListener('mousedown', bringToFront, { passive: true });
+
+  // Dragging
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  const onMouseMove = (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const nextLeft = Math.max(
+      margin,
+      Math.min(window.innerWidth - margin - $win.offsetWidth, startLeft + dx),
+    );
+    const nextTop = Math.max(
+      margin,
+      Math.min(window.innerHeight - margin - $win.offsetHeight, startTop + dy),
+    );
+    $win.style.left = nextLeft + 'px';
+    $win.style.top = nextTop + 'px';
+  };
+
+  const onMouseUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    $header.style.cursor = 'grab';
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  };
+
+  $header.addEventListener('mousedown', (e) => {
+    // Only left click
+    if (e.button !== 0) return;
+    bringToFront();
+    dragging = true;
+    $header.style.cursor = 'grabbing';
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = $win.offsetLeft;
+    startTop = $win.offsetTop;
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseup', onMouseUp, { passive: true });
+  }, { passive: true });
+
+  const destroy = () => {
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+    $win.remove();
+  };
+
+  $close.addEventListener('click', destroy, { passive: true });
+}
+
+function buildDetailsTooltipFromNode(cy, n, originalEvent = undefined) {
   n.unselectify();
   cy.pendingSelectify = true;
 
   const g = n.data();
+  const details = cy.vars.details.value;
+
+  // Category color themes
+  const categoryColors = {
+    'Variable Values': { bg: '#eff6ff', header: '#3b82f6', border: '#bfdbfe' },
+    'Reward Structures': { bg: '#f0fdf4', header: '#10b981', border: '#bbf7d0' },
+    'Model Checking Results': { bg: '#faf5ff', header: '#8b5cf6', border: '#e9d5ff' },
+  };
+
+  // Gather graph metrics
+  const incomingEdges = n.incomers('edge').length;
+  const outgoingEdges = n.outgoers('edge').length;
+  const degree = n.degree();
+  const isSelected = n.selected();
+
+  // Build overview section
+  const overviewHtml = `
+    <div style="background: #667eea; color: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+        <div>
+          <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Incoming</div>
+          <div style="font-size: 20px; font-weight: bold;">${incomingEdges}</div>
+        </div>
+        <div>
+          <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Outgoing</div>
+          <div style="font-size: 20px; font-weight: bold;">${outgoingEdges}</div>
+        </div>
+        <div>
+          <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Degree</div>
+          <div style="font-size: 20px; font-weight: bold;">${degree}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
   const $blocks = [];
-  const details = cy.vars['details'].value;
-  Object.keys(details).forEach(d => {
+
+  Object.keys(details).forEach((d) => {
     if (!g.details[d]) return;
 
-    const show = details[d].all
-      || Object.values(
-        details[d].props,
-      ).reduce((a, b) => a || b, false);
+    const show = details[d].all || Object.values(details[d].props).reduce((a, b) => a || b, false);
+
+    if (show) {
+      const colorTheme = categoryColors[d] || { bg: '#f9fafb', header: '#6b7280', border: '#e5e7eb' };
+      const block = document.createElement('div');
+      block.style.marginBottom = '20px';
+
+      // Collect all values for this category to calculate min/max
+      const categoryValues = {};
+      const attributes = Object.keys(details[d].props).filter((p) => details[d].props[p]);
+
+      attributes.forEach((k) => {
+        const isNumber = details[d].metadata[k]?.type === 'number';
+        if (isNumber && details[d].metadata[k]) {
+          const min = details[d].metadata[k].min;
+          const max = details[d].metadata[k].max;
+          // Only add if min/max are valid numbers
+          if (typeof min === 'number' && typeof max === 'number' && !isNaN(min) && !isNaN(max)) {
+            categoryValues[k] = {
+              value: g.details[d][k],
+              min: min,
+              max: max,
+            };
+          }
+        }
+      });
+
+      // Build table HTML
+      let tableHtml = `
+        <div style="margin-bottom: 15px;">
+          <div style="background: ${colorTheme.header}; color: white; padding: 10px; border-radius: 6px 6px 0 0; font-weight: bold; font-size: 14px; text-align: center; display: flex; justify-content: space-between; align-items: center;">
+            <span>${d}</span>
+            <span style="font-size: 11px; opacity: 0.9; font-weight: normal;">${attributes.length} attribute${attributes.length !== 1 ? 's' : ''}</span>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid ${colorTheme.border}; border-top: none;">
+            <tbody>
+      `;
+
+      attributes.forEach((k, idx) => {
+        const isNumber = details[d].metadata[k]?.type === 'number';
+        const value = g.details[d][k];
+        const displayValue = isNumber ? fixed(value) : value;
+        const rowBg = idx % 2 === 0 ? '#ffffff' : colorTheme.bg;
+
+        let valueCell = `<td style="padding: 10px 12px; text-align: right; border-bottom: 1px solid ${colorTheme.border}; font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace;">
+          ${displayValue}
+        </td>`;
+
+        // Add range visualization for numeric values
+        if (isNumber && categoryValues[k]) {
+          const min = categoryValues[k].min;
+          const max = categoryValues[k].max;
+          const range = max - min;
+          const percentage = range > 0 ? ((value - min) / range) * 100 : 50;
+
+          // Ensure displayValue is valid for numeric display
+          const safeDisplayValue = typeof value === 'number' && !isNaN(value) ? fixed(value) : value;
+
+          // Add range indicator bar
+          valueCell = `
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${colorTheme.border};">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="flex: 1; background: #e5e7eb; height: 8px; border-radius: 4px; position: relative; overflow: hidden;">
+                  <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${percentage}%; background: linear-gradient(90deg, ${colorTheme.header}cc, ${colorTheme.header}); border-radius: 4px; transition: width 0.3s;"></div>
+                  <div style="position: absolute; left: ${percentage}%; top: 50%; transform: translate(-50%, -50%); width: 3px; height: 14px; background: ${colorTheme.header}; border-radius: 2px; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>
+                </div>
+                <div style="font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace; min-width: 80px; text-align: right;">
+                  ${safeDisplayValue}
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 10px; color: #9ca3af;">
+                <span>min: ${typeof min === 'number' ? fixed(min) : min}</span>
+                <span>max: ${typeof max === 'number' ? fixed(max) : max}</span>
+              </div>
+            </td>
+          `;
+        }
+
+        tableHtml += `
+          <tr style="background-color: ${rowBg};">
+            <td style="padding: 10px 12px; text-align: left; border-bottom: 1px solid ${colorTheme.border}; font-weight: 500; color: #374151; width: 40%;">
+              ${k}
+            </td>
+            ${valueCell}
+          </tr>
+        `;
+      });
+
+      tableHtml += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      block.innerHTML = tableHtml;
+      $blocks.push(block);
+    }
+  });
+
+  if ($blocks.length > 0) {
+    const container = document.createElement('div');
+    container.style.textAlign = 'left';
+
+    // Add overview section
+    const overviewDiv = document.createElement('div');
+    overviewDiv.innerHTML = overviewHtml;
+    container.appendChild(overviewDiv);
+
+    // Add attribute blocks
+    $blocks.forEach((block) => container.appendChild(block));
+
+    const titleHtml = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span>Node Details: ${g.id}</span>
+        ${isSelected ? '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: normal;">SELECTED</span>' : ''}
+      </div>
+    `;
+    openDraggableDetailsWindow({ titleHtml, contentEl: container, originalEvent });
+  }
+}
+
+function buildComparisonTooltip(cy, nodes) {
+  // Support both single comparison (2 nodes) and multi-node comparison
+  const nodeArray = Array.isArray(nodes) ? nodes : [nodes];
+  const nodeData = nodeArray.map((n) => n.data());
+  const details = cy.vars.details.value;
+
+  // Highlight in PCP
+  const nodeIds = nodeData.map((g) => g.id);
+  if (cy.pcp && cy.pcp.setComparison) {
+    cy.pcp.setComparison(nodeIds);
+  }
+
+  // Color generator function (same as PCP)
+  const baseColors = [
+    '#3b82f6',
+    '#ef4444',
+    '#10b981',
+    '#f59e0b',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f97316',
+  ];
+
+  function generateComparisonColor(index) {
+    if (index < baseColors.length) {
+      return baseColors[index];
+    }
+    const hue = (index * 137.5) % 360;
+    const saturation = 65 + (index % 3) * 10;
+    const lightness = 45 + (index % 4) * 5;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  }
+
+  const $blocks = [];
+
+  Object.keys(details).forEach((d) => {
+    // Check if any node has data for this category
+    const hasData = nodeData.some((g) => g.details[d]);
+    if (!hasData) return;
+
+    const show = details[d].all || Object.values(details[d].props).reduce((a, b) => a || b, false);
 
     if (show) {
       const block = document.createElement('div');
-      block.innerHTML = `
-        <p>${d} ======== </p>
-        <pre>${
-          Object.keys(details[d].props)
-            .filter(p => details[d].props[p])
-            .map(k => {
-              if (details[d].metadata[k].type === 'number') {
-                return `${k}: <span id="tt-${g.id}-${k}">${fixed(g.details[d][k])}</span>`;
-              } else {
-                return `${k}: <span id="tt-${g.id}-${k}">${g.details[d][k]}</span>`;
+      block.style.marginBottom = '25px';
+
+      // Build category header
+      let tableHtml = `<p style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-align: center;">${d}</p>`;
+
+      // Start table
+      tableHtml += '<table style="width: 100%; border-collapse: collapse; margin: 0 auto; max-width: 95%;">';
+
+      // Table header with node IDs
+      tableHtml += '<thead><tr>';
+      tableHtml += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #e5e7eb; font-weight: bold; background-color: #f9fafb;">Attribute</th>';
+      nodeData.forEach((g, idx) => {
+        const color = generateComparisonColor(idx);
+        tableHtml += `<th style='padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb; color: ${color}; font-weight: bold; background-color: #f9fafb;'>Node ${g.id}</th>`;
+      });
+      tableHtml += '</tr></thead>';
+
+      tableHtml += '<tbody>';
+
+      Object.keys(details[d].props)
+        .filter((p) => details[d].props[p])
+        .forEach((k, rowIdx) => {
+          const isNumber = details[d].metadata[k].type === 'number';
+
+          // Collect all values for this attribute
+          const values = nodeData.map((g) => {
+            const val = g.details[d]?.[k];
+            return val !== undefined ? (isNumber ? fixed(val) : val) : null;
+          });
+
+          // Check if all values are the same (or all null)
+          const nonNullValues = values.filter((v) => v !== null);
+          const allSame = nonNullValues.length > 0 &&
+            nonNullValues.every((v) => v === nonNullValues[0]);
+
+          // Alternating row background
+          const rowBg = rowIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
+
+          // Start row
+          tableHtml += `<tr style='background-color: ${rowBg};'>`;
+
+          // Attribute name column
+          tableHtml += `<td style='padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 500;'>${k}</td>`;
+
+          // Value columns
+          values.forEach((val, idx) => {
+            const color = generateComparisonColor(idx);
+            let displayVal = 'N/A';
+            let bgColor = allSame ? 'transparent' : '#f3f4f6';
+            let textColor = '#9ca3af';
+            let fontStyle = 'italic';
+            let fontWeight = 'normal';
+            if (val !== null) {
+              if (!allSame) {
+                bgColor = '#fff3cd';
               }
-            })
-            .join('\n')
-        }</pre>
-      `;
+              displayVal = val;
+              textColor = color;
+              fontStyle = 'normal';
+              fontWeight = '600';
+            }
+
+            tableHtml += `<td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; background-color: ${bgColor}; color: ${textColor}; font-style: ${fontStyle}; font-weight: ${fontWeight};">${displayVal}</td>`;
+          });
+
+          tableHtml += '</tr>';
+        });
+
+      tableHtml += '</tbody></table>';
+
+      block.innerHTML = tableHtml;
       $blocks.push(block);
     }
   });
 
   if ($blocks.length > 0) {
     const tooltip = document.createElement('div');
-    tooltip.style.textAlign = 'right';
-    $blocks.forEach(block => tooltip.appendChild(block));
-    makeTippy(n, tooltip, `tippy-${g.id}`);
+    tooltip.style.textAlign = 'center';
+    $blocks.forEach((block) => tooltip.appendChild(block));
+
+    const nodeIds = nodeData.map((g) => g.id).join(', ');
+    const titleText = nodeData.length === 2
+      ? `Comparing Nodes: ${nodeIds}`
+      : `Comparing ${nodeData.length} Nodes: ${nodeIds}`;
+
+    Swal.fire({
+      title: titleText,
+      html: tooltip,
+      width: '900px',
+      confirmButtonText: 'Close',
+      confirmButtonColor: '#555',
+    });
+  } else {
+    Swal.fire({
+      title: 'No comparable attributes',
+      text: 'These nodes have no visible attributes to compare.',
+      icon: 'info',
+    });
   }
 }
+
+// Expose globally for PCP context menu access
+window.buildComparisonTooltip = buildComparisonTooltip;
 
 function bindListeners(cy) {
   unbindListeners(cy);
@@ -789,6 +1212,14 @@ function bindListeners(cy) {
 
   cy.on('select unselect', (e) => {
     handleEditorSelection(e, cy);
+
+    // Emit matrix-selection event for cross-pane synchronization
+    const target = e.target;
+    if (target && target.isNode && target.isNode() && target.data('type') === 's') {
+      const nodeId = target.id();
+      const isSelected = target.selected();
+      window.dispatchEvent(events.MATRIX_SELECTION(cy.paneId, nodeId, isSelected));
+    }
   });
 
   cy.on('tap', 'node', (e) => {
@@ -821,13 +1252,60 @@ function bindListeners(cy) {
   });
 
   cy.on('mouseover', 'node', (e) => {
+    if (cy?._matrixViewActive) return;
+    // If this pane is currently showing the matrix view, Cytoscape can still
+    // receive pointer events via its container; ignore hover-sync in that case.
+    try {
+      const container = cy.container();
+      const paneContainerId = container?.parentElement?.id || container?.id;
+      if (paneContainerId && document.getElementById(`${paneContainerId}-matrix`)) return;
+    } catch {
+      // ignore
+    }
+
     var node = e.target;
     const nodeId = node.id();
     markRecurringNodesById(nodeId);
+    cy.pcp.highlightNode(nodeId);
+
+    // Highlight corresponding line in PCP for ALL panes
+    const panes = getPanes();
+    Object.values(panes).forEach((pane) => {
+      try {
+        if (pane?.cy?.pcp?.highlightNode) {
+          pane.cy.pcp.highlightNode(nodeId);
+        }
+      } catch {
+        console.log('tried to draw on unrendered pcp canvas...');
+      }
+    });
   });
 
   cy.on('mouseout', 'node', () => {
+    if (cy?._matrixViewActive) return;
+    try {
+      const container = cy.container();
+      const paneContainerId = container?.parentElement?.id || container?.id;
+      if (paneContainerId && document.getElementById(`${paneContainerId}-matrix`)) return;
+    } catch {
+      // ignore
+    }
+
     unmarkRecurringNodes();
+
+    cy.pcp.clearHighlight();
+
+    // Clear PCP highlight for ALL panes
+    const panes = getPanes();
+    Object.values(panes).forEach((pane) => {
+      try {
+        if (pane?.cy?.pcp?.clearHighlight) {
+          pane.cy.pcp.clearHighlight();
+        }
+      } catch {
+        console.log('tried to draw on unrendered pcp canvas...');
+      }
+    });
   });
 }
 
@@ -979,6 +1457,9 @@ function mark(cy, selection) {
   if (selection.length > 0) {
     const nodes = cy.$('#' + selection.join(', #'));
     nodes.addClass('marked');
+    // Update sidebar legend counts
+    const pane = Object.values(getPanes()).find(p => p.cy === cy);
+    if (pane) updateSidebarLegends(pane);
   }
 }
 
@@ -986,6 +1467,9 @@ function unmark(cy, selection) {
   if (selection.length > 0) {
     const nodes = cy.$('#' + selection.join(', #'));
     nodes.removeClass('marked');
+    // Update sidebar legend counts
+    const pane = Object.values(getPanes()).find(p => p.cy === cy);
+    if (pane) updateSidebarLegends(pane);
   }
 }
 
@@ -1217,7 +1701,35 @@ function unmarkRecurringNodes() {
   const panes = getPanes();
   Object.keys(panes).forEach((paneId) => {
     const paneCy = panes[paneId].cy;
-    paneCy.nodes().removeClass('recurring');
+    // skip panes without an active cytoscape instance
+    if (!paneCy || typeof paneCy.nodes !== 'function') return;
+    try {
+      const recurring = paneCy.nodes('.recurring');
+      recurring.forEach((n) => {
+        n.style({
+          'background-color': '',
+          'border-color': '',
+          color: '',
+          'background-opacity': '',
+          'border-opacity': '',
+        });
+      });
+      const recurringHover = paneCy.nodes('.recurring-hover');
+      recurringHover.forEach((n) => {
+        n.style({
+          'background-color': '',
+          'border-color': '',
+          color: '',
+          'background-opacity': '',
+          'border-opacity': '',
+        });
+      });
+      paneCy.nodes().removeClass('recurring');
+      paneCy.nodes('.recurring-hover').removeClass('recurring-hover');
+    } catch (err) {
+      // don't let one pane failure stop the whole cleanup
+      console.warn(`unmarkRecurringNodes: failed for pane ${paneId}`, err);
+    }
   });
 }
 
@@ -1243,7 +1755,37 @@ function markRecurringNodes() {
 
       duplicatePanes.forEach((paneId) => {
         const paneCy = panes[paneId].cy;
-        paneCy.$('#' + nodeId).addClass('recurring');
+        const node = paneCy.$('#' + nodeId);
+        // persistent recurring mark (used by the 'Mark recurring' control)
+        node.addClass('recurring');
+        // choose highlight color according to node's classification
+        let bg = COLORS.RECURRING;
+        let border = COLORS.RECURRING;
+        if (node.hasClass('graph-shared')) {
+          bg = COLORS.GRAPH_SHARED_BG;
+          border = COLORS.GRAPH_SHARED;
+        } else if (node.hasClass('graph-a-only')) {
+          bg = COLORS.GRAPH_A_BG;
+          border = COLORS.GRAPH_A_ONLY;
+        } else if (node.hasClass('graph-b-only')) {
+          bg = COLORS.GRAPH_B_BG;
+          border = COLORS.GRAPH_B_ONLY;
+        } else if (node.hasClass('graph-partial-shared')) {
+          bg = '#fff3e0';
+          border = '#ff9800';
+        } else if (node.hasClass('diff-added')) {
+          bg = '#e8f5e9';
+          border = '#1b5e20';
+        } else if (node.hasClass('diff-removed')) {
+          bg = '#ffebee';
+          border = '#b71c1c';
+        } else if (node.hasClass('diff-context')) {
+          bg = '#fafafa';
+          border = '#9e9e9e';
+        }
+        // rely on stylesheet :hover and .recurring rules to apply fill/border
+        // keep text color consistent
+        node.style({ color: '#000' });
       });
     }
   });
@@ -1268,14 +1810,22 @@ function markRecurringNodesById(markId, showInOverview = false) {
   var recurringNodes = {};
   Object.keys(duplicates).forEach((nodeId) => {
     const duplicatePanes = duplicates[nodeId];
+
+    // Always mark the hovered node, even if it only appears in one pane
+    duplicatePanes.forEach((paneId) => {
+      const paneCy = panes[paneId].cy;
+      const node = paneCy.$('#' + nodeId);
+      // mark as a temporary hover recurrence so it can be removed reliably
+      node.addClass('recurring-hover');
+      // keep text color consistent
+      node.style({ color: '#000' });
+    });
+
+    // Only track as 'recurring' for overview if it appears in multiple panes
     if (duplicatePanes.size > 1) {
       recurringNodes[nodeId] = duplicatePanes;
-      duplicatePanes.forEach((paneId) => {
-        const paneCy = panes[paneId].cy;
-        paneCy.$('#' + nodeId).addClass('recurring');
-      });
     }
-    if (showInOverview) {
+    if (showInOverview && duplicatePanes.size > 1) {
       socket.emit('duplicate pane ids', duplicatePanes);
     }
   });
@@ -1498,9 +2048,9 @@ function ctxmenu(cy) {
         .INTERACTIONS
         .expand1
         .description} \t (${CONSTANTS
-        .INTERACTIONS
-        .expand1
-        .keyboard})`,
+          .INTERACTIONS
+          .expand1
+          .keyboard})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         setPane(cy.paneId);
@@ -1516,9 +2066,9 @@ function ctxmenu(cy) {
         .INTERACTIONS
         .expandN
         .description(l)} \t (${CONSTANTS
-        .INTERACTIONS
-        .expandN
-        .keyboard})`,
+          .INTERACTIONS
+          .expandN
+          .keyboard})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         iteration = 0;
@@ -1569,9 +2119,9 @@ function ctxmenu(cy) {
         .INTERACTIONS
         .mark
         .description} \t (${CONSTANTS
-        .INTERACTIONS
-        .mark
-        .keyboard})`,
+          .INTERACTIONS
+          .mark
+          .keyboard})`,
       selector: 'node.s:selected',
       onClickFunction: e => {
         handleMarkNodes(cy, e);
@@ -1583,7 +2133,69 @@ function ctxmenu(cy) {
       tooltipText: 'Opens tooltip with node details',
       selector: 'node',
       onClickFunction: (n) => {
-        buildDetailsTooltipFromNode(cy, n.target);
+        buildDetailsTooltipFromNode(cy, n.target, n?.originalEvent);
+      },
+      hasTrailingDivider: false,
+    },
+    {
+      id: 'compare-nodes',
+      content: 'Compare with Selected Nodes',
+      tooltipText: 'Compare this node with the currently selected nodes',
+      selector: 'node',
+      onClickFunction: (event) => {
+        const targetNode = event.target || event.cyTarget;
+        const selectedNodes = cy.$('node.s:selected');
+
+        if (selectedNodes.length === 0) {
+          Swal.fire({
+            title: 'No nodes selected',
+            text: 'Please select one or more nodes first, then right-click another node to compare.',
+            icon: 'info',
+            confirmButtonColor: '#555',
+          });
+        } else {
+          // Check if target is already in selection
+          const isTargetSelected = selectedNodes.some(
+            (n) => n.id() === targetNode.id(),
+          );
+
+          if (isTargetSelected && selectedNodes.length === 1) {
+            Swal.fire({
+              title: 'Same node',
+              text: 'Please select different nodes to compare.',
+              icon: 'info',
+              confirmButtonColor: '#555',
+            });
+          } else {
+            // Build comparison with selected nodes + target (if not already selected)
+            const nodesToCompare = isTargetSelected
+              ? selectedNodes.toArray()
+              : [...selectedNodes.toArray(), targetNode];
+
+            buildComparisonTooltip(cy, nodesToCompare);
+          }
+        }
+      },
+      hasTrailingDivider: false,
+    },
+    {
+      id: 'compare-selected-only',
+      content: 'Compare Selected Nodes',
+      tooltipText: 'Compare all currently selected nodes with each other',
+      selector: 'node.s:selected',
+      onClickFunction: () => {
+        const selectedNodes = cy.$('node.s:selected');
+
+        if (selectedNodes.length < 2) {
+          Swal.fire({
+            title: 'Not enough nodes',
+            text: 'Please select at least 2 nodes to compare.',
+            icon: 'info',
+            confirmButtonColor: '#555',
+          });
+        } else {
+          buildComparisonTooltip(cy, selectedNodes.toArray());
+        }
       },
       hasTrailingDivider: true,
     },
@@ -1594,9 +2206,9 @@ function ctxmenu(cy) {
         .INTERACTIONS
         .expand1
         .description} \t (${CONSTANTS
-        .INTERACTIONS
-        .expand1
-        .keyboard_pane})`,
+          .INTERACTIONS
+          .expand1
+          .keyboard_pane})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         const nodes = cy.$('node.s:selected');
@@ -2007,4 +2619,7 @@ export {
   setMaxIteration,
   mergePane,
   handleMergePane,
+  duplicatePane,
+  importCy,
+  exportCy,
 };

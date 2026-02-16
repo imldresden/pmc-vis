@@ -1,12 +1,13 @@
 // Adapted from: https://gist.github.com/syntagmatic/2409451 and https://gist.github.com/mbostock/1341021
 // d3v7 brushing example https://observablehq.com/@d3/brushable-parallel-coordinates
 
-import { setPane } from '../../utils/controls.js';
+import { setPane, updateSidebarLegends } from '../../utils/controls.js';
 import events from '../../utils/events.js';
 import { fixed } from '../../utils/utils.js';
+import { generateComparisonColor, getColorForNode } from '../../utils/colors.js';
 import makeCtxMenu from './ctx-menu.js';
 import {
-  frequencies, histogram, violin,
+  frequencies, histogram, violin, brushedHistogram,
 } from './axis.js';
 import d3 from '../imports/import-d3.js';
 import { _ } from 'lodash';
@@ -15,6 +16,7 @@ function parallelCoords(pane, data, metadata) {
   let counts = {};
   const selections = new Map(); // stores dimension -> brush selection
   const highlighted = new Set(); // stores hover highlighting, always a subset of selections
+  const compared = new Map(); // stores ID -> index for comparison highlighting
   let selected = {}; // stores data selection
   let extents = {}; // for preserving brushes on nominals and booleans
   let dimensions;
@@ -22,6 +24,19 @@ function parallelCoords(pane, data, metadata) {
   const bounds = { min: 0, max: 1 };
   const scale = 2; // canvas resolution scale
   const stack = 5; // amount of line segments that can be stacked until full opacity
+  let drawBrushedFn; // reference to drawBrushed function for public API
+
+  // Initialize from cy.vars if available, otherwise default to false
+  let coloredComparisonEnabled = pane.cy?.vars?.['pcp-colored-comparison']?.value ?? false;
+
+  // Overlay state for multi-pane comparison
+  let overlayState = {
+    enabled: false,
+    panes: [],  // array of {pane, data, metadata, visible, opacity}
+    legend: null,  // DOM element
+    showRibbons: false,  // show difference ribbons between matched nodes
+    ribbonOpacity: 0.25,  // opacity of the ribbon fill
+  };
 
   const publicFunctions = {
     destroy: () => {
@@ -34,6 +49,7 @@ function parallelCoords(pane, data, metadata) {
       d3.selectAll('#' + pcpHtml.div).remove();
       selections.clear();
       highlighted.clear();
+      compared.clear();
       selected = {};
       extents = {};
       dimensions = undefined;
@@ -55,6 +71,92 @@ function parallelCoords(pane, data, metadata) {
     redraw: () => {
       draw(pane, data);
     },
+    setComparison: (nodeIds) => {
+      compared.clear();
+      nodeIds.forEach((id, idx) => compared.set(id, idx));
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    clearComparison: () => {
+      compared.clear();
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    toggleColoredComparison: (enabled) => {
+      coloredComparisonEnabled = enabled;
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    highlightNode: (nodeIds) => {
+      if (!drawBrushedFn) return;
+      highlighted.clear();
+      // Accept single nodeId or array of nodeIds
+      const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds];
+      ids.forEach(id => {
+        if (id) highlighted.add(id);
+      });
+      if (highlighted.size > 0) drawBrushedFn();
+    },
+    clearHighlight: () => {
+      highlighted.clear();
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    enableOverlay: (overlayPanes) => {
+      overlayState.enabled = true;
+      overlayState.panes = overlayPanes.map(op => ({
+        ...op,
+        visible: true,
+        opacity: 0.7,
+      }));
+      createOverlayLegend();
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    disableOverlay: () => {
+      overlayState.enabled = false;
+      overlayState.panes = [];
+      if (overlayState.legend) {
+        overlayState.legend.remove();
+        overlayState.legend = null;
+      }
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+      // Update sidebar to remove overlay legend
+      updateSidebarLegends(pane);
+    },
+    toggleRibbons: (show) => {
+      overlayState.showRibbons = show;
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    setRibbonOpacity: (opacity) => {
+      overlayState.ribbonOpacity = Math.max(0.05, Math.min(1, opacity));
+      if (drawBrushedFn) {
+        drawBrushedFn();
+      }
+    },
+    getOverlayState: () => {
+      return {
+        enabled: overlayState.enabled,
+        panes: overlayState.panes.map(p => ({
+          pane: p.pane,
+          data: p.data,
+          metadata: p.metadata,
+          visible: p.visible,
+          opacity: p.opacity,
+        })),
+        showRibbons: overlayState.showRibbons,
+        ribbonOpacity: overlayState.ribbonOpacity,
+      };
+    },
   };
 
   function updateCountStrings() {
@@ -68,10 +170,49 @@ function parallelCoords(pane, data, metadata) {
     }
   }
 
+  function createOverlayLegend() {
+    // Legend is now handled by the sidebar through updateSidebarLegends
+    // This function is kept for backward compatibility but delegates to sidebar
+    updateSidebarLegends(pane);
+  }
+
   function draw(pane, data) {
-    function drawForeground(d, count = false) {
-      foreground.strokeStyle = getComputedStyle(div).getPropertyValue(d._color);
+    function drawForeground(d, count = false, isThick = false) {
+      const color = coloredComparisonEnabled
+        ? getColorForNode(d.id)
+        : getComputedStyle(div).getPropertyValue(d._color);
+      foreground.strokeStyle = color;
+      if (isThick) {
+        foreground.lineWidth = 1 * scale;
+        foreground.globalAlpha = 0.9;
+      }
       path(d, foreground, count);
+      if (isThick) {
+        foreground.lineWidth = 1 * scale;
+        foreground.globalAlpha = 1;
+      }
+    }
+
+    function drawHighlight(d, count = false) {
+      const color = coloredComparisonEnabled
+        ? getColorForNode(d.id)
+        : getComputedStyle(div).getPropertyValue('--pcp-hover-stroke');
+      highlight.strokeStyle = color;
+      highlight.lineWidth = 3 * scale; // Thicker line for visibility
+      path(d, highlight, count);
+    }
+
+    function drawComparisonForeground(d, index, count = false) {
+      const color = coloredComparisonEnabled
+        ? generateComparisonColor(index)
+        : getComputedStyle(div).getPropertyValue(d._color);
+      foreground.strokeStyle = color;
+      foreground.lineWidth = 1 * scale; // thicker lines for compared nodes
+      foreground.globalAlpha = 0.9;
+      path(d, foreground, count);
+      // Reset line width and alpha
+      foreground.lineWidth = 1 * scale;
+      foreground.globalAlpha = 1;
     }
 
     function drawBoundIndicator(dim, selection, ctx) {
@@ -251,6 +392,11 @@ function parallelCoords(pane, data, metadata) {
 
     function drawBrushed() {
       selected = {};
+
+      // Ensure consistent line width at start (may have been modified by overlay drawing)
+      foreground.lineWidth = 1 * scale;
+      foreground.globalAlpha = 1;
+
       [ // clear all canvas
         foreground,
         background,
@@ -266,24 +412,31 @@ function parallelCoords(pane, data, metadata) {
 
       // get lines within extents
       data.map((d) => {
+        const isCompared = compared.has(d.id);
+        const comparisonIndex = compared.get(d.id);
+        const isHighlighted = highlighted.has(d.id);
+
         if (checkIfActive(d)) {
-          drawForeground(d, true);
+          if (isHighlighted) {
+            // Draw highlighted node (from graph hover) on highlight layer
+            drawHighlight(d, true);
+          } else if (compared.size > 0 && isCompared) {
+            // Draw comparison nodes with thick lines and comparison-specific colors
+            drawComparisonForeground(d, comparisonIndex, true);
+          } else if (compared.size > 0 && !isCompared) {
+            // Dim non-compared nodes when in comparison mode
+            foreground.globalAlpha = 0.2;
+            drawForeground(d, true, false);
+            foreground.globalAlpha = 1;
+          } else {
+            // No comparison active - draw normal lines (colored if enabled)
+            drawForeground(d, true, false);
+          }
           selected[d.id] = d;
         } else {
           path(d, background, true);
         }
       });
-
-      // console.log(`Foreground drew ${
-      //   foreground.segments.drawn
-      // } and saved ${
-      //   foreground.segments.skipped
-      // } segments`);
-      // console.log(`Background drew ${
-      //   background.segments.drawn
-      // } and saved ${
-      //   background.segments.skipped
-      // } segments`);
 
       drawBoundIndicators();
 
@@ -294,7 +447,141 @@ function parallelCoords(pane, data, metadata) {
           });
         });
       }
+
+      // Update brushed histograms if enabled
+      if (pane.cy.vars['pcp-hs'].value) {
+        const selectedData = Object.values(selected);
+        dimensions.forEach(dim => {
+          const axis_g = d3.select(`#${getAxisId(dim)} > .axis`);
+          brushedHistogram(axis_g, {
+            orient,
+            resp,
+            name: dim,
+            allData: data.map(d => d[dim]),
+            brushedData: selectedData.map(d => d[dim]),
+            brushedColor: '#3b82f6',
+          });
+        });
+      }
+
+      // Draw overlay panes last so they appear on top of all other lines
+      if (overlayState.enabled && overlayState.panes.length > 0) {
+        // First, detect overlapping data points across all visible overlay panes AND base pane
+        const overlapColor = '#000000'; // Black for overlapping lines
+        const overlapMap = new Map(); // Maps dimension values to pane indices
+
+        // Add base pane data to overlap detection (use index -1 for base pane)
+        data.forEach(d => {
+          const canDraw = dimensions.every(dim => {
+            return metadata.pld[dim] !== undefined && d[dim] !== undefined;
+          });
+
+          if (canDraw) {
+            const key = dimensions.map(dim => d[dim]).join(',');
+            if (!overlapMap.has(key)) {
+              overlapMap.set(key, []);
+            }
+            overlapMap.get(key).push(-1); // -1 represents base pane
+          }
+        });
+
+        // Build overlap detection map for overlay panes
+        overlayState.panes.forEach((overlayPane, idx) => {
+          if (!overlayPane.visible) return;
+
+          const overlayData = overlayPane.data;
+          const overlayMetadata = overlayPane.metadata;
+
+          if (overlayData && overlayMetadata) {
+            overlayData.forEach(od => {
+              const canDraw = dimensions.every(dim => {
+                return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+              });
+
+              if (canDraw) {
+                // Create a key from all dimension values
+                const key = dimensions.map(dim => od[dim]).join(',');
+                if (!overlapMap.has(key)) {
+                  overlapMap.set(key, []);
+                }
+                overlapMap.get(key).push(idx);
+              }
+            });
+          }
+        });
+
+        // Identify which keys represent overlaps (appear in multiple panes)
+        const overlappingKeys = new Set();
+        overlapMap.forEach((paneIndices, key) => {
+          if (paneIndices.length > 1) {
+            overlappingKeys.add(key);
+          }
+        });
+
+        // Draw overlay lines with color based on overlap status
+        overlayState.panes.forEach((overlayPane, idx) => {
+          if (!overlayPane.visible) return;
+
+          const paneColor = generateComparisonColor(idx);
+          const originalAlpha = foreground.globalAlpha;
+          const originalWidth = foreground.lineWidth;
+
+          foreground.lineWidth = 1 * scale;
+          foreground.globalAlpha = 1.0;
+
+          const overlayData = overlayPane.data;
+          const overlayMetadata = overlayPane.metadata;
+
+          if (overlayData && overlayMetadata) {
+            overlayData.forEach(od => {
+              const canDraw = dimensions.every(dim => {
+                return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+              });
+
+              if (canDraw) {
+                // Check if this line overlaps with other panes
+                const key = dimensions.map(dim => od[dim]).join(',');
+                const isOverlapping = overlappingKeys.has(key);
+
+                // Set color: black for overlapping, pane color for unique
+                foreground.strokeStyle = isOverlapping ? overlapColor : paneColor;
+
+                // Temporarily override metadata for path function
+                const originalPld = metadata.pld;
+                metadata.pld = { ...originalPld, ...overlayMetadata.pld };
+                path(od, foreground, false);
+                metadata.pld = originalPld;
+              }
+            });
+          }
+
+          // Reset
+          foreground.lineWidth = originalWidth;
+          foreground.globalAlpha = originalAlpha;
+        });
+
+        // Draw difference ribbons between matched nodes (if enabled)
+        if (overlayState.showRibbons) {
+          drawDifferenceRibbons(
+            overlayState,
+            data,
+            metadata,
+            dimensions,
+            yscale,
+            types,
+            margin,
+            foreground,
+            scale,
+            adjust,
+            generateComparisonColor,
+            orient,
+          );
+        }
+      }
     }
+
+    // Assign to outer scope for public API access
+    drawBrushedFn = drawBrushed;
 
     // sorting function by value, used in scales for each numerical dimension
     function basic_sort(a, b) {
@@ -357,20 +644,6 @@ function parallelCoords(pane, data, metadata) {
     const orient = where.width < where.height ? 0 : 1; // 0: ☰, 1 |||
 
     // set up some margins and dimensions for the svg
-
-    // let longestLabel = cols[0].length;
-    // cols.forEach(c => {
-    //     longestLabel = c.length > longestLabel ? c.length : longestLabel;
-    // });
-    // const labelMargin = longestLabel * 5;
-    // const pad = 50;
-    // const margin = {
-    //     top: 10 + (orient ? labelMargin / 2 : 30),
-    //     right: pad + (orient ? labelMargin / 3 : 10),
-    //     bottom: (pad / 2) + (orient ? 0: labelMargin / 2),
-    //     left: pad + (orient ? labelMargin / 3 : labelMargin)
-    // },
-
     const margin = {
       top: orient ? 30 : 50,
       bottom: orient ? 30 : 50,
@@ -408,8 +681,8 @@ function parallelCoords(pane, data, metadata) {
     );
 
     d3div.append('canvas').attr('id', pcpHtml.bg);
-    d3div.append('canvas').attr('id', pcpHtml.hl);
     d3div.append('canvas').attr('id', pcpHtml.fg);
+    d3div.append('canvas').attr('id', pcpHtml.hl);
 
     const div = document.getElementById(pcpHtml.div);
 
@@ -652,6 +925,120 @@ function parallelCoords(pane, data, metadata) {
           }
         });
         drawBoundIndicators();
+
+        // Redraw overlays if enabled
+        if (overlayState.enabled && overlayState.panes.length > 0) {
+          // First, detect overlapping data points across all visible overlay panes AND base pane
+          const overlapColor = '#000000'; // Black for overlapping lines
+          const overlapMap = new Map(); // Maps dimension values to pane indices
+
+          // Add base pane data to overlap detection (use index -1 for base pane)
+          data.forEach(d => {
+            const canDraw = dimensions.every(dim => {
+              return metadata.pld[dim] !== undefined && d[dim] !== undefined;
+            });
+
+            if (canDraw) {
+              const key = dimensions.map(dim => d[dim]).join(',');
+              if (!overlapMap.has(key)) {
+                overlapMap.set(key, []);
+              }
+              overlapMap.get(key).push(-1); // -1 represents base pane
+            }
+          });
+
+          // Build overlap detection map for overlay panes
+          overlayState.panes.forEach((overlayPane, idx) => {
+            if (!overlayPane.visible) return;
+
+            const overlayData = overlayPane.data;
+            const overlayMetadata = overlayPane.metadata;
+
+            if (overlayData && overlayMetadata) {
+              overlayData.forEach(od => {
+                const canDraw = dimensions.every(dim => {
+                  return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+                });
+
+                if (canDraw) {
+                  // Create a key from all dimension values
+                  const key = dimensions.map(dim => od[dim]).join(',');
+                  if (!overlapMap.has(key)) {
+                    overlapMap.set(key, []);
+                  }
+                  overlapMap.get(key).push(idx);
+                }
+              });
+            }
+          });
+
+          // Identify which keys represent overlaps (appear in multiple panes)
+          const overlappingKeys = new Set();
+          overlapMap.forEach((paneIndices, key) => {
+            if (paneIndices.length > 1) {
+              overlappingKeys.add(key);
+            }
+          });
+
+          // Draw overlay lines with color based on overlap status
+          overlayState.panes.forEach((overlayPane, idx) => {
+            if (!overlayPane.visible) return;
+
+            const paneColor = generateComparisonColor(idx);
+            const originalAlpha = foreground.globalAlpha;
+            const originalWidth = foreground.lineWidth;
+
+            foreground.lineWidth = 1 * scale;
+            foreground.globalAlpha = 1.0;
+
+            const overlayData = overlayPane.data;
+            const overlayMetadata = overlayPane.metadata;
+
+            if (overlayData && overlayMetadata) {
+              overlayData.forEach(od => {
+                const canDraw = dimensions.every(dim => {
+                  return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+                });
+
+                if (canDraw) {
+                  // Check if this line overlaps with other panes
+                  const key = dimensions.map(dim => od[dim]).join(',');
+                  const isOverlapping = overlappingKeys.has(key);
+
+                  // Set color: black for overlapping, pane color for unique
+                  foreground.strokeStyle = isOverlapping ? overlapColor : paneColor;
+
+                  const originalPld = metadata.pld;
+                  metadata.pld = { ...originalPld, ...overlayMetadata.pld };
+                  path(od, foreground, false);
+                  metadata.pld = originalPld;
+                }
+              });
+            }
+
+            foreground.lineWidth = originalWidth;
+            foreground.globalAlpha = originalAlpha;
+          });
+
+          // Draw difference ribbons between matched nodes (if enabled)
+          if (overlayState.showRibbons) {
+            drawDifferenceRibbons(
+              overlayState,
+              data,
+              metadata,
+              dimensions,
+              yscale,
+              types,
+              margin,
+              foreground,
+              scale,
+              adjust,
+              generateComparisonColor,
+              orient,
+            );
+          }
+        }
+
         return;
       }
 
@@ -682,7 +1069,7 @@ function parallelCoords(pane, data, metadata) {
               && val <= Math.max(mouse_lower_limit, mouse_upper_limit)
             ) {
               highlighted.add(point.id);
-              path(point, highlight);
+              drawHighlight(point);
             } else {
               highlighted.delete(point.id);
               drawForeground(point);
@@ -697,6 +1084,119 @@ function parallelCoords(pane, data, metadata) {
       });
 
       drawBoundIndicators();
+
+      // Redraw overlays if enabled
+      if (overlayState.enabled && overlayState.panes.length > 0) {
+        // First, detect overlapping data points across all visible overlay panes AND base pane
+        const overlapColor = '#000000'; // Black for overlapping lines
+        const overlapMap = new Map(); // Maps dimension values to pane indices
+
+        // Add base pane data to overlap detection (use index -1 for base pane)
+        data.forEach(d => {
+          const canDraw = dimensions.every(dim => {
+            return metadata.pld[dim] !== undefined && d[dim] !== undefined;
+          });
+
+          if (canDraw) {
+            const key = dimensions.map(dim => d[dim]).join(',');
+            if (!overlapMap.has(key)) {
+              overlapMap.set(key, []);
+            }
+            overlapMap.get(key).push(-1); // -1 represents base pane
+          }
+        });
+
+        // Build overlap detection map for overlay panes
+        overlayState.panes.forEach((overlayPane, idx) => {
+          if (!overlayPane.visible) return;
+
+          const overlayData = overlayPane.data;
+          const overlayMetadata = overlayPane.metadata;
+
+          if (overlayData && overlayMetadata) {
+            overlayData.forEach(od => {
+              const canDraw = dimensions.every(dim => {
+                return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+              });
+
+              if (canDraw) {
+                // Create a key from all dimension values
+                const key = dimensions.map(dim => od[dim]).join(',');
+                if (!overlapMap.has(key)) {
+                  overlapMap.set(key, []);
+                }
+                overlapMap.get(key).push(idx);
+              }
+            });
+          }
+        });
+
+        // Identify which keys represent overlaps (appear in multiple panes)
+        const overlappingKeys = new Set();
+        overlapMap.forEach((paneIndices, key) => {
+          if (paneIndices.length > 1) {
+            overlappingKeys.add(key);
+          }
+        });
+
+        // Draw overlay lines with color based on overlap status
+        overlayState.panes.forEach((overlayPane, idx) => {
+          if (!overlayPane.visible) return;
+
+          const paneColor = generateComparisonColor(idx);
+          const originalAlpha = foreground.globalAlpha;
+          const originalWidth = foreground.lineWidth;
+
+          foreground.lineWidth = 1 * scale;
+          foreground.globalAlpha = 1.0;
+
+          const overlayData = overlayPane.data;
+          const overlayMetadata = overlayPane.metadata;
+
+          if (overlayData && overlayMetadata) {
+            overlayData.forEach(od => {
+              const canDraw = dimensions.every(dim => {
+                return overlayMetadata.pld[dim] !== undefined && od[dim] !== undefined;
+              });
+
+              if (canDraw) {
+                // Check if this line overlaps with other panes
+                const key = dimensions.map(dim => od[dim]).join(',');
+                const isOverlapping = overlappingKeys.has(key);
+
+                // Set color: black for overlapping, pane color for unique
+                foreground.strokeStyle = isOverlapping ? overlapColor : paneColor;
+
+                const originalPld = metadata.pld;
+                metadata.pld = { ...originalPld, ...overlayMetadata.pld };
+                path(od, foreground, false);
+                metadata.pld = originalPld;
+              }
+            });
+          }
+
+          foreground.lineWidth = originalWidth;
+          foreground.globalAlpha = originalAlpha;
+        });
+
+        // Draw difference ribbons between matched nodes (if enabled)
+        if (overlayState.showRibbons) {
+          drawDifferenceRibbons(
+            overlayState,
+            data,
+            metadata,
+            dimensions,
+            yscale,
+            types,
+            margin,
+            foreground,
+            scale,
+            adjust,
+            generateComparisonColor,
+            orient,
+          );
+        }
+      }
 
       // console.log(`Highlighting layer drew: ${
       //   highlight.segments.drawn
@@ -721,8 +1221,15 @@ function parallelCoords(pane, data, metadata) {
           });
         }
         if (pane.cy.vars['pcp-hs'].value) {
-          histogram(axis_g, {
-            orient, resp, name: dim, data: data.map((d) => d[dim]),
+          // Use brushedHistogram for consistent visualization
+          // Initially all data is "brushed" (selected)
+          brushedHistogram(axis_g, {
+            orient,
+            resp,
+            name: dim,
+            allData: data.map(d => d[dim]),
+            brushedData: data.map(d => d[dim]),
+            brushedColor: '#3b82f6',
           });
         }
       })
@@ -796,16 +1303,252 @@ function parallelCoords(pane, data, metadata) {
           label: 'Select Maximum',
           callback: (e) => drawBrushMinMax(data, e.axisName, pane, 'max'),
         },
+        {
+          label: 'Compare Selected Nodes',
+          callback: () => {
+            const selection = publicFunctions.getSelection();
+            if (selection.length < 2) {
+              alert('Please select at least 2 nodes to compare.');
+            } else {
+              const nodeIds = selection.map(s => s.id);
+              publicFunctions.setComparison(nodeIds);
+
+              // Also trigger the comparison dialog if we have access to cy
+              if (pane.cy && pane.cy.nodes) {
+                const nodes = nodeIds.map(id => pane.cy.$('#' + id)).filter(n => n.length > 0);
+                if (nodes.length > 0 && window.buildComparisonTooltip) {
+                  window.buildComparisonTooltip(pane.cy, nodes);
+                }
+              }
+            }
+          },
+        },
+        {
+          label: 'Clear Comparison',
+          callback: () => {
+            publicFunctions.clearComparison();
+          },
+        },
       ],
     });
 
     drawBrushed();
     updateCountStrings();
+
+    // Recreate overlay legend if overlay is enabled
+    if (overlayState.enabled && overlayState.panes.length > 0) {
+      createOverlayLegend();
+    }
   }
 
   draw(pane, data);
 
   return publicFunctions;
 };
+
+// ============================================================================
+// Difference Ribbons for PCP Overlay Comparison
+// ============================================================================
+
+/**
+ * Draw difference ribbons between matched nodes in base pane and overlay panes.
+ *
+ * Creates filled polygons connecting the polylines of matched nodes with same ID
+ * to visually highlight attribute differences between graphs. The ribbon fills
+ * the area between the base and overlay polylines, making it easy to see where
+ * and how values differ.
+ *
+ * @param {Object} overlayState - The overlay state object
+ * @param {boolean} overlayState.enabled - Whether overlays are enabled
+ * @param {Array} overlayState.panes - Array of overlay pane configurations
+ * @param {number} overlayState.ribbonOpacity - Opacity for ribbon fills
+ * @param {Array<Object>} baseData - Data array from the base pane
+ * @param {Object} baseMetadata - Metadata for the base pane
+ * @param {Array<string>} dimensions - Array of dimension names
+ * @param {Function} yscale - Y-scale function for axis positioning
+ * @param {Object} types - Object mapping dimension names to axis type configs
+ * @param {Object} margin - Margin object with top, left, right, bottom
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D rendering context
+ * @param {number} scale - Device pixel ratio scale factor
+ * @param {Function} adjust - Coordinate adjustment function
+ * @param {Function} getColorFn - Function that takes an index and returns a color string
+ * @param {boolean} orient - Orientation (true = vertical, false = horizontal)
+ */
+function drawDifferenceRibbons(
+  overlayState,
+  baseData,
+  baseMetadata,
+  dimensions,
+  yscale,
+  types,
+  margin,
+  ctx,
+  scale,
+  adjust,
+  getColorFn,
+  orient,
+) {
+  if (!overlayState.enabled || overlayState.panes.length === 0) return;
+
+  // Build a map of base pane nodes by ID for quick lookup
+  const baseById = new Map();
+  baseData.forEach((d) => {
+    if (d.id) baseById.set(d.id, d);
+  });
+
+  // Save original context state
+  const originalAlpha = ctx.globalAlpha;
+  const originalWidth = ctx.lineWidth;
+
+  // Process each overlay pane
+  overlayState.panes.forEach((overlayPane, paneIdx) => {
+    if (!overlayPane.visible) return;
+
+    const overlayData = overlayPane.data;
+    const overlayMetadata = overlayPane.metadata;
+    if (!overlayData || !overlayMetadata) return;
+
+    const paneColor = getColorFn(paneIdx);
+
+    // Draw ribbon for each matched node pair
+    overlayData.forEach((overlayPoint) => {
+      const basePoint = baseById.get(overlayPoint.id);
+      if (!basePoint) return; // No matching node in base pane
+
+      // Verify both points have all required dimensions
+      const canDrawBase = dimensions.every(
+        (dim) => baseMetadata.pld[dim] !== undefined && basePoint[dim] !== undefined,
+      );
+      const canDrawOverlay = dimensions.every(
+        (dim) => overlayMetadata.pld[dim] !== undefined && overlayPoint[dim] !== undefined,
+      );
+
+      if (!canDrawBase || !canDrawOverlay) return;
+
+      // Calculate polyline points for both base and overlay
+      const basePoints = calculatePolylinePoints(
+        dimensions,
+        basePoint,
+        types,
+        yscale,
+        margin,
+        adjust,
+        orient,
+      );
+      const overlayPoints = calculatePolylinePoints(
+        dimensions,
+        overlayPoint,
+        types,
+        yscale,
+        margin,
+        adjust,
+        orient,
+      );
+
+      // Skip if values are identical (no visible difference)
+      if (!hasSignificantDifference(basePoints, overlayPoints)) return;
+
+      // Draw the filled ribbon polygon
+      drawRibbonPolygon(
+        ctx,
+        basePoints,
+        overlayPoints,
+        paneColor,
+        overlayState.ribbonOpacity,
+        scale,
+      );
+    });
+  });
+
+  // Restore original context state
+  ctx.globalAlpha = originalAlpha;
+  ctx.lineWidth = originalWidth;
+}
+
+/**
+ * Calculate polyline points for a data point across all dimensions.
+ *
+ * @param {Array<string>} dimensions - Dimension names
+ * @param {Object} dataPoint - Data point with dimension values
+ * @param {Object} types - Axis type configurations
+ * @param {Function} yscale - Y-scale function
+ * @param {Object} margin - Margin object
+ * @param {Function} adjust - Coordinate adjustment function
+ * @param {boolean} orient - Orientation flag
+ * @returns {Array<Object>} Array of {x, y} point objects
+ */
+function calculatePolylinePoints(dimensions, dataPoint, types, yscale, margin, adjust, orient) {
+  return dimensions.map((dim) => {
+    const axisScale = types[dim].scale;
+
+    if (orient) {
+      // Vertical orientation
+      return {
+        x: adjust(yscale(dim) + margin.left),
+        y: adjust(axisScale(dataPoint[dim]) + margin.top),
+      };
+    } else {
+      // Horizontal orientation
+      return {
+        x: adjust(axisScale(dataPoint[dim]) + margin.left),
+        y: adjust(yscale(dim) + margin.top),
+      };
+    }
+  });
+}
+
+/**
+ * Check if there's a significant visual difference between two polylines.
+ *
+ * @param {Array<Object>} points1 - First polyline points
+ * @param {Array<Object>} points2 - Second polyline points
+ * @param {number} [threshold=1] - Minimum distance to consider as difference
+ * @returns {boolean} True if polylines differ significantly
+ */
+function hasSignificantDifference(points1, points2, threshold = 1) {
+  for (let i = 0; i < points1.length; i += 1) {
+    const dist = Math.abs(points1[i].x - points2[i].x) + Math.abs(points1[i].y - points2[i].y);
+    if (dist > threshold) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Draw a ribbon polygon connecting two polylines.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Array<Object>} basePoints - Base polyline points
+ * @param {Array<Object>} overlayPoints - Overlay polyline points
+ * @param {string} color - Fill and stroke color
+ * @param {number} opacity - Base opacity for fill
+ * @param {number} scale - Scale factor for stroke width
+ */
+function drawRibbonPolygon(ctx, basePoints, overlayPoints, color, opacity, scale) {
+  ctx.beginPath();
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = color;
+
+  // Forward path along base polyline
+  ctx.moveTo(basePoints[0].x, basePoints[0].y);
+  for (let i = 1; i < basePoints.length; i += 1) {
+    ctx.lineTo(basePoints[i].x, basePoints[i].y);
+  }
+
+  // Backward path along overlay polyline (to close the polygon)
+  for (let i = overlayPoints.length - 1; i >= 0; i -= 1) {
+    ctx.lineTo(overlayPoints[i].x, overlayPoints[i].y);
+  }
+
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw a thin stroke around the ribbon for better visibility
+  ctx.globalAlpha = opacity * 2;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1 * scale;
+  ctx.stroke();
+}
 
 export { parallelCoords };
