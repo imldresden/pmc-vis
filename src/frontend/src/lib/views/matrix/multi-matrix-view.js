@@ -27,6 +27,14 @@ const ZOOM_MAX = 5;
 const ZOOM_FACTOR_IN = 1.1;
 const ZOOM_FACTOR_OUT = 0.9;
 
+/** Colors for different panes */
+const PANE_COLORS = [
+  { r: 76, g: 175, b: 80 },   // Green for pane 1
+  { r: 244, g: 67, b: 54 },   // Red for pane 2
+  { r: 63, g: 81, b: 181 },   // Indigo for pane 3
+  { r: 255, g: 152, b: 0 },   // Orange for pane 4
+];
+
 // ============================================================================
 // Main Export Function
 // ============================================================================
@@ -203,16 +211,7 @@ function setupMultiMatrixEventHandlers(canvas, container, viewState, render) {
       const mouseY = e.clientY - rect.top;
 
       const {
-        labelSpace,
-        cellSize,
-        matrixSize,
-        offsetY,
-        numMatrices,
-        n,
-        zoomLevel,
-        panX,
-        panY,
-        nodeIds,
+        labelSpace, cellSize, matrixSize, offsetY, numMatrices, n, zoomLevel, panX, panY, nodeIds,
       } = viewState.layoutInfo;
 
       // Transform mouse coordinates to account for pan and zoom
@@ -326,11 +325,7 @@ function setupMultiMatrixEventHandlers(canvas, container, viewState, render) {
  */
 function renderCombinedMatrix(canvas, sourcePanes, viewState) {
   const {
-    zoomLevel = 1.0,
-    panX = 0,
-    panY = 0,
-    hoveredRow = -1,
-    hoveredCol = -1,
+    zoomLevel = 1.0, panX = 0, panY = 0, hoveredRow = -1, hoveredCol = -1,
   } = viewState;
   const ctx = canvas.getContext('2d');
 
@@ -514,15 +509,18 @@ function renderCombinedMatrix(canvas, sourcePanes, viewState) {
           } else {
             color = { r: 255, g: 255, b: 255 };  // Empty cell - white
           }
-        } else if (paneMatrices[pane1Idx]) { // Upper triangle - always orange
-          count = Math.max(paneMatrices[pane1Idx][r][c], paneMatrices[pane1Idx][c][r]);
-          if (count > 0) {
-            color = orangeColor;
+        } else {
+          // Upper triangle - always orange
+          if (paneMatrices[pane1Idx]) {
+            count = Math.max(paneMatrices[pane1Idx][r][c], paneMatrices[pane1Idx][c][r]);
+            if (count > 0) {
+              color = orangeColor;
+            } else {
+              color = { r: 255, g: 255, b: 255 };  // Empty cell - white
+            }
           } else {
             color = { r: 255, g: 255, b: 255 };  // Empty cell - white
           }
-        } else {
-          color = { r: 255, g: 255, b: 255 };  // Empty cell - white
         }
 
         // Scale intensity based on count
@@ -585,7 +583,7 @@ function renderCombinedMatrix(canvas, sourcePanes, viewState) {
         offsetX + hoveredCol * cellSize,
         offsetY + hoveredRow * cellSize,
         cellSize,
-        cellSize
+        cellSize,
       );
     }
 

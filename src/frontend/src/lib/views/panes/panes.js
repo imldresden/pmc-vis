@@ -178,7 +178,6 @@ function applyMatrixHoverToCy(cy, ids, edge = null) {
           });
         }
       });
-
     } catch {
       // Ignore errors
     }
@@ -323,7 +322,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     destroyed: false,
   };
   const paneKeysAfter = Object.keys(panes);
-
   if (spawner) {
     const spawners = Array.isArray(spawner) ? spawner : [spawner];
     spawners.forEach(spawnerId => {
@@ -483,11 +481,11 @@ function enablePaneDragBars() {
         sizeProp,
         posProp,
       ] = [
-          resizer.previousElementSibling,
-          resizer.nextElementSibling,
-          'offsetWidth',
-          'pageX',
-        ];
+        resizer.previousElementSibling,
+        resizer.nextElementSibling,
+        'offsetWidth',
+        'pageX',
+      ];
 
       e.preventDefault();
 
@@ -733,6 +731,20 @@ async function destroyPanes(firstId, {
 
       highlightPaneById(lastPaneId);
     }
+
+    socket.emit('pane removed', firstId);
+
+    // trigger graph comparison update if enabled
+    const checkbox = document.getElementById('checkbox-graph-comparison');
+    if (checkbox?.checked) {
+      updateGraphComparison(true);
+    }
+
+    // trigger curved connectors update if enabled
+    const curvedCheckbox = document.getElementById('checkbox-curved-connectors');
+    if (curvedCheckbox?.checked) {
+      updateCurvedConnectors(true);
+    }
   }
 }
 
@@ -881,8 +893,6 @@ addEventListener('global-action', (e) => {
 window.addEventListener('matrix-hover', (e) => {
   const ids = e?.detail?.ids || [];
   const edge = e?.detail?.edge || null;
-
-  // TODO: sent pane id in the event...
   Object.values(getPanes()).forEach((pane) => {
     applyMatrixHoverToCy(pane?.cy, ids, edge);
     try {
@@ -1133,15 +1143,10 @@ document
     });
   });
 
-function getAllPanesRegistry() {
-  return allPanesRegistry;
-}
-
 export {
   enablePaneDragBars,
   spawnPane,
   getPanes,
-  getAllPanesRegistry,
   updatePanes,
   destroyPanes,
   togglePane,

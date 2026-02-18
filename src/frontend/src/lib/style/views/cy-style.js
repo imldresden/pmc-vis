@@ -166,7 +166,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -175,7 +175,7 @@ const stylesheet = [
       'border-color': COLORS.GRAPH_A_ONLY,
       'border-width': OUTLINES.width_selected,
       'border-style': 'double',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -184,7 +184,7 @@ const stylesheet = [
       'background-color': COLORS.GRAPH_A_ONLY,
       'background-opacity': 1,
       'border-color': COLORS.GRAPH_A_ONLY,
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -195,7 +195,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -204,7 +204,7 @@ const stylesheet = [
       'border-color': COLORS.GRAPH_B_ONLY,
       'border-width': OUTLINES.width_selected,
       'border-style': 'double',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -213,7 +213,7 @@ const stylesheet = [
       'background-color': COLORS.GRAPH_B_ONLY,
       'background-opacity': 1,
       'border-color': COLORS.GRAPH_B_ONLY,
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -224,7 +224,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -233,7 +233,7 @@ const stylesheet = [
       'border-color': COLORS.GRAPH_SHARED,
       'border-width': OUTLINES.width_selected,
       'border-style': 'double',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -242,7 +242,7 @@ const stylesheet = [
       'background-color': COLORS.GRAPH_SHARED,
       'background-opacity': 1,
       'border-color': COLORS.GRAPH_SHARED,
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -283,7 +283,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -292,7 +292,7 @@ const stylesheet = [
       'border-color': '#ff9800',
       'border-width': OUTLINES.width_selected,
       'border-style': 'double',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -301,7 +301,7 @@ const stylesheet = [
       'background-color': '#ff9800',
       'background-opacity': 1,
       'border-color': '#ff9800',
-      'color': '#000000',
+      color: '#000000',
     },
   },
   {
@@ -321,7 +321,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -330,7 +330,7 @@ const stylesheet = [
       'background-color': '#1b5e20',
       'background-opacity': 1,
       'border-color': '#1b5e20',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -341,7 +341,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'solid',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -350,7 +350,7 @@ const stylesheet = [
       'background-color': '#b71c1c',
       'background-opacity': 1,
       'border-color': '#b71c1c',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -361,7 +361,7 @@ const stylesheet = [
       'background-opacity': 0,
       'border-width': OUTLINES.width,
       'border-style': 'dashed',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -370,7 +370,7 @@ const stylesheet = [
       'background-color': '#9e9e9e',
       'background-opacity': 1,
       'border-color': '#9e9e9e',
-      'color': '#000',
+      color: '#000',
     },
   },
   {
@@ -379,7 +379,7 @@ const stylesheet = [
       'line-color': '#1b5e20',
       'target-arrow-color': '#1b5e20',
       'line-style': 'solid',
-      'width': 2,
+      width: 2,
     },
   },
   {
@@ -388,7 +388,7 @@ const stylesheet = [
       'line-color': '#b71c1c',
       'target-arrow-color': '#b71c1c',
       'line-style': 'solid',
-      'width': 2,
+      width: 2,
     },
   },
   {
@@ -397,8 +397,8 @@ const stylesheet = [
       'line-color': '#9e9e9e',
       'target-arrow-color': '#9e9e9e',
       'line-style': 'dashed',
-      'width': 1.5,
-      'opacity': 0.6,
+      width: 1.5,
+      opacity: 0.6,
     },
   },
   {
@@ -440,13 +440,13 @@ const stylesheet = [
   {
     selector: 'edge.matrix-hover',
     style: {
-      'display': 'element',
+      display: 'element',
       'line-color': COLORS.HL_EDGE_COLOR,
       'target-arrow-color': COLORS.HL_EDGE_COLOR,
       'source-arrow-color': COLORS.HL_EDGE_COLOR,
-      'width': 4,
+      width: 4,
       'z-index': 9999,
-      'opacity': 1,
+      opacity: 1,
     },
   },
 ];
@@ -492,29 +492,50 @@ const overviewStylesheet = [
   {
     selector: 'node.legend-dimmed',
     style: {
-      'opacity': 0.2,
+      opacity: 0.2,
     },
   },
   {
     selector: 'edge.legend-dimmed',
     style: {
-      'opacity': 0.1,
+      opacity: 0.1,
     },
   },
   {
     selector: 'node.legend-hidden',
     style: {
-      'display': 'none',
+      display: 'none',
     },
   },
   {
     selector: 'edge.legend-hidden',
     style: {
-      'display': 'none',
+      display: 'none',
+    },
+  },
+  // Matrix hover styles - placed at end for highest priority
+  {
+    selector: 'node.matrix-hover',
+    style: {
+      'border-width': 3,
+      'border-color': COLORS.HL_EDGE_COLOR,
+      'z-index': 9999,
+    },
+  },
+  {
+    selector: 'edge.matrix-hover',
+    style: {
+      display: 'element',
+      'line-color': COLORS.HL_EDGE_COLOR,
+      'target-arrow-color': COLORS.HL_EDGE_COLOR,
+      'source-arrow-color': COLORS.HL_EDGE_COLOR,
+      width: 4,
+      'z-index': 9999,
+      opacity: 1,
     },
   },
 ];
 
 export {
-  stylesheet, COLORS as colors, selections, overviewStylesheet,
+  stylesheet, selections, overviewStylesheet,
 };

@@ -88,7 +88,14 @@ function ensureMatrixLayer(pane) {
     }
   };
 
-  const eventsToBlock = ['pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu', 'touchstart'];
+  const eventsToBlock = [
+    'pointerdown',
+    'mousedown',
+    'click',
+    'dblclick',
+    'contextmenu',
+    'touchstart',
+  ];
   eventsToBlock.forEach((eventType) => {
     layer.addEventListener(eventType, stopBubble);
   });
@@ -277,7 +284,9 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
   const counts = new Uint16Array(n * n);
 
   if (n === 0) {
-    return { nodes: sNodes, counts, n, max: 0 };
+    return {
+      nodes: sNodes, counts, n, max: 0,
+    };
   }
 
   // Collect state-to-transition and transition-to-state relationships
@@ -336,7 +345,9 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
     });
   }
 
-  return { nodes: sNodes, counts, n, max, isUnifiedView, nodeMembership };
+  return {
+    nodes: sNodes, counts, n, max, isUnifiedView, nodeMembership,
+  };
 }
 
 // ============================================================================
@@ -506,7 +517,9 @@ function createRenderer(pane) {
    */
   function draw() {
     const filters = { minDegree: minDegreeFilter, showOnlySelected };
-    const { nodes, counts, n, max, isUnifiedView, nodeMembership } = buildAdjacency(pane, currentOrdering, filters);
+    const {
+      nodes, counts, n, max, isUnifiedView, nodeMembership,
+    } = buildAdjacency(pane, currentOrdering, filters);
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
@@ -520,7 +533,9 @@ function createRenderer(pane) {
 
     // Store data for interactions
     const paneState = state.get(pane.id);
-    paneState.matrixData = { nodes, counts, n, max, isUnifiedView, nodeMembership };
+    paneState.matrixData = {
+      nodes, counts, n, max, isUnifiedView, nodeMembership,
+    };
 
     // Calculate cell dimensions with zoom
     const baseCell = Math.max(1, Math.floor((Math.min(w, h) * 0.9) / n));
@@ -532,7 +547,9 @@ function createRenderer(pane) {
     const originY = Math.floor((h - totalSize) / 2) + panY;
 
     // Store layout for interactions
-    paneState.layout = { w, h, cell, originX, originY };
+    paneState.layout = {
+      w, h, cell, originX, originY,
+    };
 
     // Render background
     ctx.fillStyle = '#f8f8f8';
@@ -564,8 +581,7 @@ function createRenderer(pane) {
       }
     }
 
-    // Color scale: For diff graphs use diff colors,
-    // for unified views use graph membership colors, otherwise use single edge color
+    // Color scale: For diff graphs use diff colors, for unified views use graph membership colors, otherwise use single edge color
     const isDiffGraph = pane.cy.isDiffGraph;
 
     const palette = isDiffGraph ? {
@@ -613,12 +629,9 @@ function createRenderer(pane) {
         }
       }
     }
-    let maxOut = 0;
-    let maxIn = 0;
-    for (let i = 0; i < n; i++) {
-      if (outDeg[i] > maxOut) maxOut = outDeg[i];
-      if (inDeg[i] > maxIn) maxIn = inDeg[i];
-    }
+    let maxOut = 0; let
+      maxIn = 0;
+    for (let i = 0; i < n; i++) { if (outDeg[i] > maxOut) maxOut = outDeg[i]; if (inDeg[i] > maxIn) maxIn = inDeg[i]; }
 
     // Draw cells: only lower half (r >= c)
     for (let r = 0; r < n; r++) {
@@ -879,17 +892,16 @@ function createRenderer(pane) {
       density,
       avgDegree,
       nonZeroCells,
-      totalCells: n * n
+      totalCells: n * n,
     };
 
     // Update sidebar legend if this is active pane
     updateMatrixLegendInSidebar(pane);
 
-
     // Store filter state for sidebar display
     state.get(pane.id).matrixFilters = {
       minDegree: minDegreeFilter,
-      showOnlySelected
+      showOnlySelected,
     };
   }
 
@@ -949,7 +961,7 @@ function createRenderer(pane) {
         applyMatrixHoverNodes(fromId, toId);
         emitMatrixHover(
           Array.from(new Set([fromId, toId].filter(Boolean))),
-          { fromId, toId }
+          { fromId, toId },
         );
         draw();
       }
@@ -1000,9 +1012,7 @@ function createRenderer(pane) {
 
   canvas.addEventListener('mouseleave', () => {
     tooltip.style.display = 'none';
-    if (isDragging) {
-      isDragging = false;
-    }
+    isDragging &&= false;
     canvas.style.cursor = 'default';
     if (hoveredCell !== null) {
       hoveredCell = null;
@@ -1057,9 +1067,7 @@ function createRenderer(pane) {
 
           if (wasSelected) {
             if (typeof el.unselect === 'function') el.unselect();
-          } else {
-            if (typeof el.select === 'function') el.select();
-          }
+          } else if (typeof el.select === 'function') el.select();
 
           // Emit matrix-selection event for cross-pane synchronization
           const isNowSelected = !wasSelected;
@@ -1488,7 +1496,9 @@ export function updateMatrixLegendInSidebar(pane) {
   const st = state.get(pane.id);
   if (!st || !st.matrixStats) return;
 
-  const { nodes, density, avgDegree, nonZeroCells, totalCells } = st.matrixStats;
+  const {
+    nodes, density, avgDegree, nonZeroCells, totalCells,
+  } = st.matrixStats;
 
   // Get current ordering from renderer
   const currentOrdering = st.renderer?.getCurrentOrdering ? st.renderer.getCurrentOrdering() : 'id';
@@ -1547,7 +1557,7 @@ export function updateMatrixLegendInSidebar(pane) {
   const orderOptions = [
     { value: 'id', label: 'ID' },
     { value: 'degree', label: 'Degree' },
-    { value: 'bfs', label: 'Breadth-First Search' }
+    { value: 'bfs', label: 'Breadth-First Search' },
   ];
 
   orderOptions.forEach(opt => {
@@ -1591,7 +1601,7 @@ export function updateMatrixLegendInSidebar(pane) {
     { label: 'Nodes', value: nodes },
     { label: 'Density', value: `${density}%` },
     { label: 'Avg Degree', value: avgDegree },
-    { label: 'Non-zero cells', value: `${nonZeroCells} / ${totalCells}` }
+    { label: 'Non-zero cells', value: `${nonZeroCells} / ${totalCells}` },
   ];
 
   stats.forEach(({ label, value }) => {
@@ -1616,16 +1626,13 @@ export function updateMatrixLegendInSidebar(pane) {
     { color: 'rgba(27, 94, 32, 1)', label: 'Added (in Graph 2)' },
     { color: 'rgba(183, 28, 28, 1)', label: 'Removed (in Graph 1)' },
     { color: 'rgba(158, 158, 158, 1)', label: 'Context (unchanged)' },
-    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' }
+    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
   ] : isUnifiedView ? [
     { color: 'rgba(76, 175, 80, 1)', label: 'Added (only in Graph 2)' },
     { color: 'rgba(244, 67, 54, 1)', label: 'Removed (only in Graph 1)' },
     { color: 'rgba(158, 158, 158, 1)', label: 'Unchanged (in both)' },
-    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' }
-  ] : [
-    { color: 'rgba(43, 140, 255, 1)', label: 'Edge' },
-    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' }
-  ];
+    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
+  ] : [{ color: 'rgba(43, 140, 255, 1)', label: 'Edge' }, { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' }];
 
   colorItems.forEach(({ color, label }) => {
     const item = document.createElement('div');

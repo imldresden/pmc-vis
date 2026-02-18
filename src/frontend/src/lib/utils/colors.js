@@ -38,16 +38,32 @@ export function generateComparisonColor(index) {
   // For indices beyond base palette, use prime-based hue distribution
   // This avoids clustering that can happen with simple golden angle
   const adjustedIndex = index - baseComparisonColors.length;
-  const primes = [47, 53, 59, 61, 67]; // Various primes for better spread
+  const primes = [
+    47,
+    53,
+    59,
+    61,
+    67,
+  ]; // Various primes for better spread
   const primeOffset = primes[adjustedIndex % primes.length];
   const hue = (adjustedIndex * primeOffset + 30) % 360; // Offset to avoid base palette hues
-
   // Alternate saturation and lightness to maximize visual distinction
-  const saturationLevels = [70, 55, 85, 60, 75];
-  const lightnessLevels = [50, 40, 55, 45, 60];
+  const saturationLevels = [
+    70,
+    55,
+    85,
+    60,
+    75,
+  ];
+  const lightnessLevels = [
+    50,
+    40,
+    55,
+    45,
+    60,
+  ];
   const saturation = saturationLevels[adjustedIndex % saturationLevels.length];
   const lightness = lightnessLevels[Math.floor(adjustedIndex / 5) % lightnessLevels.length];
-
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
@@ -63,7 +79,7 @@ export function getColorForNode(nodeId) {
   let hash = 0;
   for (let i = 0; i < nodeId.length; i++) {
     hash = nodeId.charCodeAt(i) + ((hash << 5) - hash);
-    hash = hash & hash; // Convert to 32bit integer
+    hash &= hash; // Convert to 32bit integer
   }
   // Use absolute value and modulo to get a positive index
   const index = Math.abs(hash) % 360; // Use 360 for hue variation
