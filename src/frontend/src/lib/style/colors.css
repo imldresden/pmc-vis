@@ -20,6 +20,8 @@
   /* PCP */
   --pcp-primary: #4887b9;
   --pcp-secondary: #ee8c31;
+  --pcp-yes: #22c55e;
+  --pcp-no: #ef4444;
   --pcp-hover-stroke: #77c277;
   --pcp-hover-width: 3px;
   --pcp-bubble-cursor-color: #a3a3a3;

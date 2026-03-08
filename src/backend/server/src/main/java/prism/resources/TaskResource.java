@@ -128,7 +128,95 @@ public class TaskResource extends Resource {
         return Response.ok(output).build();
     }
 
-    @Path("/upload-model")
+    @Path("/create-dl-repair-project")
+    @POST
+    @Timed
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Create DL Repair Project", description = "POST ontology, interested axioms, and defect files to create a new DL Repair Project")
+    public Response createDLRepairProject(
+            @Parameter(description = "identifier of project")
+            @PathParam("project_id") String projectID,
+            @Parameter(description = "Ontology File")
+            @FormDataParam("ontology_file") InputStream ontologyInputStream,
+            @FormDataParam("ontology_file") FormDataContentDisposition ontologyDetail,
+            @Parameter(description = "Interested Axioms File")
+            @FormDataParam("interested_axioms_file") InputStream interestedAxiomsInputStream,
+            @FormDataParam("interested_axioms_file") FormDataContentDisposition interestedAxiomsDetail,
+            @Parameter(description = "Defect File")
+            @FormDataParam("defect_file") InputStream defectInputStream,
+            @FormDataParam("defect_file") FormDataContentDisposition defectDetail
+    ) {
+        String output = "";
+
+        try {
+            // Create project directory
+            if (new File(String.format("%s/%s", rootDir, projectID)).exists()) {
+                return Response.status(Response.Status.FORBIDDEN).entity("project already exists").build();
+            }
+
+            Files.createDirectory(Paths.get(String.format("%s/%s", rootDir, projectID)));
+            
+            // Create project metadata file to indicate this is a DL repair project
+            String projectMetadata = String.format("%s/%s/project-metadata.json", rootDir, projectID);
+            String metadataContent = "{\"type\": \"dl-repair\", \"created\": \"" + System.currentTimeMillis() + "\"}";
+            writeToFile(new java.io.ByteArrayInputStream(metadataContent.getBytes()), projectMetadata);
+            
+            // Create DL repair specific subdirectories
+            Files.createDirectory(Paths.get(String.format("%s/%s/ontology", rootDir, projectID)));
+            Files.createDirectory(Paths.get(String.format("%s/%s/decision-tree", rootDir, projectID)));
+
+            // Upload ontology file
+            if (ontologyDetail != null) {
+                final String uploadOntology = String.format("%s/%s/ontology/", rootDir, projectID) + ontologyDetail.getFileName();
+                writeToFile(ontologyInputStream, uploadOntology);
+                output += String.format("Ontology File uploaded to %s\n", uploadOntology);
+            }
+
+            // Upload interested axioms file
+            if (interestedAxiomsDetail != null) {
+                final String uploadInterestedAxioms = String.format("%s/%s/ontology/", rootDir, projectID) + interestedAxiomsDetail.getFileName();
+                writeToFile(interestedAxiomsInputStream, uploadInterestedAxioms);
+                output += String.format("Interested Axioms File uploaded to %s\n", uploadInterestedAxioms);
+            }
+
+            // Upload defect file
+            if (defectDetail != null) {
+                final String uploadDefect = String.format("%s/%s/ontology/", rootDir, projectID) + defectDetail.getFileName();
+                writeToFile(defectInputStream, uploadDefect);
+                output += String.format("Defect File uploaded to %s\n", uploadDefect);
+            }
+
+            return Response.ok(output).build();
+        } catch (IOException e) {
+            return error(e);
+        } catch (Exception e) {
+            return error(e);
+        }
+    }
+
+    @Path("/project-info")
+    @GET
+    @Timed
+    @Operation(summary = "Get Project Information", description = "Returns information about the project type and configuration")
+    public Response getProjectInfo(
+            @Parameter(description = "identifier of project")
+            @PathParam("project_id") String projectID
+    ) {
+        try {
+            String projectMetadataPath = String.format("%s/%s/project-metadata.json", rootDir, projectID);
+            File metadataFile = new File(projectMetadataPath);
+            
+            if (metadataFile.exists()) {
+                String content = new String(Files.readAllBytes(metadataFile.toPath()));
+                return Response.ok(content).build();
+            } else {
+                // Default to PRISM project
+                return Response.ok("{\"type\": \"prism\"}").build();
+            }
+        } catch (Exception e) {
+            return error(e);
+        }
+    }
     @POST
     @Timed
     @Consumes(MediaType.MULTIPART_FORM_DATA)

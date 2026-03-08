@@ -46,6 +46,9 @@ function parallelCoords(pane, data, metadata) {
           returnable[c] = d[c];
         });
         returnable.id = d.id;
+        if (d.linkedId) {
+          returnable.linkedId = d.linkedId;
+        }
         return returnable;
       });
     },
@@ -71,7 +74,8 @@ function parallelCoords(pane, data, metadata) {
   function draw(pane, data) {
     function drawForeground(d, count = false) {
       foreground.strokeStyle = getComputedStyle(div).getPropertyValue(d._color);
-      path(d, foreground, count);
+      foreground.globalAlpha = d._selected ? 1 : 0.15;
+      path(d, foreground, count, true);
     }
 
     function drawBoundIndicator(dim, selection, ctx) {
@@ -153,7 +157,8 @@ function parallelCoords(pane, data, metadata) {
     }
 
     function getAxisId(d) {
-      return pane.id + '_axis_' + d;
+      const safe = String(d).replace(/[^a-zA-Z0-9_-]/g, '_');
+      return pane.id + '_axis_' + safe;
     }
 
     // returns the dimension in x/y or modified in dragging
@@ -178,7 +183,16 @@ function parallelCoords(pane, data, metadata) {
         ctx.beginPath();
         ctx.moveTo(line.l0.x, line.l0.y);
         ctx.lineTo(line.l1.x, line.l1.y);
-        ctx.stroke();
+        
+        if (ds.isOverlap && ds.isForeground) {
+          const originalStrokeStyle = ctx.strokeStyle;
+          ctx.strokeStyle = '#0066cc';
+          ctx.stroke();
+          ctx.strokeStyle = originalStrokeStyle;
+        } else {
+          ctx.stroke();
+        }
+        
         ctx.segments.drawn += 1;
       } else {
         ctx.segments.skipped += 1;
@@ -191,7 +205,7 @@ function parallelCoords(pane, data, metadata) {
 
     // returns the path for a given data point
     // this maps the generated x/y function for each of the data points to every dimension
-    function path(point, ctx, count = false) {
+    function path(point, ctx, count = false, isForeground = true) {
       const lines = orient
         ? (d0, d1) => ({
           l0: {
@@ -217,7 +231,8 @@ function parallelCoords(pane, data, metadata) {
       dimensions.forEach((d1, i) => {
         if (i > 0) {
           const d0 = dimensions[i - 1];
-          segment(lines(d0, d1), ctx, { d0, d1 });
+          const isOverlap = point._overlapAxioms && point._overlapAxioms.has(d0) && point._overlapAxioms.has(d1);
+          segment(lines(d0, d1), ctx, { d0, d1, isOverlap, isForeground });
         }
         if (count) {
           const val = fixed(resp.axes[d1](point[d1]));
@@ -270,7 +285,7 @@ function parallelCoords(pane, data, metadata) {
           drawForeground(d, true);
           selected[d.id] = d;
         } else {
-          path(d, background, true);
+          path(d, background, true, false);
         }
       });
 
@@ -354,7 +369,11 @@ function parallelCoords(pane, data, metadata) {
     }
 
     // determines whether the plot appears vertically or horizontally
-    const orient = where.width < where.height ? 0 : 1; // 0: ☰, 1 |||
+    const orient = metadata.forceCompactDirection
+      ? 0
+      : (metadata.forceHorizontal
+        ? 1
+        : (metadata.forceVertical ? 0 : (where.width < where.height ? 0 : 1))); // 0: ☰, 1 |||
 
     // set up some margins and dimensions for the svg
 
@@ -682,6 +701,8 @@ function parallelCoords(pane, data, metadata) {
               && val <= Math.max(mouse_lower_limit, mouse_upper_limit)
             ) {
               highlighted.add(point.id);
+              highlight.strokeStyle = getComputedStyle(div)
+                .getPropertyValue(point._color || '--pcp-hover-stroke');
               path(point, highlight);
             } else {
               highlighted.delete(point.id);

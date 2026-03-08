@@ -40,7 +40,7 @@ body {
 /* Sidebar */
 #container {
   display: flex;
-  width: calc(100% - 350px);
+  width: calc(100% - var(--config-width));
   transition: width .5s;
   overflow: hidden;
   border-right: 1px solid black;
@@ -131,6 +131,42 @@ nav {
 #config-toggle.icon-inactive {
   right: var(--config-closed-width);
   transition: right .5s;
+}
+
+#config-resizer {
+  position: fixed;
+  top: var(--nav-height);
+  bottom: 0;
+  right: var(--config-width);
+  width: 8px;
+  margin-right: -4px;
+  cursor: ew-resize;
+  z-index: 4;
+}
+
+#config-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: transparent;
+}
+
+#config-resizer:hover::after {
+  background: var(--config-icon-color-active);
+}
+
+.config-closed #config-resizer {
+  display: none;
+}
+
+body.config-resizing #container,
+body.config-resizing .config,
+body.config-resizing #config-toggle {
+  transition: none;
 }
 
 .config-closed .config {
