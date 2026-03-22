@@ -86,6 +86,14 @@ function createDecisionTreeStylesheet() {
       },
     },
     {
+      selector: 'node.starplot-hovered',
+      style: {
+        'border-color': '#facc15',
+        'border-width': Math.max(OUTLINES.width_selected, 4),
+        'border-style': 'double',
+      },
+    },
+    {
       selector: 'node.s.has-children',
       style: {
         // Unexpanded nodes - solid background
@@ -110,16 +118,39 @@ function createDecisionTreeStylesheet() {
       },
     },
     {
+      selector: 'node.s.expanded.starplot-hovered',
+      style: {
+        'border-color': '#facc15',
+        'border-width': Math.max(OUTLINES.width_selected, 4),
+        'border-style': 'double',
+      },
+    },
+    {
       selector: 'node.s.leaf',
       style: {
-        // Leaf nodes - empty circle
-        label: '',
+        // Leaf nodes - empty circle or with repair status
+        label: 'data(repairSymbol)',
         shape: 'ellipse',
-        width: 10,
-        height: 10,
-        'background-opacity': 0,
-        'border-color': COLORS.NODE_COLOR,
+        width: 18,
+        height: 18,
+        'background-opacity': 'data(symbolBackgroundOpacity)',
+        'background-color': 'data(symbolBackground)',
+        'border-color': 'data(symbolBorderColor)',
         'border-width': OUTLINES.width,
+        'font-size': 12,
+        'font-weight': 'bold',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        color: 'data(symbolColor)',
+        padding: 0,
+      },
+    },
+    {
+      selector: 'node.s.leaf:selected',
+      style: {
+        'border-color': 'data(symbolColor)',
+        'border-width': 3,
+        'border-style': 'double',
       },
     },
     {
@@ -139,16 +170,16 @@ function createDecisionTreeStylesheet() {
       },
     },
     {
-      selector: 'edge[type="yes"]',
+      selector: 'edge[type="keep"]',
       style: {
-        'line-color': '#22c55e', // Green for yes
+        'line-color': '#22c55e', // Green for keep
         'target-arrow-color': '#22c55e',
       },
     },
     {
-      selector: 'edge[type="no"]',
+      selector: 'edge[type="remove"]',
       style: {
-        'line-color': '#ef4444', // Red for no
+        'line-color': '#ef4444', // Red for remove
         'target-arrow-color': '#ef4444',
       },
     },
@@ -178,6 +209,11 @@ export function createDecisionTree(container, treeData, fullTreeData) {
         label: node.label || node.axiom,
         nodeId: node.nodeId,
         axiom: node.label || node.axiom,
+        repairSymbol: '',
+        symbolColor: '#333',
+        symbolBackground: 'transparent',
+        symbolBorderColor: COLORS.NODE_COLOR,
+        symbolBackgroundOpacity: 0,
       },
       classes: getNodeClasses(node.id, classificationData),
     });
@@ -293,24 +329,24 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       return; // This cy instance doesn't have selected nodes
     }
     
-    // y/n: expand yes/no edge in current pane
-    if (e.key === 'y' || e.key === 'Y') {
+    // k/r: expand keep/remove edge in current pane
+    if (e.key === 'k' || e.key === 'K') {
       if (e._dlRepairHandled) {
         return;
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      expandNodeByType(cy, selectedNodes[0].data('nodeId'), 'yes');
+      expandNodeByType(cy, selectedNodes[0].data('nodeId'), 'keep');
       return;
     }
 
-    if (e.key === 'n' || e.key === 'N') {
+    if (e.key === 'r' || e.key === 'R') {
       if (e._dlRepairHandled) {
         return;
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      expandNodeByType(cy, selectedNodes[0].data('nodeId'), 'no');
+      expandNodeByType(cy, selectedNodes[0].data('nodeId'), 'remove');
       return;
     }
 
@@ -360,7 +396,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      // Go to first visible child, preferring 'yes' over 'no'
+      // Go to first visible child, preferring 'keep' over 'remove'
       const currentNode = selectedNodes[0];
       const childEdges = cy.treeData.edges.filter(edge => edge.source === currentNode.id());
       if (childEdges.length > 0) {
@@ -370,9 +406,9 @@ export function createDecisionTree(container, treeData, fullTreeData) {
           .filter(item => item.node.length > 0);
         
         if (visibleChildren.length > 0) {
-          // Prefer 'yes' child over 'no' child
-          const yesChild = visibleChildren.find(item => item.edge.type === 'yes');
-          const targetChild = yesChild || visibleChildren[0];
+          // Prefer 'keep' child over 'remove' child
+          const keepChild = visibleChildren.find(item => item.edge.type === 'keep');
+          const targetChild = keepChild || visibleChildren[0];
           
           currentNode.unselect();
           targetChild.node.select();
@@ -482,6 +518,23 @@ export function createDecisionTree(container, treeData, fullTreeData) {
           hasTrailingDivider: true,
         },
         {
+          id: 'move-path-to-summary',
+          content: 'Move this path to Summary View',
+          tooltipText: 'Update summary-view node states from root to this node path',
+          selector: 'node:selected',
+          onClickFunction: (event) => {
+            const node = event.target || event.cyTarget;
+            const nodeId = node.data('nodeId');
+            document.dispatchEvent(new CustomEvent('decision-tree-move-path-to-summary', {
+              detail: {
+                paneId: cy.paneId,
+                nodeId,
+              },
+            }));
+          },
+          hasTrailingDivider: true,
+        },
+        {
           id: 'fit-view',
           content: 'Fit to view',
           tooltipText: 'Fit graph to viewport',
@@ -533,6 +586,11 @@ export function updateDecisionTree(cy, treeData) {
         label: node.label,
         nodeId: node.nodeId,
         axiom: node.label,
+        repairSymbol: '',
+        symbolColor: '#333',
+        symbolBackground: 'transparent',
+        symbolBorderColor: COLORS.NODE_COLOR,
+        symbolBackgroundOpacity: 0,
       },
     });
   });
@@ -619,6 +677,75 @@ export function highlightPath(cy, nodeId) {
 }
 
 /**
+ * Update leaf node symbols based on parent repair status
+ */
+async function updateLeafNodeSymbols(cy, nodeId) {
+  if (!cy || !cy.treeData) return;
+  
+  try {
+    // Dynamically import dlRepairApi to avoid circular dependencies
+    const dlRepairApi = (await import('../utils/mock-dl-repair-api.js')).default;
+    const nodeIdStr = `node-${nodeId}`;
+    
+    const probabilities = await dlRepairApi.getImpactProbabilities(nodeId);
+    if (!probabilities) return;
+    
+    const hasKeepRepair = probabilities.yes && probabilities.yes !== 'No Repair!';
+    const hasRemoveRepair = probabilities.no && probabilities.no !== 'No Repair!';
+
+    const childEdges = cy.treeData.edges.filter(edge => edge.source === nodeIdStr);
+    childEdges.forEach(edge => {
+      const childNode = cy.getElementById(edge.target);
+      if (childNode.length > 0) {
+        let symbol = '';
+        let color = '#333';
+        let background = 'transparent';
+        let borderColor = COLORS.NODE_COLOR;
+        let backgroundOpacity = 0;
+        
+        if (edge.type === 'keep') {
+          if (hasKeepRepair) {
+            symbol = '✓';
+            color = '#2b8a3e';
+            background = '#f5fff5';
+            borderColor = '#d9e8d9';
+            backgroundOpacity = 1;
+          } else {
+            symbol = '✗';
+            color = '#c92a2a';
+            background = '#fff5f5';
+            borderColor = '#f0d6d6';
+            backgroundOpacity = 1;
+          }
+        } else if (edge.type === 'remove') {
+          if (hasRemoveRepair) {
+            symbol = '✓';
+            color = '#2b8a3e';
+            background = '#f5fff5';
+            borderColor = '#d9e8d9';
+            backgroundOpacity = 1;
+          } else {
+            symbol = '✗';
+            color = '#c92a2a';
+            background = '#fff5f5';
+            borderColor = '#f0d6d6';
+            backgroundOpacity = 1;
+          }
+        }
+        
+        childNode.data('repairSymbol', symbol);
+        childNode.data('symbolColor', color);
+        childNode.data('symbolBackground', background);
+        childNode.data('symbolBorderColor', borderColor);
+        childNode.data('symbolBackgroundOpacity', backgroundOpacity);
+      }
+    });
+  } catch (error) {
+    console.error('Error updating leaf node symbols:', error);
+  }
+}
+
+/**
  * Expand a node to show its children
  */
 function getExpandedTypes(cy, nodeId) {
@@ -678,6 +805,11 @@ export function expandNode(cy, nodeId) {
           label: node.label,
           nodeId: node.nodeId,
           axiom: node.label,
+          repairSymbol: '',
+          symbolColor: '#333',
+          symbolBackground: 'transparent',
+          symbolBorderColor: COLORS.NODE_COLOR,
+          symbolBackgroundOpacity: 0,
         },
         classes: getNodeClasses(node.id, cy.treeData),
       });
@@ -705,8 +837,8 @@ export function expandNode(cy, nodeId) {
     // Mark parent node as expanded
     cy.getElementById(nodeIdStr).removeClass('has-children').addClass('expanded');
 
-    expandedTypes.add('yes');
-    expandedTypes.add('no');
+    expandedTypes.add('keep');
+    expandedTypes.add('remove');
     expandedTypes.add('all');
     
     // Re-run layout
@@ -720,11 +852,12 @@ export function expandNode(cy, nodeId) {
 
     dispatchPaneDataChanged(cy);
     fitAllPanesAfterLayout();
+    updateLeafNodeSymbols(cy, nodeId);
   }
 }
 
 /**
- * Expand a node only along a specific edge type (yes/no)
+ * Expand a node only along a specific edge type (keep/remove)
  */
 export function expandNodeByType(cy, nodeId, edgeType) {
   if (!cy || !cy.treeData) return;
@@ -762,6 +895,11 @@ export function expandNodeByType(cy, nodeId, edgeType) {
           label: node.label,
           nodeId: node.nodeId,
           axiom: node.label,
+          repairSymbol: '',
+          symbolColor: '#333',
+          symbolBackground: 'transparent',
+          symbolBorderColor: COLORS.NODE_COLOR,
+          symbolBackgroundOpacity: 0,
         },
         classes: getNodeClasses(node.id, cy.treeData),
       });
@@ -798,6 +936,7 @@ export function expandNodeByType(cy, nodeId, edgeType) {
 
     dispatchPaneDataChanged(cy);
     fitAllPanesAfterLayout();
+    updateLeafNodeSymbols(cy, nodeId);
   }
 }
 

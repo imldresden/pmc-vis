@@ -39,7 +39,7 @@ export async function initializeDecisionTree() {
       children: [],
     }));
 
-    // Build edges based on yes/no relationships
+    // Build edges based on keep/remove relationships
     treeNodes.forEach(node => {
       if (node.yes !== undefined && node.yes !== null) {
         const yesChildId = `node-${node.yes}`;
@@ -47,8 +47,8 @@ export async function initializeDecisionTree() {
           id: `edge-${node.nodeId}-yes`,
           source: `node-${node.nodeId}`,
           target: yesChildId,
-          label: 'yes',
-          type: 'yes',
+          label: 'keep',
+          type: 'keep',
         });
         // Find and mark child
         const yesChild = decisionTreeData.nodes.find(n => n.id === yesChildId);
@@ -63,8 +63,8 @@ export async function initializeDecisionTree() {
           id: `edge-${node.nodeId}-no`,
           source: `node-${node.nodeId}`,
           target: noChildId,
-          label: 'no',
-          type: 'no',
+          label: 'remove',
+          type: 'remove',
         });
         // Find and mark child
         const noChild = decisionTreeData.nodes.find(n => n.id === noChildId);

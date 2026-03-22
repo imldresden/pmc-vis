@@ -231,14 +231,20 @@ function resizePane(div, flexGrow) {
 
 function resizeSplit(div, pheight, save = true) {
   const _height = Math.min(maxheight(), Math.max(MIN_SIZE, pheight));
+  const paneId = div.parentElement.id;
 
   if (save) {
-    panes[div.parentElement.id]._split = div.clientHeight;
+    panes[paneId]._split = div.clientHeight;
   }
 
   div.style.height = _height + 'px';
+  const details = document.getElementById(panes[paneId].details);
+  if (details) {
+    details.style.height = `${Math.max(MIN_SIZE, panes[paneId].height - _height)}px`;
+  }
 
-  panes[div.parentElement.id].split = 1 - _height / panes[div.parentElement.id].height;
+  panes[paneId].split = 1 - _height / panes[paneId].height;
+  panes[paneId].cy?.pcp?.redraw();
 }
 
 function togglePane(div) {
