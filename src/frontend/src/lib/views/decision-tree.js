@@ -110,6 +110,17 @@ function createDecisionTreeStylesheet() {
       },
     },
     {
+      selector: 'node.s.partially-expanded',
+      style: {
+        // Partially expanded nodes - gray fill
+        'background-opacity': 1,
+        'background-color': '#c6c6c6',
+        color: COLORS.DARK_TEXT,
+        'text-outline-color': '#c6c6c6',
+        'border-color': COLORS.NODE_COLOR,
+      },
+    },
+    {
       selector: 'node.s.expanded:selected',
       style: {
         'border-color': COLORS.SELECTED_BORDER,
@@ -118,7 +129,23 @@ function createDecisionTreeStylesheet() {
       },
     },
     {
+      selector: 'node.s.partially-expanded:selected',
+      style: {
+        'border-color': COLORS.SELECTED_BORDER,
+        'border-width': OUTLINES.width_selected,
+        'border-style': 'double',
+      },
+    },
+    {
       selector: 'node.s.expanded.starplot-hovered',
+      style: {
+        'border-color': '#facc15',
+        'border-width': Math.max(OUTLINES.width_selected, 4),
+        'border-style': 'double',
+      },
+    },
+    {
+      selector: 'node.s.partially-expanded.starplot-hovered',
       style: {
         'border-color': '#facc15',
         'border-width': Math.max(OUTLINES.width_selected, 4),
@@ -285,6 +312,12 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     }));
   };
 
+  const dispatchNodeHovered = (nodeId = null) => {
+    document.dispatchEvent(new CustomEvent('decision-tree-node-hovered', {
+      detail: { nodeId, paneId: cy.paneId },
+    }));
+  };
+
   // Add interaction handlers
   cy.on('tap', 'node', (event) => {
     activeDecisionTreeCy = cy;
@@ -303,6 +336,21 @@ export function createDecisionTree(container, treeData, fullTreeData) {
   cy.on('unselect', 'node', () => {
     activeDecisionTreeCy = cy;
     dispatchSelectionChange();
+  });
+
+  cy.on('mouseover', 'node', (event) => {
+    activeDecisionTreeCy = cy;
+    const node = event.target;
+    if (!node || !node.selected()) {
+      dispatchNodeHovered(null);
+      return;
+    }
+    dispatchNodeHovered(node.data('nodeId'));
+  });
+
+  cy.on('mouseout', 'node', () => {
+    activeDecisionTreeCy = cy;
+    dispatchNodeHovered(null);
   });
 
   // Handle double-click to expand nodes
@@ -509,7 +557,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
           id: 'collapse-node',
           content: 'Collapse',
           tooltipText: 'Collapse subtree',
-          selector: 'node.expanded',
+          selector: 'node.expanded, node.partially-expanded',
           onClickFunction: (event) => {
             const node = event.target || event.cyTarget;
             const nodeId = node.data('nodeId');
@@ -757,6 +805,44 @@ function getExpandedTypes(cy, nodeId) {
   return types;
 }
 
+function syncNodeExpansionClass(cy, nodeId) {
+  if (!cy || !cy.treeData) {
+    return;
+  }
+
+  const nodeIdStr = `node-${nodeId}`;
+  const node = cy.getElementById(nodeIdStr);
+  if (node.length === 0) {
+    return;
+  }
+
+  const hasChildren = cy.treeData.edges.some(edge => edge.source === nodeIdStr);
+  const expandedTypes = cy.expandedNodes.get(nodeId);
+  const hasKeep = expandedTypes?.has('keep') || expandedTypes?.has('all');
+  const hasRemove = expandedTypes?.has('remove') || expandedTypes?.has('all');
+  const isFullyExpanded = !!(hasKeep && hasRemove);
+  const isPartiallyExpanded = !!(!isFullyExpanded && (hasKeep || hasRemove));
+
+  node.removeClass('leaf has-children expanded partially-expanded');
+
+  if (!hasChildren) {
+    node.addClass('leaf');
+    return;
+  }
+
+  if (isFullyExpanded) {
+    node.addClass('expanded');
+    return;
+  }
+
+  if (isPartiallyExpanded) {
+    node.addClass('partially-expanded');
+    return;
+  }
+
+  node.addClass('has-children');
+}
+
 export function expandNode(cy, nodeId) {
   if (!cy || !cy.treeData) return;
 
@@ -833,13 +919,11 @@ export function expandNode(cy, nodeId) {
 
   if (newElements.length > 0) {
     cy.add(newElements);
-    
-    // Mark parent node as expanded
-    cy.getElementById(nodeIdStr).removeClass('has-children').addClass('expanded');
 
     expandedTypes.add('keep');
     expandedTypes.add('remove');
     expandedTypes.add('all');
+    syncNodeExpansionClass(cy, nodeId);
     
     // Re-run layout
     cy.layout({
@@ -923,8 +1007,8 @@ export function expandNodeByType(cy, nodeId, edgeType) {
   if (newElements.length > 0) {
     cy.add(newElements);
 
-    cy.getElementById(nodeIdStr).removeClass('has-children').addClass('expanded');
     expandedTypes.add(edgeType);
+    syncNodeExpansionClass(cy, nodeId);
 
     cy.layout({
       name: 'dagre',
@@ -996,9 +1080,8 @@ function collapseNode(cy, nodeId) {
   });
 
   cy.expandedNodes.delete(nodeId);
-  currentNode.removeClass('expanded leaf has-children');
-  const hasChildren = cy.treeData.edges.some(edge => edge.source === nodeIdStr);
-  currentNode.addClass(hasChildren ? 'has-children' : 'leaf');
+  currentNode.removeClass('expanded partially-expanded leaf has-children');
+  syncNodeExpansionClass(cy, nodeId);
 
   cy.layout({
     name: 'dagre',

@@ -13,6 +13,63 @@ let BACKEND = import.meta.env.VITE_BACKEND_RESTFUL;
 const DL_REPAIR_SIDEBAR_WIDTH_KEY = 'dl-repair-sidebar-width';
 let dlRepairSidebarResizeInitialized = false;
 
+const STAR_AXIS_DEFAULT_STROKE = '#b8b8b8';
+const STAR_AXIS_DEFAULT_STROKE_WIDTH = '1';
+const STAR_AXIS_HIGHLIGHT_STROKE = '#f08c00';
+const STAR_AXIS_HIGHLIGHT_STROKE_WIDTH = '2.6';
+
+function resetGlobalStarAxisHighlight() {
+  document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-line').forEach((axisLine) => {
+    const defaultStroke = axisLine.getAttribute('data-default-stroke') || STAR_AXIS_DEFAULT_STROKE;
+    const defaultStrokeWidth = axisLine.getAttribute('data-default-stroke-width') || STAR_AXIS_DEFAULT_STROKE_WIDTH;
+    axisLine.setAttribute('stroke', defaultStroke);
+    axisLine.setAttribute('stroke-width', defaultStrokeWidth);
+    axisLine.setAttribute('stroke-opacity', '1');
+  });
+
+  document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-label').forEach((axisLabel) => {
+    const defaultWeight = axisLabel.getAttribute('data-default-font-weight') || '500';
+    axisLabel.setAttribute('font-weight', defaultWeight);
+  });
+}
+
+function highlightGlobalStarAxis(axisName) {
+  const axis = String(axisName || '');
+  if (!axis) {
+    resetGlobalStarAxisHighlight();
+    return;
+  }
+
+  document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-line').forEach((axisLine) => {
+    const lineAxis = axisLine.getAttribute('data-axis-name');
+    if (lineAxis === axis) {
+      axisLine.setAttribute('stroke', STAR_AXIS_HIGHLIGHT_STROKE);
+      axisLine.setAttribute('stroke-width', STAR_AXIS_HIGHLIGHT_STROKE_WIDTH);
+      axisLine.setAttribute('stroke-opacity', '1');
+      axisLine.setAttribute('stroke-linecap', 'round');
+      axisLine.parentNode?.appendChild(axisLine);
+      return;
+    }
+
+    const defaultStroke = axisLine.getAttribute('data-default-stroke') || STAR_AXIS_DEFAULT_STROKE;
+    const defaultStrokeWidth = axisLine.getAttribute('data-default-stroke-width') || STAR_AXIS_DEFAULT_STROKE_WIDTH;
+    axisLine.setAttribute('stroke', defaultStroke);
+    axisLine.setAttribute('stroke-width', defaultStrokeWidth);
+    axisLine.setAttribute('stroke-opacity', '1');
+  });
+
+  document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-label').forEach((axisLabel) => {
+    const labelAxis = axisLabel.getAttribute('data-axis-name');
+    const defaultWeight = axisLabel.getAttribute('data-default-font-weight') || '500';
+    axisLabel.setAttribute('font-weight', labelAxis === axis ? '700' : defaultWeight);
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.dlRepairHighlightStarAxis = highlightGlobalStarAxis;
+  window.dlRepairClearStarAxisHighlight = resetGlobalStarAxisHighlight;
+}
+
 // Track project type
 let PROJECT_TYPE = 'prism'; // 'prism' or 'dl-repair'
 
@@ -372,6 +429,8 @@ async function startDLRepairProject() {
 
     // Add node selection handler
     document.addEventListener('decision-tree-node-selected', async (event) => {
+      document.dispatchEvent(new CustomEvent('hamming-repair-preview-clear'));
+
       const nodeId = event.detail.nodeId;
       const selectedNodeIds = event.detail.selectedNodeIds || [];
       const panes = getPanes();
@@ -479,6 +538,15 @@ async function startDLRepairProject() {
       updateDecisionTreePCP(targetPane, selectedNodeIds);
     });
 
+    document.addEventListener('decision-tree-node-hovered', (event) => {
+      const panes = getPanes();
+      const targetPane = panes[event.detail.paneId] || pane;
+      if (!targetPane?.cy?.pcp?.setHoveredNode) {
+        return;
+      }
+      targetPane.cy.pcp.setHoveredNode(event.detail.nodeId);
+    });
+
     // Add edge click handler for navigation
     document.addEventListener('decision-tree-edge-clicked', (event) => {
       const targetNodeId = event.detail.target;
@@ -557,11 +625,70 @@ async function startDLRepairProject() {
       }
     });
 
-    document.addEventListener('hamming-repair-choice', (event) => {
+    let summaryPreviewSnapshot = null;
+
+    const clearSummaryPreview = () => {
+      if (!summaryPreviewSnapshot) {
+        return;
+      }
+
+      const panes = getPanes();
+      const summaryPane = panes[axiomPaneId];
+      if (!summaryPane?.cy) {
+        summaryPreviewSnapshot = null;
+        return;
+      }
+
+      summaryPane.cy.nodes().forEach((node) => {
+        const restoredState = summaryPreviewSnapshot[node.id()] || AXIOM_STATES.UNDECIDED;
+        setSummaryNodeState(summaryPane.cy, axiomPaneId, node.id(), restoredState);
+      });
+
+      summaryPreviewSnapshot = null;
+    };
+
+    document.addEventListener('hamming-repair-hover', (event) => {
       const { choice, distance } = event.detail || {};
       if (!distance || (choice !== 'yes' && choice !== 'no')) {
         return;
       }
+
+      const panes = getPanes();
+      const summaryPane = panes[axiomPaneId];
+      if (!summaryPane?.cy) {
+        return;
+      }
+
+      if (!summaryPreviewSnapshot) {
+        const currentStates = getAxiomStatesForPane(axiomPaneId) || {};
+        summaryPreviewSnapshot = { ...currentStates };
+      }
+
+      const repairAxioms = choice === 'yes'
+        ? distance.hamming_yes_repair
+        : distance.hamming_no_repair;
+      applyRepairAxiomsToSummary(summaryPane.cy, axiomPaneId, repairAxioms);
+    });
+
+    document.addEventListener('hamming-repair-hover-end', () => {
+      clearSummaryPreview();
+    });
+
+    document.addEventListener('hamming-repair-preview-clear', () => {
+      clearSummaryPreview();
+    });
+
+    document.addEventListener('hamming-repair-choice', (event) => {
+      const { choice, distance, propagate } = event.detail || {};
+      if (!distance || (choice !== 'yes' && choice !== 'no')) {
+        return;
+      }
+
+      if (!propagate) {
+        return;
+      }
+
+      clearSummaryPreview();
 
       const panes = getPanes();
       const summaryPane = panes[axiomPaneId];
@@ -732,8 +859,12 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
         y1: centerY,
         x2: endpoint.x,
         y2: endpoint.y,
-        stroke: '#b8b8b8',
-        'stroke-width': 1,
+        class: 'decision-tree-star-axis-line',
+        'data-axis-name': dimension,
+        'data-default-stroke': STAR_AXIS_DEFAULT_STROKE,
+        'data-default-stroke-width': STAR_AXIS_DEFAULT_STROKE_WIDTH,
+        stroke: STAR_AXIS_DEFAULT_STROKE,
+        'stroke-width': STAR_AXIS_DEFAULT_STROKE_WIDTH,
       });
 
       if (showAxisLabels) {
@@ -741,12 +872,22 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
         const label = append('text', {
           x: labelPoint.x,
           y: labelPoint.y,
+          class: 'decision-tree-star-axis-label',
+          'data-axis-name': dimension,
           'text-anchor': endpoint.x >= centerX ? 'start' : 'end',
           'dominant-baseline': endpoint.y >= centerY ? 'hanging' : 'auto',
           'font-size': 10,
+          'font-weight': 500,
+          'data-default-font-weight': 500,
           fill: '#4b4b4b',
         });
         label.textContent = dimension;
+        label.addEventListener('mouseenter', () => {
+          highlightGlobalStarAxis(dimension);
+        });
+        label.addEventListener('mouseleave', () => {
+          resetGlobalStarAxisHighlight();
+        });
       }
     });
 
@@ -813,7 +954,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     return svg;
   };
 
-  const ensurePlotToggle = (mode) => {
+  const ensurePlotToggle = (mode, showAxisLabels) => {
     const detailElement = document.getElementById(pane.details);
     if (!detailElement) {
       return;
@@ -827,8 +968,16 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     }
 
     toggle.innerHTML = `
-      <button class="decision-tree-plot-toggle-btn ${mode === DECISION_TREE_PLOT_MODE.PCP ? 'active' : ''}" data-mode="${DECISION_TREE_PLOT_MODE.PCP}">PCP</button>
-      <button class="decision-tree-plot-toggle-btn ${mode === DECISION_TREE_PLOT_MODE.STAR ? 'active' : ''}" data-mode="${DECISION_TREE_PLOT_MODE.STAR}">Star Plot</button>
+      <div class="decision-tree-plot-toggle-row">
+        <button class="decision-tree-plot-toggle-btn ${mode === DECISION_TREE_PLOT_MODE.PCP ? 'active' : ''}" data-mode="${DECISION_TREE_PLOT_MODE.PCP}">PCP</button>
+        <button class="decision-tree-plot-toggle-btn ${mode === DECISION_TREE_PLOT_MODE.STAR ? 'active' : ''}" data-mode="${DECISION_TREE_PLOT_MODE.STAR}">Star Plot</button>
+      </div>
+      ${mode === DECISION_TREE_PLOT_MODE.STAR ? `
+      <label class="decision-tree-star-label-switch">
+        <input type="checkbox" class="decision-tree-star-label-switch-input" ${showAxisLabels ? 'checked' : ''}>
+        <span>Show axis labels</span>
+      </label>
+      ` : ''}
     `;
 
     toggle.querySelectorAll('.decision-tree-plot-toggle-btn').forEach((button) => {
@@ -842,6 +991,18 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
         updateDecisionTreePCP(pane, currentSelectedIds);
       };
     });
+
+    const labelSwitch = toggle.querySelector('.decision-tree-star-label-switch-input');
+    if (labelSwitch) {
+      labelSwitch.onchange = () => {
+        pane.cy.vars['star-show-axis-labels'].value = labelSwitch.checked;
+        if (pane.cy.vars['pcp-visual-mode'].value !== DECISION_TREE_PLOT_MODE.STAR) {
+          return;
+        }
+        const currentSelectedIds = pane.cy.$('node:selected').map(n => n.data('nodeId'));
+        updateDecisionTreePCP(pane, currentSelectedIds);
+      };
+    }
   };
 
   const clearStarPlotView = () => {
@@ -854,7 +1015,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       .forEach(element => element.remove());
   };
 
-  const renderStarPlotView = (dimensions, byNodeRows, selectedIds) => {
+  const renderStarPlotView = (dimensions, byNodeRows, selectedIds, showAxisLabels = false) => {
     const detailElement = document.getElementById(pane.details);
     if (!detailElement) {
       return;
@@ -894,6 +1055,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     });
 
     const getNodeLabel = (nodeId) => nodeLabelById[String(nodeId)] || `Node ${nodeId}`;
+    const cardById = {};
 
     const combinedSection = document.createElement('div');
     combinedSection.className = 'decision-tree-star-combined';
@@ -901,12 +1063,15 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     const rootWidth = Math.max(360, detailElement.clientWidth - 40);
     const combinedWidth = Math.max(360, Math.min(1200, rootWidth));
 
-    const combinedSeries = orderedKeys.flatMap((nodeId, index) => {
+    const combinedSeries = [];
+    const combinedSeriesIndicesByNode = new Map();
+    orderedKeys.forEach((nodeId) => {
       const rows = byNodeRows[nodeId] || {};
       const yesValues = buildSeriesValues(dimensions, rows.yes || {});
       const noValues = buildSeriesValues(dimensions, rows.no || {});
       const nodeLabel = getNodeLabel(nodeId);
-      return [
+      const startIndex = combinedSeries.length;
+      combinedSeries.push(
         {
           label: `${nodeLabel} — yes`,
           values: yesValues,
@@ -923,18 +1088,13 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
           fillOpacity: 0.55,
           strokeWidth: 2,
         },
-      ];
+      );
+      combinedSeriesIndicesByNode.set(String(nodeId), [startIndex, startIndex + 1]);
     });
-
-    const combinedLegendEntries = orderedKeys.map((nodeId, index) => ({
-      nodeId,
-      label: getNodeLabel(nodeId),
-      seriesIndices: [index * 2, index * 2 + 1],
-    }));
 
     const setHoveredDecisionTreeNode = (nodeId = null) => {
       pane.cy.$('node.starplot-hovered').removeClass('starplot-hovered');
-      if (!nodeId) {
+      if (nodeId === null || nodeId === undefined) {
         return;
       }
       pane.cy.getElementById(`node-${nodeId}`).addClass('starplot-hovered');
@@ -946,15 +1106,17 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       width: combinedWidth,
       height: 340,
       title: 'Combined Star Plot (selected nodes)',
-      showAxisLabels: false,
+      showAxisLabels,
     });
     combinedSection.appendChild(combinedSvg);
 
-    const legend = document.createElement('div');
-    legend.className = 'decision-tree-star-legend';
-    const setLegendHoverState = (hoveredIndices = null) => {
+    const setCombinedHoverState = (hoveredNodeId = null) => {
       const seriesEls = combinedSvg.__seriesElements || [];
+      const hoveredIndices = hoveredNodeId
+        ? combinedSeriesIndicesByNode.get(String(hoveredNodeId))
+        : null;
       const hoveredSet = hoveredIndices ? new Set(hoveredIndices) : null;
+
       seriesEls.forEach((seriesEl, polygonIndex) => {
         const { fillPolygon, strokePolyline, style: base } = seriesEl;
         if (!base) {
@@ -962,11 +1124,11 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
         }
 
         if (hoveredSet === null) {
-          fillPolygon.setAttribute('fill', '#efefef');
-          fillPolygon.setAttribute('fill-opacity', '0.35');
-          strokePolyline.setAttribute('stroke', '#7a7a7a');
-          strokePolyline.setAttribute('stroke-width', '2');
-          strokePolyline.setAttribute('stroke-dasharray', '0');
+          fillPolygon.setAttribute('fill', base.fill);
+          fillPolygon.setAttribute('fill-opacity', String(base.fillOpacity));
+          strokePolyline.setAttribute('stroke', base.stroke);
+          strokePolyline.setAttribute('stroke-width', String(base.strokeWidth));
+          strokePolyline.setAttribute('stroke-dasharray', String(base.dashArray));
           return;
         }
 
@@ -990,7 +1152,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       });
 
       if (hoveredSet === null) {
-        seriesEls.forEach(({ fillPolygon, strokePolyline }) => {
+        seriesEls.forEach(({ fillPolygon }) => {
           fillPolygon.parentNode?.appendChild(fillPolygon);
         });
         seriesEls.forEach(({ strokePolyline }) => {
@@ -1007,35 +1169,6 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
         }
       });
     };
-
-    combinedLegendEntries.forEach((entry) => {
-      const item = document.createElement('div');
-      item.className = 'decision-tree-star-legend-item';
-      const yesSwatch = document.createElement('span');
-      yesSwatch.className = 'decision-tree-star-legend-swatch';
-      yesSwatch.style.backgroundColor = STAR_PLOT_COLORS.yesStroke;
-      const noSwatch = document.createElement('span');
-      noSwatch.className = 'decision-tree-star-legend-swatch';
-      noSwatch.style.backgroundColor = STAR_PLOT_COLORS.noStroke;
-      const text = document.createElement('span');
-      text.textContent = entry.label;
-      item.appendChild(yesSwatch);
-      item.appendChild(noSwatch);
-      item.appendChild(text);
-      item.addEventListener('mouseenter', () => {
-        item.classList.add('active');
-        setLegendHoverState(entry.seriesIndices);
-        setHoveredDecisionTreeNode(entry.nodeId);
-      });
-      item.addEventListener('mouseleave', () => {
-        item.classList.remove('active');
-        setLegendHoverState(null);
-        setHoveredDecisionTreeNode(null);
-      });
-      legend.appendChild(item);
-    });
-    setLegendHoverState(null);
-    combinedSection.appendChild(legend);
     root.appendChild(combinedSection);
 
     const gridTitle = document.createElement('div');
@@ -1047,7 +1180,20 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     grid.className = 'decision-tree-star-grid';
     root.appendChild(grid);
 
-    const cardById = {};
+    const setStarPlotHoverState = (hoveredNodeId = null) => {
+      const normalizedId = hoveredNodeId === null || hoveredNodeId === undefined
+        ? null
+        : String(hoveredNodeId);
+      const hasHover = normalizedId && combinedSeriesIndicesByNode.has(normalizedId);
+      const effectiveId = hasHover ? normalizedId : null;
+
+      setCombinedHoverState(effectiveId);
+      setHoveredDecisionTreeNode(effectiveId);
+
+      Object.entries(cardById).forEach(([nodeId, card]) => {
+        card.classList.toggle('starplot-hovered-cell', effectiveId === nodeId);
+      });
+    };
 
     const applyGridOrder = () => {
       const scrollTop = root.scrollTop;
@@ -1099,10 +1245,10 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       card.appendChild(header);
 
       card.addEventListener('mouseenter', () => {
-        setHoveredDecisionTreeNode(nodeId);
+        setStarPlotHoverState(nodeId);
       });
       card.addEventListener('mouseleave', () => {
-        setHoveredDecisionTreeNode(null);
+        setStarPlotHoverState(null);
       });
 
       const plotsWrap = document.createElement('div');
@@ -1176,6 +1322,13 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
 
       grid.appendChild(card);
     });
+
+    setStarPlotHoverState(null);
+    return {
+      setHoveredNode: (nodeId = null) => {
+        setStarPlotHoverState(nodeId);
+      },
+    };
   };
 
   const normalizeToUnit = (value) => {
@@ -1197,7 +1350,8 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
   }
 
   const selectedSet = new Set(selectedNodeIds || []);
-  pane.cy.vars['pcp-visual-mode'] ||= { value: DECISION_TREE_PLOT_MODE.PCP };
+  pane.cy.vars['pcp-visual-mode'] ||= { value: DECISION_TREE_PLOT_MODE.STAR };
+  pane.cy.vars['star-show-axis-labels'] ||= { value: true };
 
   const probabilities = await Promise.all(
     paneNodeIds.map(nodeId => dlRepairApi.getImpactProbabilities(nodeId)),
@@ -1276,7 +1430,8 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
   });
 
   const mode = pane.cy.vars['pcp-visual-mode'].value;
-  ensurePlotToggle(mode);
+  const showAxisLabels = !!pane.cy.vars['star-show-axis-labels'].value;
+  ensurePlotToggle(mode, showAxisLabels);
 
   if (pane.cy.pcp) {
     pane.cy.pcp.destroy();
@@ -1284,19 +1439,32 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
   }
 
   if (mode === DECISION_TREE_PLOT_MODE.STAR) {
-    renderStarPlotView(Object.keys(pld), byNodeRows, selectedNodeIds || []);
+    let starPlotView = renderStarPlotView(
+      Object.keys(pld),
+      byNodeRows,
+      selectedNodeIds || [],
+      showAxisLabels,
+    );
     pane.cy.pcp = {
       destroy: () => {
         clearStarPlotView();
       },
       redraw: () => {
-        renderStarPlotView(Object.keys(pld), byNodeRows, selectedNodeIds || []);
+        starPlotView = renderStarPlotView(
+          Object.keys(pld),
+          byNodeRows,
+          selectedNodeIds || [],
+          showAxisLabels,
+        );
       },
       getSelection: () => {
         return [];
       },
       getOrder: () => {
         return [];
+      },
+      setHoveredNode: (nodeId = null) => {
+        starPlotView?.setHoveredNode?.(nodeId);
       },
     };
     return;
@@ -1358,6 +1526,57 @@ function generateProbabilitiesBarChart(probabilities) {
   
   // Get all unique axioms
   const allAxioms = new Set([...Object.keys(yesData), ...Object.keys(noData)]);
+
+  const escapeHtml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const escapeSingleQuotedJs = (value) => String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
+
+  const createMiniStarAxisIcon = (axiom, dimensions) => {
+    const iconSize = 24;
+    const center = iconSize / 2;
+    const radius = 9.2;
+    const polygonScale = 1;
+    const axisCount = Math.max(1, dimensions.length);
+
+    const getPoint = (angle, scale = 1) => ({
+      x: center + radius * scale * Math.cos(angle),
+      y: center + radius * scale * Math.sin(angle),
+    });
+
+    const axisLines = dimensions.map((dimension, index) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * index) / axisCount;
+      const endpoint = getPoint(angle);
+      const isTargetAxis = dimension === axiom;
+      const defaultStroke = isTargetAxis ? STAR_AXIS_HIGHLIGHT_STROKE : STAR_AXIS_DEFAULT_STROKE;
+      const defaultStrokeWidth = isTargetAxis ? '1.8' : STAR_AXIS_DEFAULT_STROKE_WIDTH;
+      const defaultOpacity = isTargetAxis ? '1' : '0.45';
+
+      return `<line class="decision-tree-star-axis-line" data-axis-name="${escapeHtml(dimension)}" data-default-stroke="${defaultStroke}" data-default-stroke-width="${defaultStrokeWidth}" x1="${center}" y1="${center}" x2="${endpoint.x}" y2="${endpoint.y}" stroke="${defaultStroke}" stroke-width="${defaultStrokeWidth}" stroke-opacity="${defaultOpacity}" />`;
+    }).join('');
+
+    const polygonPoints = dimensions.map((dimension, index) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * index) / axisCount;
+      const point = getPoint(angle, polygonScale);
+      return `${point.x},${point.y}`;
+    }).join(' ');
+
+    const escapedAxiomForJs = escapeSingleQuotedJs(axiom);
+    return `<span title="Highlight ${escapeHtml(axiom)} axis in star plots" style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; cursor: pointer; flex-shrink: 0;" onmouseenter="window.dlRepairHighlightStarAxis && window.dlRepairHighlightStarAxis('${escapedAxiomForJs}')" onmouseleave="window.dlRepairClearStarAxisHighlight && window.dlRepairClearStarAxisHighlight()"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="display: block;"><polygon points="${polygonPoints}" fill="#f4f4f4" fill-opacity="0.55" stroke="#d1d1d1" stroke-width="0.6"></polygon>${axisLines}</svg></span>`;
+  };
+
+  const renderAxiomLabelWithIcon = (axiom, dimensions, textColor = null) => {
+    const colorStyle = textColor ? ` color: ${textColor}; font-weight: 600;` : '';
+    const escapedAxiomForJs = escapeSingleQuotedJs(axiom);
+    return `<div style="display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 4px; word-wrap: break-word;${colorStyle}">${createMiniStarAxisIcon(axiom, dimensions)}<span style="min-width: 0; overflow-wrap: anywhere; cursor: pointer;" onmouseenter="this.style.fontWeight='700'; window.dlRepairHighlightStarAxis && window.dlRepairHighlightStarAxis('${escapedAxiomForJs}')" onmouseleave="this.style.fontWeight=''; window.dlRepairClearStarAxisHighlight && window.dlRepairClearStarAxisHighlight()">${axiom}</span></div>`;
+  };
+
+  const allAxiomDimensions = Array.from(allAxioms);
   
   let html = '<div style="font-family: monospace; font-size: 13px; border-bottom: 1px solid #d3d3d3; padding-bottom: 10px; margin-bottom: 14px; width: 100%; box-sizing: border-box;">';
   html += '<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; width: 100%; box-sizing: border-box;" onclick="const content = document.getElementById(\'probabilities-content\'); const triangle = document.getElementById(\'probabilities-triangle\'); const isOpen = content.style.display !== \'none\'; content.style.display = isOpen ? \'none\' : \'block\'; triangle.style.transform = isOpen ? \'scaleX(1.35) rotate(180deg)\' : \'scaleX(1.35) rotate(0deg)\';">';
@@ -1382,7 +1601,10 @@ function generateProbabilitiesBarChart(probabilities) {
     html += '<div style="font-size: 12px; color: #666;">No probability values available.</div>';
   }
   
-  // Categorize and sort axioms: green, red, gray, blue, orange, bar charts
+  // Keep sorting functionality available, but do not invoke it for now.
+  const ENABLE_AXIOM_PROBABILITIES_SORTING = false;
+
+  // Categorize axioms: green, red, gray, blue, orange, bar charts
   const categorizedAxioms = Array.from(allAxioms).map(axiom => {
     const hasYes = Object.prototype.hasOwnProperty.call(yesData, axiom);
     const hasNo = Object.prototype.hasOwnProperty.call(noData, axiom);
@@ -1412,7 +1634,11 @@ function generateProbabilitiesBarChart(probabilities) {
     return { axiom, hasYes, hasNo, yesValue, noValue, category };
   });
 
-  categorizedAxioms.sort((a, b) => a.category - b.category);
+  const sortCategorizedAxioms = (axioms) => axioms.sort((a, b) => a.category - b.category);
+
+  if (ENABLE_AXIOM_PROBABILITIES_SORTING) {
+    sortCategorizedAxioms(categorizedAxioms);
+  }
 
   categorizedAxioms.forEach(({ axiom, hasYes, hasNo, yesValue, noValue, category }) => {
     const hasBoth = hasYes && hasNo;
@@ -1438,11 +1664,11 @@ function generateProbabilitiesBarChart(probabilities) {
         axiomColor = '#e67700';
       }
 
-      html += `<div style="font-size: 13px; margin-bottom: 4px; word-wrap: break-word; color: ${axiomColor}; font-weight: 600;">${axiom}</div>`;
+      html += renderAxiomLabelWithIcon(axiom, allAxiomDimensions, axiomColor);
 
       html += `<div style="font-size: 11px; margin-top: 2px; color: ${axiomColor}; font-weight: 600;">keep: ${formatPercent(yesValue)} | remove: ${formatPercent(noValue)}</div>`;
     } else {
-      html += `<div style="font-size: 13px; margin-bottom: 4px; word-wrap: break-word;">${axiom}</div>`;
+      html += renderAxiomLabelWithIcon(axiom, allAxiomDimensions);
 
       // Two-sided bar chart: left=remove (orange), right=keep (blue)
       html += '<div style="display: flex; align-items: stretch; width: 100%; height: 20px; border-radius: 3px; overflow: hidden; background-color: #f0f0f0; box-sizing: border-box; position: relative;">';
@@ -1512,6 +1738,7 @@ function generateHammingDistanceSection(distance) {
   const bothHoverKeep = "const bothBox=document.getElementById('hamming-both-box'); const bothLabel=document.getElementById('hamming-both-label'); if (bothBox) { bothBox.style.borderColor='#d9e8d9'; bothBox.style.background='#f5fff5'; } if (bothLabel) { bothLabel.style.color='#2b8a3e'; }";
   const bothHoverRemove = "const bothBox=document.getElementById('hamming-both-box'); const bothLabel=document.getElementById('hamming-both-label'); if (bothBox) { bothBox.style.borderColor='#f0d6d6'; bothBox.style.background='#fff5f5'; } if (bothLabel) { bothLabel.style.color='#c92a2a'; }";
   const bothHoverReset = "const bothBox=document.getElementById('hamming-both-box'); const bothLabel=document.getElementById('hamming-both-label'); if (bothBox) { bothBox.style.borderColor='#d9d9d9'; bothBox.style.background='#fafafa'; } if (bothLabel) { bothLabel.style.color='#555'; }";
+  const propagateTip = 'Ctrl+click to propagate this choice to Summary View';
 
   let html = '<div style="margin-top: 18px; border-bottom: 1px solid #d3d3d3; padding-bottom: 10px; margin-bottom: 10px; width: 100%; box-sizing: border-box;">';
   html += '<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; width: 100%; box-sizing: border-box;" onclick="const content = document.getElementById(\'hamming-content\'); const triangle = document.getElementById(\'hamming-triangle\'); const isOpen = content.style.display !== \'none\'; content.style.display = isOpen ? \'none\' : \'block\'; triangle.style.transform = isOpen ? \'scaleX(1.35) rotate(180deg)\' : \'scaleX(1.35) rotate(0deg)\';">';
@@ -1519,7 +1746,8 @@ function generateHammingDistanceSection(distance) {
   html += '<span id="hamming-triangle" style="font-family: Arial, sans-serif; font-weight: 700; font-size: 13px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; text-align: center; transform: scaleX(1.35) rotate(0deg); transform-origin: center center; flex-shrink: 0;">▴</span>';
   html += '</div>';
   html += '<div id="hamming-content" style="display: block; padding-top: 8px; width: 100%; box-sizing: border-box;">';
-  html += `<div style="font-size: 13px; margin-bottom: 10px;"><span data-hamming-choice="yes" style="color: #2b8a3e; font-weight: 600; cursor: pointer;" onmouseover="${bothHoverKeep}" onmouseout="${bothHoverReset}">keep</span> <span data-hamming-choice="yes" style="cursor: pointer;" onmouseover="${bothHoverKeep}" onmouseout="${bothHoverReset}">${yesDisplay}</span> ${compareSymbol} <span data-hamming-choice="no" style="color: #c92a2a; font-weight: 600; cursor: pointer;" onmouseover="${bothHoverRemove}" onmouseout="${bothHoverReset}">remove</span> <span data-hamming-choice="no" style="cursor: pointer;" onmouseover="${bothHoverRemove}" onmouseout="${bothHoverReset}">${noDisplay}</span></div>`;
+  html += '<div style="font-size: 11px; color: #666; margin-bottom: 8px;">Tip: Ctrl+click on a distance choice to propagate it.</div>';
+  html += `<div style="font-size: 13px; margin-bottom: 10px;"><span data-hamming-choice="yes" data-hamming-hover-target="yes" title="${propagateTip}" style="color: #2b8a3e; font-weight: 600; cursor: pointer;" onmouseover="${bothHoverKeep}" onmouseout="${bothHoverReset}">keep</span> <span data-hamming-choice="yes" data-hamming-hover-target="yes" title="${propagateTip}" style="cursor: pointer;" onmouseover="${bothHoverKeep}" onmouseout="${bothHoverReset}">${yesDisplay}</span> ${compareSymbol} <span data-hamming-choice="no" data-hamming-hover-target="yes" title="${propagateTip}" style="color: #c92a2a; font-weight: 600; cursor: pointer;" onmouseover="${bothHoverRemove}" onmouseout="${bothHoverReset}">remove</span> <span data-hamming-choice="no" data-hamming-hover-target="yes" title="${propagateTip}" style="cursor: pointer;" onmouseover="${bothHoverRemove}" onmouseout="${bothHoverReset}">${noDisplay}</span></div>`;
   html += '<div style="display: flex; flex-direction: column; gap: 10px;">';
 
   html += `<div data-hamming-choice="yes" style="border: 1px solid #d9e8d9; border-radius: 2px; padding: 11px 13px; background: #f5fff5; cursor: pointer;" onmouseover="${bothHoverKeep}" onmouseout="${bothHoverReset}">`;
@@ -1553,6 +1781,37 @@ function bindHammingRepairClickActions(container, nodeId, pane) {
   }
 
   const clickableChoices = container.querySelectorAll('[data-hamming-choice]');
+  const hoverPreviewChoices = container.querySelectorAll('[data-hamming-hover-target]');
+
+  hoverPreviewChoices.forEach((element) => {
+    element.onmouseenter = (event) => {
+      event.stopPropagation();
+
+      const choice = element.getAttribute('data-hamming-choice');
+      if (!choice) {
+        return;
+      }
+
+      document.dispatchEvent(new CustomEvent('hamming-repair-hover', {
+        detail: {
+          choice,
+          nodeId,
+          paneId: pane?.id,
+          distance: container.__hammingDistanceData,
+        },
+      }));
+    };
+
+    element.onmouseleave = (event) => {
+      event.stopPropagation();
+      document.dispatchEvent(new CustomEvent('hamming-repair-hover-end', {
+        detail: {
+          paneId: pane?.id,
+        },
+      }));
+    };
+  });
+
   clickableChoices.forEach((element) => {
     element.onclick = (event) => {
       event.preventDefault();
@@ -1568,6 +1827,7 @@ function bindHammingRepairClickActions(container, nodeId, pane) {
           choice,
           nodeId,
           paneId: pane?.id,
+          propagate: !!(event.ctrlKey || event.metaKey),
           distance: container.__hammingDistanceData,
         },
       }));

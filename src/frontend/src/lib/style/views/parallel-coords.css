@@ -46,11 +46,17 @@ path.highlighted-path {
   right: 8px;
   z-index: 40;
   display: inline-flex;
+  flex-direction: column;
   gap: 6px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #d8d8d8;
   border-radius: 8px;
   padding: 4px;
+}
+
+.decision-tree-plot-toggle-row {
+  display: inline-flex;
+  gap: 6px;
 }
 
 .decision-tree-plot-toggle-btn {
@@ -67,6 +73,20 @@ path.highlighted-path {
   background: #e9f2ff;
   border-color: #b9d4ff;
   color: #1f4f8f;
+}
+
+.decision-tree-star-label-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #444;
+  padding: 1px 2px;
+  user-select: none;
+}
+
+.decision-tree-star-label-switch-input {
+  margin: 0;
 }
 
 .detail-inspector .decision-tree-star-root {
@@ -158,6 +178,12 @@ path.highlighted-path {
 .detail-inspector .decision-tree-star-card.drag-over {
   border-color: #99b8e6;
   background: #f6faff;
+}
+
+.detail-inspector .decision-tree-star-card.starplot-hovered-cell {
+  border-color: #facc15;
+  border-width: 3px;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.18);
 }
 
 .detail-inspector .decision-tree-star-card-header {
