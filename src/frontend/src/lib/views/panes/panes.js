@@ -912,45 +912,45 @@ window.addEventListener('matrix-hover', (e) => {
 });
 
 // Synchronize matrix selection across all panes
-window.addEventListener('matrix-selection', (e) => {
-  const sourcePaneId = e?.detail?.sourcePaneId;
-  const nodeId = e?.detail?.nodeId;
-  const isSelected = e?.detail?.isSelected;
+// window.addEventListener('matrix-selection', (e) => {
+//   const sourcePaneId = e?.detail?.sourcePaneId;
+//   const nodeId = e?.detail?.nodeId;
+//   const isSelected = e?.detail?.isSelected;
 
-  if (!nodeId) return;
+//   if (!nodeId) return;
 
-  Object.values(getPanes()).forEach((pane) => {
-    // Skip the source pane (it already has the selection)
-    if (pane?.id === sourcePaneId) return;
+//   Object.values(getPanes()).forEach((pane) => {
+//     // Skip the source pane (it already has the selection)
+//     if (pane?.id === sourcePaneId) return;
 
-    const cy = pane?.cy;
-    if (!cy) return;
+//     const cy = pane?.cy;
+//     if (!cy) return;
 
-    // Find the node in this pane
-    let el = cy.getElementById(nodeId);
-    if (!(el && el.nonempty && el.isNode && el.isNode() && el.data('type') === 's')) {
-      el = cy.nodes().filter((n) => n.data('id') === nodeId && n.data('type') === 's');
-    }
+//     // Find the node in this pane
+//     let el = cy.getElementById(nodeId);
+//     if (!(el && el.nonempty && el.isNode && el.isNode() && el.data('type') === 's')) {
+//       el = cy.nodes().filter((n) => n.data('id') === nodeId && n.data('type') === 's');
+//     }
 
-    const empty = (
-      !el || (el.nonempty !== undefined && !el.nonempty)
-      || (el.length !== undefined && el.length === 0));
-    if (empty) return;
+//     const empty = (
+//       !el || (el.nonempty !== undefined && !el.nonempty)
+//       || (el.length !== undefined && el.length === 0));
+//     if (empty) return;
 
-    try {
-      // Make selectable temporarily if needed
-      if (typeof el.selectify === 'function') el.selectify();
+//     try {
+//       // Make selectable temporarily if needed
+//       if (typeof el.selectify === 'function') el.selectify();
 
-      if (isSelected) {
-        if (typeof el.select === 'function') el.select();
-      } else if (typeof el.unselect === 'function') {
-        el.unselect();
-      }
-    } catch {
-      // Ignore errors
-    }
-  });
-});
+//       if (isSelected) {
+//         if (typeof el.select === 'function') el.select();
+//       } else if (typeof el.unselect === 'function') {
+//         el.unselect();
+//       }
+//     } catch {
+//       // Ignore errors
+//     }
+//   });
+// });
 
 document.getElementById('export-strat')?.addEventListener('click', () => {
   if (!tracker['mark']) {
