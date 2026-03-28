@@ -134,7 +134,7 @@ function createAxiomPaneStylesheet() {
       style: {
         label: 'data(label)',
         shape: 'rectangle',
-        width: 'label',
+        width: 200,
         height: 'label',
         padding: '8px',
         'font-size': 10,
@@ -277,7 +277,7 @@ export function createAxiomPane(container, treeData, paneId) {
       elements.push({
         data: {
           id: axiom.id,
-          label: axiom.label.substring(0, 25), // Truncate long labels
+          label: axiom.label,
           nodeId: axiom.nodeId,
           depth: depth,
           fullLabel: axiom.label,
@@ -467,7 +467,7 @@ export function updateAxiomPane(cy, treeData, paneId) {
       elements.push({
         data: {
           id: axiom.id,
-          label: axiom.label.substring(0, 25),
+          label: axiom.label,
           nodeId: axiom.nodeId,
           depth: depth,
           fullLabel: axiom.label,

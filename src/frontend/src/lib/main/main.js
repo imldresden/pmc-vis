@@ -720,22 +720,31 @@ async function startDLRepairProject() {
         .sort((a, b) => a.data('depth') - b.data('depth'))
         .toArray();
 
-      const decisions = [];
-      orderedDepthNodes.forEach((node) => {
-        const state = summaryStates[node.id()];
-        if (state === AXIOM_STATES.KEPT) {
-          decisions.push('keep');
-          return;
-        }
-        if (state === AXIOM_STATES.REMOVED) {
-          decisions.push('remove');
-          return;
+      const statesByDepth = orderedDepthNodes.map(
+        node => summaryStates[node.id()] || AXIOM_STATES.UNDECIDED,
+      );
+      let lastDecidedDepth = -1;
+      statesByDepth.forEach((state, depthIndex) => {
+        if (state === AXIOM_STATES.KEPT || state === AXIOM_STATES.REMOVED) {
+          lastDecidedDepth = depthIndex;
         }
       });
 
-      if (decisions.length === 0) {
+      if (lastDecidedDepth < 0) {
         return;
       }
+
+      const decisions = statesByDepth
+        .slice(0, lastDecidedDepth + 1)
+        .map((state) => {
+          if (state === AXIOM_STATES.KEPT) {
+            return 'keep';
+          }
+          if (state === AXIOM_STATES.REMOVED) {
+            return 'remove';
+          }
+          return null;
+        });
 
       const tree = decisionPane.cy.treeData;
       const targetIds = new Set(tree.edges.map(e => e.target));
@@ -744,30 +753,55 @@ async function startDLRepairProject() {
         return;
       }
 
-      let currentNodeId = rootNode.nodeId;
+      let frontier = [`node-${rootNode.nodeId}`];
+      const traversedNodeIds = new Set(frontier);
 
       decisions.forEach((edgeType) => {
-        expandNodeByType(decisionPane.cy, currentNodeId, edgeType);
+        const nextFrontier = new Set();
+        const allowedTypes = edgeType ? [edgeType] : ['keep', 'remove'];
 
-        const nextEdge = tree.edges.find(
-          edge => edge.source === `node-${currentNodeId}` && edge.type === edgeType,
-        );
-        if (!nextEdge) {
+        frontier.forEach((sourceNodeId) => {
+          const sourceNodeNumericId = Number(sourceNodeId.replace('node-', ''));
+          if (Number.isNaN(sourceNodeNumericId)) {
+            return;
+          }
+
+          allowedTypes.forEach((type) => {
+            expandNodeByType(decisionPane.cy, sourceNodeNumericId, type);
+
+            const nextEdge = tree.edges.find(
+              edge => edge.source === sourceNodeId && edge.type === type,
+            );
+            if (!nextEdge) {
+              return;
+            }
+
+            traversedNodeIds.add(nextEdge.target);
+            nextFrontier.add(nextEdge.target);
+          });
+        });
+
+        if (nextFrontier.size === 0) {
           return;
         }
-        const nextNode = tree.nodes.find(node => node.id === nextEdge.target);
-        if (!nextNode) {
-          return;
-        }
-        currentNodeId = nextNode.nodeId;
+
+        frontier = Array.from(nextFrontier);
       });
 
-      const targetNode = decisionPane.cy.getElementById(`node-${currentNodeId}`);
-      if (targetNode.length > 0) {
+      const highlightedNodeSelectors = Array.from(traversedNodeIds).map(nodeId => `#${nodeId}`);
+      const highlightedSelector = highlightedNodeSelectors.join(', ');
+      const highlightedElements = decisionPane.cy.$(highlightedSelector);
+      const frontierSelector = frontier.map(nodeId => `#${nodeId}`).join(', ');
+
+      if (frontierSelector) {
         decisionPane.cy.nodes().unselect();
-        targetNode.select();
+        const frontierNodes = decisionPane.cy.$(frontierSelector);
+        frontierNodes.select();
+      }
+
+      if (highlightedElements.length > 0) {
         decisionPane.cy.animate({
-          center: { eles: targetNode },
+          fit: { eles: highlightedElements, padding: 70 },
           duration: 450,
         });
       }
