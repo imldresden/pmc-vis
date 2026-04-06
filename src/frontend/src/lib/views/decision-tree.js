@@ -2,6 +2,7 @@ import { cytoscape } from './imports/import-cytoscape.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
 import { spawnPane, getPanes } from './panes/panes.js';
 import { CONSTANTS } from '../utils/names.js';
+import { openClassHierarchyPane } from './class-hierarchy-pane.js';
 
 let activeDecisionTreeCy = null;
 
@@ -579,6 +580,18 @@ export function createDecisionTree(container, treeData, fullTreeData) {
                 nodeId,
               },
             }));
+          },
+          hasTrailingDivider: true,
+        },
+        {
+          id: 'show-class-hierarchy',
+          content: 'Show class hierarchy if removed',
+          tooltipText: 'Open class hierarchy comparison graph for this node',
+          selector: 'node',
+          onClickFunction: async (event) => {
+            const node = event.target || event.cyTarget;
+            const nodeId = node.data('nodeId');
+            await openClassHierarchyPane(cy, nodeId);
           },
           hasTrailingDivider: true,
         },

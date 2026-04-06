@@ -17,6 +17,7 @@ const STAR_AXIS_DEFAULT_STROKE = '#b8b8b8';
 const STAR_AXIS_DEFAULT_STROKE_WIDTH = '1';
 const STAR_AXIS_HIGHLIGHT_STROKE = '#f08c00';
 const STAR_AXIS_HIGHLIGHT_STROKE_WIDTH = '2.6';
+const STAR_SELECTED_AXIOM_BORDER = '#4887b9';
 
 function resetGlobalStarAxisHighlight() {
   document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-line').forEach((axisLine) => {
@@ -845,6 +846,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     height,
     title,
     showAxisLabels = false,
+    selectedAxiomTexts = null,
   }) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -855,6 +857,8 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     const centerY = height / 2;
     const radius = Math.max(40, Math.min(width, height) / 2 - 40);
     const axisCount = Math.max(1, dimensions.length);
+    let activeHoverAxis = null;
+    const matchedAxisEntries = [];
 
     const polarToCartesian = (angle, value) => {
       const scaled = value * radius;
@@ -871,6 +875,87 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       });
       parent.appendChild(element);
       return element;
+    };
+
+    const normalizeAxisText = (value) => String(value || '')
+      .normalize('NFKC')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const compactAxisText = (value) => normalizeAxisText(value).replace(/\s+/g, '');
+
+    const addDoubleBorderRect = (group, textElement, fallbackInfo = null) => {
+      let box;
+      try {
+        box = textElement.getBBox();
+      } catch {
+        box = null;
+      }
+
+      if (
+        !box
+        || !Number.isFinite(box.width)
+        || !Number.isFinite(box.height)
+        || box.width <= 0
+        || box.height <= 0
+      ) {
+        const textValue = String(textElement.textContent || fallbackInfo?.text || '');
+        const fontSize = Number(textElement.getAttribute('font-size') || 10);
+        const estimatedWidth = Math.max(10, textValue.length * fontSize * 0.62);
+        const estimatedHeight = Math.max(10, fontSize * 1.25);
+        const rawX = Number(textElement.getAttribute('x') || 0);
+        const rawY = Number(textElement.getAttribute('y') || 0);
+        const anchor = textElement.getAttribute('text-anchor') || fallbackInfo?.anchor || 'start';
+        const baseline = textElement.getAttribute('dominant-baseline') || fallbackInfo?.baseline || 'auto';
+
+        let estimatedX = rawX;
+        if (anchor === 'end') {
+          estimatedX = rawX - estimatedWidth;
+        } else if (anchor === 'middle') {
+          estimatedX = rawX - (estimatedWidth / 2);
+        }
+        const estimatedY = baseline === 'hanging'
+          ? rawY
+          : rawY - (estimatedHeight * 0.82);
+
+        box = {
+          x: estimatedX,
+          y: estimatedY,
+          width: estimatedWidth,
+          height: estimatedHeight,
+        };
+      }
+
+      const outerPaddingX = 5;
+      const outerPaddingY = 3;
+      const innerInset = 2;
+
+      const outerRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      outerRect.setAttribute('x', String(box.x - outerPaddingX));
+      outerRect.setAttribute('y', String(box.y - outerPaddingY));
+      outerRect.setAttribute('width', String(box.width + outerPaddingX * 2));
+      outerRect.setAttribute('height', String(box.height + outerPaddingY * 2));
+      outerRect.setAttribute('rx', '0');
+      outerRect.setAttribute('ry', '0');
+      outerRect.setAttribute('fill', 'none');
+      outerRect.setAttribute('stroke', STAR_SELECTED_AXIOM_BORDER);
+      outerRect.setAttribute('stroke-width', '1.3');
+      outerRect.setAttribute('pointer-events', 'none');
+
+      const innerRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      innerRect.setAttribute('x', String(box.x - outerPaddingX + innerInset));
+      innerRect.setAttribute('y', String(box.y - outerPaddingY + innerInset));
+      innerRect.setAttribute('width', String(Math.max(1, box.width + outerPaddingX * 2 - innerInset * 2)));
+      innerRect.setAttribute('height', String(Math.max(1, box.height + outerPaddingY * 2 - innerInset * 2)));
+      innerRect.setAttribute('rx', '0');
+      innerRect.setAttribute('ry', '0');
+      innerRect.setAttribute('fill', 'none');
+      innerRect.setAttribute('stroke', STAR_SELECTED_AXIOM_BORDER);
+      innerRect.setAttribute('stroke-width', '1');
+      innerRect.setAttribute('pointer-events', 'none');
+
+      group.insertBefore(outerRect, textElement);
+      group.insertBefore(innerRect, textElement);
     };
 
     [0.25, 0.5, 0.75, 1].forEach((step) => {
@@ -903,6 +988,10 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
 
       if (showAxisLabels) {
         const labelPoint = polarToCartesian(angle, 1.09);
+        const labelGroup = append('g', {
+          class: 'decision-tree-star-axis-label-group',
+          'data-axis-name': dimension,
+        });
         const label = append('text', {
           x: labelPoint.x,
           y: labelPoint.y,
@@ -914,14 +1003,37 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
           'font-weight': 500,
           'data-default-font-weight': 500,
           fill: '#4b4b4b',
-        });
+        }, labelGroup);
         label.textContent = dimension;
-        label.addEventListener('mouseenter', () => {
+
+        const normalizedDimension = normalizeAxisText(dimension);
+        const compactDimension = compactAxisText(dimension);
+        if (
+          selectedAxiomTexts?.has(normalizedDimension)
+          || selectedAxiomTexts?.has(compactDimension)
+        ) {
+          matchedAxisEntries.push({
+            labelGroup,
+            label,
+            fallbackInfo: {
+              text: dimension,
+              anchor: endpoint.x >= centerX ? 'start' : 'end',
+              baseline: endpoint.y >= centerY ? 'hanging' : 'auto',
+            },
+          });
+        }
+
+        const onEnter = () => {
           highlightGlobalStarAxis(dimension);
-        });
-        label.addEventListener('mouseleave', () => {
+        };
+        const onLeave = () => {
           resetGlobalStarAxisHighlight();
-        });
+        };
+
+        label.addEventListener('mouseenter', onEnter);
+        label.addEventListener('mouseleave', onLeave);
+        labelGroup.addEventListener('mouseenter', onEnter);
+        labelGroup.addEventListener('mouseleave', onLeave);
       }
     });
 
@@ -983,7 +1095,141 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       titleText.textContent = title;
     }
 
+    const toSvgPoint = (evt) => {
+      if (typeof svg.createSVGPoint !== 'function') {
+        return null;
+      }
+      const point = svg.createSVGPoint();
+      point.x = evt.clientX;
+      point.y = evt.clientY;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) {
+        return null;
+      }
+      return point.matrixTransform(ctm.inverse());
+    };
+
+    const shortestAngleDiff = (a, b) => {
+      let diff = a - b;
+      while (diff > Math.PI) {
+        diff -= 2 * Math.PI;
+      }
+      while (diff < -Math.PI) {
+        diff += 2 * Math.PI;
+      }
+      return Math.abs(diff);
+    };
+
+    const outerPolygonPoints = dimensions.map((dimension, index) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * index) / axisCount;
+      return polarToCartesian(angle, 1);
+    });
+
+    const isInsideOuterPolygon = (x, y) => {
+      if (outerPolygonPoints.length < 3) {
+        return false;
+      }
+
+      let inside = false;
+      for (
+        let current = 0, previous = outerPolygonPoints.length - 1;
+        current < outerPolygonPoints.length;
+        previous = current, current += 1
+      ) {
+        const xi = outerPolygonPoints[current].x;
+        const yi = outerPolygonPoints[current].y;
+        const xj = outerPolygonPoints[previous].x;
+        const yj = outerPolygonPoints[previous].y;
+
+        const intersect = ((yi > y) !== (yj > y))
+          && (x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+        if (intersect) {
+          inside = !inside;
+        }
+      }
+
+      return inside;
+    };
+
+    const setHoveredAxis = (axisName) => {
+      if (activeHoverAxis === axisName) {
+        return;
+      }
+
+      activeHoverAxis = axisName;
+      if (!axisName) {
+        resetGlobalStarAxisHighlight();
+        return;
+      }
+
+      highlightGlobalStarAxis(axisName);
+    };
+
+    const findClosestAxis = (svgX, svgY) => {
+      if (!dimensions.length) {
+        return null;
+      }
+
+      if (!isInsideOuterPolygon(svgX, svgY)) {
+        return null;
+      }
+
+      const dx = svgX - centerX;
+      const dy = svgY - centerY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 6) {
+        return null;
+      }
+
+      const mouseAngle = Math.atan2(dy, dx);
+      let bestIndex = 0;
+      let bestDiff = Number.POSITIVE_INFINITY;
+
+      dimensions.forEach((dimension, index) => {
+        const axisAngle = -Math.PI / 2 + (2 * Math.PI * index) / axisCount;
+        const diff = shortestAngleDiff(mouseAngle, axisAngle);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIndex = index;
+        }
+      });
+
+      return dimensions[bestIndex];
+    };
+
+    svg.addEventListener('mousemove', (event) => {
+      const svgPoint = toSvgPoint(event);
+      if (!svgPoint) {
+        return;
+      }
+      const axisName = findClosestAxis(svgPoint.x, svgPoint.y);
+      setHoveredAxis(axisName);
+    });
+
+    svg.addEventListener('mouseleave', () => {
+      setHoveredAxis(null);
+    });
+
     svg.__seriesElements = seriesElements;
+
+    const renderMatchedAxisBorders = () => {
+      matchedAxisEntries.forEach(({ labelGroup, label, fallbackInfo }) => {
+        if (!labelGroup || !label) {
+          return;
+        }
+        if (labelGroup.querySelector('rect.decision-tree-selected-axis-border')) {
+          return;
+        }
+        addDoubleBorderRect(labelGroup, label, fallbackInfo);
+        labelGroup.querySelectorAll('rect').forEach((rect) => {
+          rect.classList.add('decision-tree-selected-axis-border');
+        });
+        labelGroup.parentNode?.appendChild(labelGroup);
+      });
+    };
+
+    requestAnimationFrame(renderMatchedAxisBorders);
+    setTimeout(renderMatchedAxisBorders, 0);
 
     return svg;
   };
@@ -1064,11 +1310,69 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       .map(id => String(id))
       .filter(id => byNodeRows[id]);
 
+    const nodeLabelById = {};
+    const nodeAxiomById = {};
+    const nodeFullLabelById = {};
+    pane.cy.nodes().forEach((node) => {
+      const nodeId = String(node.data('nodeId'));
+      const label = node.data('label') || node.data('axiom');
+      const axiom = node.data('axiom') || label;
+      const fullLabel = node.data('fullLabel');
+      if (label) {
+        nodeLabelById[nodeId] = String(label);
+      }
+      if (axiom) {
+        nodeAxiomById[nodeId] = String(axiom);
+      }
+      if (fullLabel) {
+        nodeFullLabelById[nodeId] = String(fullLabel);
+      }
+    });
+
+    const normalizeAxisText = (value) => String(value || '')
+      .normalize('NFKC')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const compactAxisText = (value) => normalizeAxisText(value).replace(/\s+/g, '');
+    const selectedAxiomTexts = new Set();
+    selectedKeys.forEach((id) => {
+      const candidates = [
+        nodeAxiomById[id],
+        nodeLabelById[id],
+        nodeFullLabelById[id],
+      ].filter(Boolean);
+
+      candidates.forEach((candidate) => {
+        const normalized = normalizeAxisText(candidate);
+        const compact = compactAxisText(candidate);
+        if (normalized) {
+          selectedAxiomTexts.add(normalized);
+        }
+        if (compact) {
+          selectedAxiomTexts.add(compact);
+        }
+      });
+    });
+
     if (selectedKeys.length === 0 || dimensions.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'decision-tree-star-empty';
-      empty.textContent = 'Select one or more nodes to view star plots.';
-      root.appendChild(empty);
+      const detailElementWidth = Math.max(360, detailElement.clientWidth - 40);
+      const emptyWidth = Math.max(360, Math.min(1200, detailElementWidth));
+
+      const emptySvg = createStarPlotSvg({
+        dimensions,
+        series: [],
+        width: emptyWidth,
+        height: 340,
+        title: 'Star Plot (no node selected)',
+        showAxisLabels,
+        selectedAxiomTexts,
+      });
+
+      const emptyContainer = document.createElement('div');
+      emptyContainer.className = 'decision-tree-star-combined';
+      emptyContainer.appendChild(emptySvg);
+      root.appendChild(emptyContainer);
       return;
     }
 
@@ -1078,15 +1382,6 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       .filter(id => selectedSet.has(id))
       .concat(selectedKeys.filter(id => !previousOrder.includes(id)));
     pane.cy.starPlotOrder = orderedKeys;
-
-    const nodeLabelById = {};
-    pane.cy.nodes().forEach((node) => {
-      const nodeId = String(node.data('nodeId'));
-      const label = node.data('label') || node.data('axiom');
-      if (label) {
-        nodeLabelById[nodeId] = String(label);
-      }
-    });
 
     const getNodeLabel = (nodeId) => nodeLabelById[String(nodeId)] || `Node ${nodeId}`;
     const cardById = {};
@@ -1141,6 +1436,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
       height: 340,
       title: 'Combined Star Plot (selected nodes)',
       showAxisLabels,
+      selectedAxiomTexts,
     });
     combinedSection.appendChild(combinedSvg);
 
