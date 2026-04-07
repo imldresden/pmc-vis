@@ -1,8 +1,10 @@
 import { cytoscape } from './imports/import-cytoscape.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
 import { spawnPane, getPanes } from './panes/panes.js';
+import { destroyPanes } from './panes/panes.js';
 import { CONSTANTS } from '../utils/names.js';
 import { openClassHierarchyPane } from './class-hierarchy-pane.js';
+import { setPane } from '../utils/controls.js';
 
 let activeDecisionTreeCy = null;
 
@@ -603,6 +605,22 @@ export function createDecisionTree(container, treeData, fullTreeData) {
           onClickFunction: () => {
             cy.fit(undefined, 30);
           },
+          hasTrailingDivider: true,
+        },
+        {
+          id: 'close-pane',
+          content: 'Close pane',
+          tooltipText: 'Close this decision tree pane',
+          coreAsWell: true,
+          onClickFunction: () => {
+            if (!cy?.paneId) {
+              return;
+            }
+
+            destroyPanes(cy.paneId, { manualRemoval: true }).catch(error => {
+              console.error(`Failed to close pane ${cy.paneId}:`, error);
+            });
+          },
           hasTrailingDivider: false,
         },
       ],
@@ -611,6 +629,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
 
   // Handle edge clicks for navigation
   cy.on('tap', 'edge', (event) => {
+    setPane(cy.paneId);
     const edge = event.target;
     const targetNodeId = edge.target().data('nodeId');
     const edgeType = edge.data('type');
@@ -623,7 +642,17 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     }));
   });
 
+  // Mark pane as active on any tap
+  cy.on('tap', (event) => {
+    setPane(cy.paneId);
+  });
+
   // Fit to view on load
+  // Mark this pane as active
+  if (cy.paneId) {
+    setPane(cy.paneId);
+  }
+
   cy.fit();
 
   return cy;

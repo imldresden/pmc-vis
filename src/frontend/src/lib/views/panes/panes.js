@@ -135,6 +135,11 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   div.appendChild(split_dragbar);
   div.appendChild(details);
 
+  // Mark pane as active when clicked
+  div.addEventListener('mousedown', () => {
+    setPane(pane.id);
+  });
+
   if (paneKeysBefore.length > 0) {
     if (
       document.getElementById(spawner)
@@ -187,6 +192,9 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   setTimeout(() => {
     Object.values(panes).forEach(p => p.cy?.pcp?.redraw());
   }, 0);
+
+  // Auto-activate newly spawned panes
+  setPane(pane.id);
 
   return pane;
 }
@@ -287,6 +295,24 @@ function enableDragBars() {
 }
 
 function enablePaneDragBars() {
+  const fitSummaryPaneIfNeeded = (paneElement) => {
+    if (!paneElement || !paneElement.classList?.contains('axiom-pane-fixed')) {
+      return;
+    }
+
+    const paneState = panes[paneElement.id];
+    if (!paneState?.cy) {
+      return;
+    }
+
+    if (paneState.cy.scratch('_summaryUserInteracting')) {
+      return;
+    }
+
+    paneState.cy.resize();
+    paneState.cy.fit(undefined, 20);
+  };
+
   const dragbars = Array.from(document.getElementsByClassName('dragbar'));
   let dragging = false;
 
@@ -331,6 +357,7 @@ function enablePaneDragBars() {
       const nextGrow = Number(getComputedStyle(next).flexGrow);
       const sumGrow = prevGrow + nextGrow;
       let lastPos = e[posProp];
+      let hasResized = false;
       dragging = true;
 
       document.onmousemove = (ex) => {
@@ -354,13 +381,20 @@ function enablePaneDragBars() {
 
         prev.style.flexGrow = prevGrowNew;
         next.style.flexGrow = nextGrowNew;
+        hasResized = true;
 
         lastPos = pos;
       };
 
       document.onmouseup = () => {
         document.onmousemove = null;
+        document.onmouseup = null;
         document.body.style.removeProperty('cursor');
+
+        if (hasResized) {
+          fitSummaryPaneIfNeeded(prev);
+          fitSummaryPaneIfNeeded(next);
+        }
 
         dragging &&= false;
       };
@@ -400,6 +434,7 @@ function enableSplitDragBars() {
 
       document.onmouseup = () => {
         document.onmousemove = null;
+        document.onmouseup = null;
         dragging &&= false;
       };
     };

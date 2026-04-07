@@ -1,5 +1,6 @@
 import { cytoscape } from './imports/import-cytoscape.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
+import { setPane } from '../utils/controls.js';
 
 // Axiom states
 export const AXIOM_STATES = {
@@ -49,9 +50,11 @@ function bindSummaryKeyboardShortcuts() {
     }
 
     event.preventDefault();
+    event._dlRepairHandled = true;
+    event.stopImmediatePropagation();
     const node = selectedNodes[0];
     setAxiomState(activeSummaryCy.paneId, node.id(), nextState, activeSummaryCy);
-  });
+  }, true);
 
   summaryKeyboardBound = true;
 }
@@ -308,11 +311,22 @@ export function createAxiomPane(container, treeData, paneId) {
 
   // Store pane ID
   cy.paneId = paneId;
+  cy.scratch('_summaryUserInteracting', false);
 
   bindSummaryKeyboardShortcuts();
 
   cy.on('tap', () => {
     activeSummaryCy = cy;
+    setPane(paneId);
+  });
+
+  cy.on('mousedown touchstart grab drag dragpan', () => {
+    cy.scratch('_summaryUserInteracting', true);
+    setPane(paneId);
+  });
+
+  cy.on('mouseup touchend free dragfree', () => {
+    cy.scratch('_summaryUserInteracting', false);
   });
 
   cy.on('select', 'node', () => {
@@ -320,6 +334,7 @@ export function createAxiomPane(container, treeData, paneId) {
   });
 
   cy.on('destroy', () => {
+    cy.scratch('_summaryUserInteracting', false);
     if (activeSummaryCy === cy) {
       activeSummaryCy = null;
     }

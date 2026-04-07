@@ -339,16 +339,8 @@ async function startDLRepairProject() {
     const axiomPaneDiv = document.getElementById(axiomPaneId);
     if (axiomPaneDiv) {
       axiomPaneDiv.classList.add('axiom-pane-fixed');
-      axiomPaneDiv.style.flexBasis = '220px';
-      axiomPaneDiv.style.flex = '0 0 220px';
-      axiomPaneDiv.style.minWidth = '220px';
-    }
-    
-    // Hide dragbar for axiom pane
-    const axiomDragbar = document.getElementById(axiomPane.dragbar);
-    if (axiomDragbar) {
-      axiomDragbar.style.display = 'none';
-      axiomDragbar.style.pointerEvents = 'none'; // Prevent interaction even if visible
+      axiomPaneDiv.style.flexGrow = '0.4';
+      axiomPaneDiv.style.minWidth = '180px';
     }
     
     // Get the axiom cytoscape container
@@ -375,6 +367,13 @@ async function startDLRepairProject() {
     
     axiomCy.paneId = axiomPaneId;
     axiomPane.cy = axiomCy;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        axiomCy.resize();
+        axiomCy.fit(undefined, 20);
+      });
+    });
     
     // Hide details pane for axiom pane
     const axiomDetailsDiv = document.getElementById(axiomPane.details);
