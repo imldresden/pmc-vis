@@ -9,157 +9,104 @@ const NODE_STATE = {
   ADDED: 'added',
   REMOVED: 'removed',
 };
+
+const EDGE_STATE = {
+  UNCHANGED: 'unchanged',
+  ADDED: 'added',
+  REMOVED: 'removed',
+};
 const CLASS_HIERARCHY_HEADER_HEIGHT = 32;
 
-function getChildEntries(rawValue) {
-  if (Array.isArray(rawValue)) {
-    return rawValue;
-  }
-
-  if (rawValue && typeof rawValue === 'object') {
-    return [rawValue];
-  }
-
-  return [];
-}
-
-function getNodeLabel(childObject) {
-  if (!childObject || typeof childObject !== 'object') {
-    return null;
-  }
-
-  const entries = Object.entries(childObject);
-  if (entries.length === 0) {
-    return null;
-  }
-
-  return entries[0][0];
-}
-
-function getNodeChildren(childObject) {
-  if (!childObject || typeof childObject !== 'object') {
+function normalizeEdgeList(rawEdges) {
+  if (!Array.isArray(rawEdges)) {
     return [];
   }
 
-  const entries = Object.entries(childObject);
-  if (entries.length === 0) {
-    return [];
-  }
-
-  return getChildEntries(entries[0][1]);
+  return rawEdges
+    .filter(edge => Array.isArray(edge) && edge.length >= 2)
+    .map(([source, target]) => [String(source), String(target)]);
 }
 
-function flattenHierarchy(hierarchyData) {
-  const flattenedMap = new Map();
+function createEdgeKey(source, target) {
+  return `${source}->${target}`;
+}
 
-  function walkNode(label, nodeValue, parentSignature, labelOccurrence) {
-    const signature = parentSignature
-      ? `${parentSignature}>${label}#${labelOccurrence}`
-      : `${label}#${labelOccurrence}`;
+function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyDifference) {
+  const initialEdges = normalizeEdgeList(initialHierarchy);
+  const modifiedEdges = normalizeEdgeList(modifiedHierarchy);
+  const removedEdges = normalizeEdgeList(hierarchyDifference?.removedEdges);
+  const addedEdges = normalizeEdgeList(hierarchyDifference?.addedEdges);
 
-    flattenedMap.set(signature, {
-      signature,
-      label,
-      parentSignature,
-    });
+  const initialEdgeKeys = new Set(initialEdges.map(([source, target]) => createEdgeKey(source, target)));
+  const modifiedEdgeKeys = new Set(modifiedEdges.map(([source, target]) => createEdgeKey(source, target)));
+  const removedEdgeKeys = new Set(removedEdges.map(([source, target]) => createEdgeKey(source, target)));
+  const addedEdgeKeys = new Set(addedEdges.map(([source, target]) => createEdgeKey(source, target)));
 
-    const childEntries = getChildEntries(nodeValue);
-    const childLabelCounts = new Map();
-    childEntries.forEach((childEntry, childIndex) => {
-      const childLabel = getNodeLabel(childEntry);
-      if (!childLabel) {
-        return;
-      }
+  const allEdgeKeys = new Set([...initialEdgeKeys, ...modifiedEdgeKeys]);
 
-      const nextLabelCount = (childLabelCounts.get(childLabel) || 0) + 1;
-      childLabelCounts.set(childLabel, nextLabelCount);
-
-      walkNode(
-        childLabel,
-        getNodeChildren(childEntry),
-        signature,
-        nextLabelCount,
-      );
-    });
-  }
-
-  const rootEntries = Object.entries(hierarchyData || {});
-  const rootLabelCounts = new Map();
-  rootEntries.forEach(([rootLabel, rootValue]) => {
-    const nextRootLabelCount = (rootLabelCounts.get(rootLabel) || 0) + 1;
-    rootLabelCounts.set(rootLabel, nextRootLabelCount);
-    walkNode(rootLabel, rootValue, null, nextRootLabelCount);
+  const nodeLabels = new Set();
+  [...initialEdges, ...modifiedEdges].forEach(([source, target]) => {
+    nodeLabels.add(source);
+    nodeLabels.add(target);
   });
 
-  return flattenedMap;
-}
-
-function buildComparisonElements(initialHierarchy, modifiedHierarchy) {
-  const initialMap = flattenHierarchy(initialHierarchy);
-  const modifiedMap = flattenHierarchy(modifiedHierarchy);
-
-  const allSignatures = new Set([
-    ...initialMap.keys(),
-    ...modifiedMap.keys(),
-  ]);
-
-  const signatureToNodeId = new Map();
+  const labelToNodeId = new Map();
   const nodes = [];
   const edges = [];
 
   let nodeCounter = 0;
-  allSignatures.forEach((signature) => {
-    signatureToNodeId.set(signature, `class-node-${nodeCounter}`);
+  nodeLabels.forEach((label) => {
+    labelToNodeId.set(label, `class-node-${nodeCounter}`);
     nodeCounter += 1;
   });
 
-  allSignatures.forEach((signature) => {
-    const initialNode = initialMap.get(signature);
-    const modifiedNode = modifiedMap.get(signature);
-    const nodeData = initialNode || modifiedNode;
+  nodeLabels.forEach((label) => {
+    const isInInitial = initialEdges.some(([source, target]) => source === label || target === label);
+    const isInModified = modifiedEdges.some(([source, target]) => source === label || target === label);
 
     let state = NODE_STATE.UNCHANGED;
-    if (!initialNode && modifiedNode) {
+    if (!isInInitial && isInModified) {
       state = NODE_STATE.ADDED;
-    } else if (initialNode && !modifiedNode) {
+    } else if (isInInitial && !isInModified) {
       state = NODE_STATE.REMOVED;
     }
 
     nodes.push({
       data: {
-        id: signatureToNodeId.get(signature),
-        label: nodeData?.label || 'Unknown',
+        id: labelToNodeId.get(label),
+        label,
         state,
       },
       classes: 'class-hierarchy-node',
     });
   });
 
-  const edgeSet = new Set();
-  allSignatures.forEach((signature) => {
-    const initialNode = initialMap.get(signature);
-    const modifiedNode = modifiedMap.get(signature);
-    const nodeData = initialNode || modifiedNode;
-    const parentSignature = nodeData?.parentSignature;
+  allEdgeKeys.forEach((edgeKey) => {
+    const [sourceLabel, targetLabel] = edgeKey.split('->');
+    const sourceId = labelToNodeId.get(targetLabel);
+    const targetId = labelToNodeId.get(sourceLabel);
 
-    if (!parentSignature || !signatureToNodeId.has(parentSignature)) {
+    if (!sourceId || !targetId) {
       return;
     }
 
-    const sourceId = signatureToNodeId.get(parentSignature);
-    const targetId = signatureToNodeId.get(signature);
-    const edgeId = `${sourceId}->${targetId}`;
-
-    if (edgeSet.has(edgeId)) {
-      return;
+    let state = EDGE_STATE.UNCHANGED;
+    if (removedEdgeKeys.has(edgeKey)) {
+      state = EDGE_STATE.REMOVED;
+    } else if (addedEdgeKeys.has(edgeKey)) {
+      state = EDGE_STATE.ADDED;
+    } else if (!initialEdgeKeys.has(edgeKey) && modifiedEdgeKeys.has(edgeKey)) {
+      state = EDGE_STATE.ADDED;
+    } else if (initialEdgeKeys.has(edgeKey) && !modifiedEdgeKeys.has(edgeKey)) {
+      state = EDGE_STATE.REMOVED;
     }
 
-    edgeSet.add(edgeId);
     edges.push({
       data: {
-        id: edgeId,
+        id: `edge-${edgeKey}`,
         source: sourceId,
         target: targetId,
+        state,
       },
     });
   });
@@ -254,6 +201,22 @@ function createComparisonStylesheet() {
         'target-arrow-color': COLORS.EDGE_COLOR,
       },
     },
+    {
+      selector: 'edge[state = "removed"]',
+      style: {
+        'line-color': '#c92a2a',
+        'target-arrow-color': '#c92a2a',
+        'line-style': 'dashed',
+      },
+    },
+    {
+      selector: 'edge[state = "added"]',
+      style: {
+        'line-color': '#2b8a3e',
+        'target-arrow-color': '#2b8a3e',
+        'line-style': 'solid',
+      },
+    },
   ];
 }
 
@@ -272,7 +235,7 @@ function hidePaneDetails(pane, container) {
   container.style.height = `${Math.max(80, pane.height - CLASS_HIERARCHY_HEADER_HEIGHT)}px`;
 }
 
-function setPaneTitle(pane, nodeId, onLayoutChange) {
+function setPaneTitle(pane, titleText, onLayoutChange) {
   const paneElement = document.getElementById(pane.id);
   if (!paneElement) {
     return;
@@ -305,7 +268,7 @@ function setPaneTitle(pane, nodeId, onLayoutChange) {
 
   header.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;flex-wrap:nowrap;">
-      <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Class Hierarchy (Node ${nodeId})</span>
+      <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Class Hierarchy (${titleText})</span>
       <div style="display:flex;gap:6px;align-items:center;">
         <button type="button" data-layout-mode="vertical" style="font-size:11px;padding:2px 7px;border:1px solid #bfbfbf;background:#f7f7f7;color:#444;cursor:pointer;">Vertical</button>
         <button type="button" data-layout-mode="horizontal" style="font-size:11px;padding:2px 7px;border:1px solid #bfbfbf;background:#f7f7f7;color:#444;cursor:pointer;">Horizontal</button>
@@ -345,6 +308,19 @@ function setPaneTitle(pane, nodeId, onLayoutChange) {
   }
 }
 
+function getNodeAxiomText(sourceCy, nodeId) {
+  if (!sourceCy || nodeId === undefined || nodeId === null) {
+    return null;
+  }
+
+  const sourceNode = sourceCy.nodes().filter(node => node.data('nodeId') === nodeId).first();
+  if (!sourceNode || sourceNode.empty()) {
+    return null;
+  }
+
+  return sourceNode.data('axiom') || sourceNode.data('label') || null;
+}
+
 export async function openClassHierarchyPane(sourceCy, nodeId) {
   const hierarchyPayload = await dlRepairApi.getClassHierarchyDifference(nodeId);
   if (!hierarchyPayload || !hierarchyPayload.initialHierarchy || !hierarchyPayload.modifiedHierarchy) {
@@ -379,6 +355,7 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
   const elements = buildComparisonElements(
     hierarchyPayload.initialHierarchy,
     hierarchyPayload.modifiedHierarchy,
+    hierarchyPayload.hierarchyDifference,
   );
 
   const cy = cytoscape({
@@ -387,7 +364,7 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     style: createComparisonStylesheet(),
     layout: {
       name: 'dagre',
-      rankDir: 'LR',
+      rankDir: 'RL',
       nodeSep: 50,
       rankSep: 90,
       fit: true,
@@ -400,7 +377,7 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
   });
 
   const runLayout = (mode = 'vertical') => {
-    const rankDir = mode === 'horizontal' ? 'LR' : 'TB';
+    const rankDir = mode === 'horizontal' ? 'RL' : 'BT';
     cy.layout({
       name: 'dagre',
       rankDir,
@@ -412,7 +389,8 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     }).run();
   };
 
-  setPaneTitle(newPane, nodeId, runLayout);
+  const nodeTitle = getNodeAxiomText(sourceCy, nodeId) || `Node ${nodeId}`;
+  setPaneTitle(newPane, nodeTitle, runLayout);
 
   const initialPositions = new Map();
   cy.nodes().forEach((node) => {

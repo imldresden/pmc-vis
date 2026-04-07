@@ -136,7 +136,7 @@ export async function getClassHierarchyDifference(nodeId) {
       return impactCache.classHierarchy.get(nodeId);
     }
 
-    const response = await fetch(`/API_outputs/Impact2Responses/classHierarchyDifference_${nodeId}.json`);
+    const response = await fetch(`/API_outputs/ClassHierarchies/classHierarchyDifference_${nodeId}.json`);
     if (!response.ok) {
       throw new Error(`Failed to fetch class hierarchy for node ${nodeId}`);
     }
