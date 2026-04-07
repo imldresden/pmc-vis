@@ -1,6 +1,7 @@
 import { cytoscape } from './imports/import-cytoscape.js';
 import { spawnPane, destroyPanes } from './panes/panes.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
+import { setPane } from '../utils/controls.js';
 
 import dlRepairApi from '../utils/mock-dl-repair-api.js';
 
@@ -445,8 +446,13 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     });
   }
 
+  cy.on('tap', () => {
+    setPane(newPane.id);
+  });
+
   cy.fit(undefined, 30);
   newPane.cy = cy;
+  setPane(newPane.id);
 
   return cy;
 }

@@ -137,6 +137,9 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   // Mark pane as active when clicked
   div.addEventListener('mousedown', () => {
+    if (!panes[pane.id]?.cy) {
+      return;
+    }
     setPane(pane.id);
   });
 
@@ -192,9 +195,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   setTimeout(() => {
     Object.values(panes).forEach(p => p.cy?.pcp?.redraw());
   }, 0);
-
-  // Auto-activate newly spawned panes
-  setPane(pane.id);
 
   return pane;
 }
@@ -295,8 +295,16 @@ function enableDragBars() {
 }
 
 function enablePaneDragBars() {
+  const isDlRepairSummaryPane = (paneElement) => {
+    return Boolean(
+      paneElement
+      && paneElement.id?.startsWith('axiom-pane-')
+      && paneElement.classList?.contains('axiom-pane-fixed'),
+    );
+  };
+
   const fitSummaryPaneIfNeeded = (paneElement) => {
-    if (!paneElement || !paneElement.classList?.contains('axiom-pane-fixed')) {
+    if (!isDlRepairSummaryPane(paneElement)) {
       return;
     }
 

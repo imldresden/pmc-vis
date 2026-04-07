@@ -1215,6 +1215,7 @@ export function expandNodeInNewPane(cy, nodeId) {
   if (newCy) {
     newCy.paneId = newPane.id;
     newPane.cy = newCy;
+    setPane(newPane.id);
     document.dispatchEvent(new CustomEvent('decision-tree-pane-ready', {
       detail: { paneId: newPane.id },
     }));
