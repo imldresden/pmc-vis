@@ -240,8 +240,25 @@ async function start() {
   const data = await socket.emitWithAck('MC_STATUS', PROJECT);
   setInfo(data.info);
 
+  // Parse URL parameters to check for specified nodes
+  const urlParams = new URLSearchParams(window.location.search);
+  const nodesParam = urlParams.get('nodes');
+
+  // Determine which endpoint to use based on URL parameters
+  let fetchUrl;
+  if (nodesParam) {
+    // Parse nodes from URL (expecting format: nodes=node1,node2,node3)
+    const nodeList = nodesParam.split(',').map(n => n.trim());
+    // Build query string with multiple id parameters
+    const queryString = nodeList.map(id => `id=${encodeURIComponent(id)}`).join('&');
+    fetchUrl = `${BACKEND}/${PROJECT}/subgraph?${queryString}`;
+  } else {
+    // Default behavior: fetch initial nodes
+    fetchUrl = `${BACKEND}/${PROJECT}/initial`;
+  }
+
   Promise.all([
-    fetch(`${BACKEND}/${PROJECT}/initial`).then(r => r.json()),
+    fetch(fetchUrl).then(r => r.json()),
     // fetch(BACKEND + PROJECT).then((res) => res.json()), // requests entire dataset
   ]).then((promises) => {
     const data = promises[0];
