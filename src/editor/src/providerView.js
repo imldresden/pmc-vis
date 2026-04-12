@@ -165,7 +165,10 @@ class ProviderViewItem extends vscode.TreeItem {
                     }
                     const sPos = document.positionAt(d.startPosition);
                     const ePos = document.positionAt(d.endPosition);
-                    const decoration = { range: new vscode.Range(sPos, ePos), hoverMessage: d.hoverInfo };
+                    const hover = new vscode.MarkdownString(d.hoverInfo);
+                    hover.isTrusted = true;
+                    hover.supportHtml = true;
+                    const decoration = { range: new vscode.Range(sPos, ePos), hoverMessage: hover };
                     const exDeco = this._decorations.get(d.colorHex)
                     exDeco[1].push(decoration)
 
