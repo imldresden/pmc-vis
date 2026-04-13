@@ -202,6 +202,7 @@ public class ResponsibilityTask extends DataProviderTask {
     @Override
     public List<EditorHighlighting> getEditorHighlighting(List<String> arguments){
         try{
+            System.out.println(arguments);
             String call = String.format("./%s", binaryLocation);
             String modelPath = String.format("%s/%s", model.parent.getPath(), model.getModelFile().getName());
 
