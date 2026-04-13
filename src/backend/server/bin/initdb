@@ -2,15 +2,6 @@
 
 mkdir -p db
 pg_ctl -D db initdb
-
-# Configure PostgreSQL to listen on localhost
-echo "listen_addresses = 'localhost'" >> db/postgresql.conf
-echo "port = 5432" >> db/postgresql.conf
-
-# Configure pg_hba.conf to allow password authentication from localhost
-echo "host    all             all             127.0.0.1/32            md5" >> db/pg_hba.conf
-echo "host    all             all             ::1/128                 md5" >> db/pg_hba.conf
-
 pg_ctl -D db start
 psql -c "CREATE USER admin SUPERUSER PASSWORD '8YyvlyVhDn';" postgres
 pg_ctl -D db stop
