@@ -1,0 +1,146 @@
+{
+  "hierarchyDifference" : {
+    "removed:" : [ {
+      "IceCream" : [ {
+        "SpicyIceCream" : [ {
+          "CheesyVegetableTopping" : null
+        } ]
+      } ]
+    } ],
+    "added:" : [ {
+      "Food" : [ {
+        "IceCream" : [ {
+          "SpicyIceCream" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "Pizza" : [ {
+        "CheesyVegetableTopping" : null
+      } ]
+    } ]
+  },
+  "initialHierarchy" : {
+    "⊤" : [ {
+      "ValuePartition" : [ {
+        "Spiciness" : [ {
+          "Medium" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Mild" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Hot" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "DomainThing" : [ {
+        "Food" : [ {
+          "PizzaBase" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Pizza" : [ {
+            "IceCream" : [ {
+              "SpicyIceCream" : [ {
+                "CheesyVegetableTopping" : null
+              } ]
+            } ]
+          } ]
+        }, {
+          "PizzaTopping" : [ {
+            "SpicyPizzaTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "FruitTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "MeatTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "VegetarianTopping" : [ {
+              "CheeseTopping" : [ {
+                "CheesyVegetableTopping" : null
+              } ]
+            } ]
+          }, {
+            "VegetableTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          } ]
+        } ]
+      } ]
+    } ]
+  },
+  "repairYes" : true,
+  "modifiedHierarchy" : {
+    "⊤" : [ {
+      "ValuePartition" : [ {
+        "Spiciness" : [ {
+          "Medium" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Mild" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Hot" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "DomainThing" : [ {
+        "Food" : [ {
+          "PizzaBase" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "Pizza" : [ {
+            "CheesyVegetableTopping" : null
+          } ]
+        }, {
+          "IceCream" : [ {
+            "SpicyIceCream" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          } ]
+        }, {
+          "PizzaTopping" : [ {
+            "SpicyPizzaTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "MeatTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "FruitTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          }, {
+            "VegetarianTopping" : [ {
+              "CheeseTopping" : [ {
+                "CheesyVegetableTopping" : null
+              } ]
+            } ]
+          }, {
+            "VegetableTopping" : [ {
+              "CheesyVegetableTopping" : null
+            } ]
+          } ]
+        } ]
+      } ]
+    } ]
+  },
+  "repairNo" : true
+}

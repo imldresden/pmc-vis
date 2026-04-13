@@ -1,0 +1,400 @@
+{
+    "hierarchyDifference": {
+        "removed:": [
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": [
+                    {
+                        "CheesyVegetableTopping": [
+                            {
+                                "SpicyIceCream": "ref"
+                            },
+                            {
+                                "IceCream": [
+                                    {
+                                        "SpicyIceCream": "ref"
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "IceCream": "ref"
+                    }
+                ]
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            },
+            {
+                "SpicyIceCream": "ref"
+            }
+        ],
+        "added:": [
+            {
+                "⊤": [
+                    {
+                        "SpicyIceCream": [
+                            {
+                                "CheesyVegetableTopping": "ref"
+                            },
+                            {
+                                "IceCream": "ref"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "initialHierarchy": {
+        "⊤": [
+            {
+                "ValuePartition": [
+                    {
+                        "Spiciness": [
+                            {
+                                "Medium": [
+                                    {
+                                        "SpicyIceCream": [
+                                            {
+                                                "CheesyVegetableTopping": [
+                                                    {
+                                                        "SpicyIceCream": "ref"
+                                                    },
+                                                    {
+                                                        "IceCream": [
+                                                            {
+                                                                "SpicyIceCream": "ref"
+                                                            },
+                                                            {
+                                                                "CheesyVegetableTopping": "ref"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Mild": [
+                                    {
+                                        "SpicyIceCream": "ref"
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Hot": [
+                                    {
+                                        "SpicyIceCream": "ref"
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "DomainThing": [
+                    {
+                        "Food": [
+                            {
+                                "PizzaBase": [
+                                    {
+                                        "SpicyIceCream": "ref"
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Pizza": [
+                                    {
+                                        "SpicyIceCream": "ref"
+                                    },
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "PizzaTopping": [
+                                    {
+                                        "SpicyPizzaTopping": [
+                                            {
+                                                "SpicyIceCream": "ref"
+                                            },
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "FruitTopping": [
+                                            {
+                                                "SpicyIceCream": "ref"
+                                            },
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "MeatTopping": [
+                                            {
+                                                "SpicyIceCream": "ref"
+                                            },
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "VegetarianTopping": [
+                                            {
+                                                "CheeseTopping": [
+                                                    {
+                                                        "SpicyIceCream": "ref"
+                                                    },
+                                                    {
+                                                        "CheesyVegetableTopping": "ref"
+                                                    },
+                                                    {
+                                                        "IceCream": "ref"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "VegetableTopping": [
+                                            {
+                                                "SpicyIceCream": "ref"
+                                            },
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "repairYes": true,
+    "modifiedHierarchy": {
+        "⊤": [
+            {
+                "ValuePartition": [
+                    {
+                        "Spiciness": [
+                            {
+                                "Medium": [
+                                    {
+                                        "CheesyVegetableTopping": [
+                                            {
+                                                "IceCream": [
+                                                    {
+                                                        "CheesyVegetableTopping": "ref"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Mild": [
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Hot": [
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "DomainThing": [
+                    {
+                        "Food": [
+                            {
+                                "PizzaBase": [
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "Pizza": [
+                                    {
+                                        "CheesyVegetableTopping": "ref"
+                                    },
+                                    {
+                                        "IceCream": "ref"
+                                    }
+                                ]
+                            },
+                            {
+                                "PizzaTopping": [
+                                    {
+                                        "SpicyPizzaTopping": [
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "FruitTopping": [
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "MeatTopping": [
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "VegetarianTopping": [
+                                            {
+                                                "CheeseTopping": [
+                                                    {
+                                                        "CheesyVegetableTopping": "ref"
+                                                    },
+                                                    {
+                                                        "IceCream": "ref"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "VegetableTopping": [
+                                            {
+                                                "CheesyVegetableTopping": "ref"
+                                            },
+                                            {
+                                                "IceCream": "ref"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "SpicyIceCream": [
+                    {
+                        "CheesyVegetableTopping": "ref"
+                    },
+                    {
+                        "IceCream": "ref"
+                    }
+                ]
+            }
+        ]
+    },
+    "repairNo": true
+}

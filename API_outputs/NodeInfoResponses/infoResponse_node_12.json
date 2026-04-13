@@ -1,0 +1,7 @@
+{
+  "nodeId" : 12,
+  "axiom" : "SubClassOf(<http://subPizza#IceCream> ObjectSomeValuesFrom(<http://subPizza#hasTopping> <http://subPizza#FruitTopping>))",
+  "axiomString" : "IceCream ⊑ ∃hasTopping.FruitTopping",
+  "path" : "[{node=0, answer=false, axiomStr=SpicyIceCream ≡ (∃hasSpiciness.Hot ⊓ IceCream), axiom=EquivalentClasses(<http://subPizza#SpicyIceCream> ObjectIntersectionOf(<http://subPizza#IceCream> ObjectSomeValuesFrom(<http://subPizza#hasSpiciness> <http://subPizza#Hot>)) )}, {node=2, answer=true, axiomStr=disjoint(PizzaBase, PizzaTopping, IceCream, Pizza), axiom=DisjointClasses(<http://subPizza#IceCream> <http://subPizza#Pizza> <http://subPizza#PizzaBase> <http://subPizza#PizzaTopping>)}, {node=5, answer=false, axiomStr=domain(hasTopping) = Pizza, axiom=ObjectPropertyDomain(<http://subPizza#hasTopping> <http://subPizza#Pizza>)}]",
+  "nextNodes" : "[{node=26, answer=false, axiomStr=null, axiom=null}, {node=25, answer=true, axiomStr=null, axiom=null}]"
+}

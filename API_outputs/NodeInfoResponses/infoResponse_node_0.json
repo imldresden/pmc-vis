@@ -1,0 +1,7 @@
+{
+  "nodeId" : 0,
+  "axiom" : "EquivalentClasses(<http://subPizza#SpicyIceCream> ObjectIntersectionOf(<http://subPizza#IceCream> ObjectSomeValuesFrom(<http://subPizza#hasSpiciness> <http://subPizza#Hot>)) )",
+  "axiomString" : "SpicyIceCream ≡ (∃hasSpiciness.Hot ⊓ IceCream)",
+  "path" : "[]",
+  "nextNodes" : "[{node=2, answer=false, axiomStr=disjoint(PizzaBase, PizzaTopping, IceCream, Pizza), axiom=DisjointClasses(<http://subPizza#IceCream> <http://subPizza#Pizza> <http://subPizza#PizzaBase> <http://subPizza#PizzaTopping>)}, {node=1, answer=true, axiomStr=disjoint(PizzaBase, PizzaTopping, IceCream, Pizza), axiom=DisjointClasses(<http://subPizza#IceCream> <http://subPizza#Pizza> <http://subPizza#PizzaBase> <http://subPizza#PizzaTopping>)}]"
+}
