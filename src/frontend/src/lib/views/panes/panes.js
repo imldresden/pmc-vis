@@ -46,7 +46,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     id: id || uid(),
     container: uid(),
     dragbar: uid(),
-    // width: dims.width,
     height,
     split: 0.3,
     cy: undefined,
@@ -135,7 +134,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   div.appendChild(split_dragbar);
   div.appendChild(details);
 
-  // Mark pane as active when clicked
   div.addEventListener('mousedown', () => {
     if (!panes[pane.id]?.cy) {
       return;
@@ -483,7 +481,6 @@ function updatePanes(newPanesData) {
   });
 }
 
-// Store pane data to server
 async function storePaneToServer(paneId, paneData) {
   try {
     const paneInfo = {
@@ -519,7 +516,6 @@ async function storePaneToServer(paneId, paneData) {
   }
 }
 
-// Fetch pane data from server
 async function fetchPaneFromServer(paneId) {
   try {
     const response = await fetch(`${BACKEND}/${PROJECT}/pane?pane_id=${paneId}`);
@@ -843,7 +839,6 @@ document
   ?.addEventListener('click', async () => {
     let redirectName;
     
-    // Single dialog with mode selection and file inputs
     const result = await Swal.fire({
       title: 'Create new project',
       html: `
@@ -862,7 +857,6 @@ document
 
           <div class="ui divider"></div>
 
-          <!-- PRISM Mode Inputs -->
           <div id="prism-inputs" style="display: block;">
             <p style="margin-bottom: 10px;">If creation is successful, you will be redirected.</p>
             
@@ -879,7 +873,6 @@ document
             </div>
           </div>
 
-          <!-- DL Repair Mode Inputs -->
           <div id="dl-repair-inputs" style="display: none;">
             <p style="margin-bottom: 10px;">Upload the required files for DL repair analysis.</p>
             
@@ -915,7 +908,6 @@ document
       confirmButtonText: 'Create',
       confirmButtonColor: 'green',
       didOpen: () => {
-        // Make updateFileInputs available globally for onchange handlers
         window.updateFileInputs = () => {
           const mode = document.querySelector('input[name="project-mode"]:checked').value;
           document.getElementById('prism-inputs').style.display = mode === 'prism' ? 'block' : 'none';

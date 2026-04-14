@@ -149,14 +149,12 @@ public class TaskResource extends Resource {
         String output = "";
 
         try {
-            // Create project directory
             if (new File(String.format("%s/%s", rootDir, projectID)).exists()) {
                 return Response.status(Response.Status.FORBIDDEN).entity("project already exists").build();
             }
 
             Files.createDirectory(Paths.get(String.format("%s/%s", rootDir, projectID)));
             
-            // Create project metadata file to indicate this is a DL repair project
             String projectMetadata = String.format("%s/%s/project-metadata.json", rootDir, projectID);
             String metadataContent = "{\"type\": \"dl-repair\", \"created\": \"" + System.currentTimeMillis() + "\"}";
             writeToFile(new java.io.ByteArrayInputStream(metadataContent.getBytes()), projectMetadata);

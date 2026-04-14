@@ -2,14 +2,12 @@ import { cytoscape } from './imports/import-cytoscape.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
 import { setPane } from '../utils/controls.js';
 
-// Axiom states
 export const AXIOM_STATES = {
-  KEPT: 'kept',      // Green
-  REMOVED: 'removed', // Red
-  UNDECIDED: 'undecided', // Gray
+  KEPT: 'kept',
+  REMOVED: 'removed',
+  UNDECIDED: 'undecided',
 };
 
-// Store axiom states per pane
 const axiomStates = new Map();
 let activeSummaryCy = null;
 let summaryKeyboardBound = false;
@@ -59,9 +57,6 @@ function bindSummaryKeyboardShortcuts() {
   summaryKeyboardBound = true;
 }
 
-/**
- * Get representative axiom for each depth level
- */
 function getAxiomsByDepth(treeData) {
   if (!treeData || !treeData.nodes) {
     return {};
@@ -69,14 +64,11 @@ function getAxiomsByDepth(treeData) {
 
   const axiomsByDepth = {};
 
-  // Calculate depth for each node
   const nodeDepths = new Map();
   const targetIds = new Set(treeData.edges.map(e => e.target));
   
-  // Find root nodes (no incoming edges)
   const rootNodes = treeData.nodes.filter(node => !targetIds.has(node.id));
   
-  // BFS to calculate depths
   const queue = [];
   rootNodes.forEach(node => {
     nodeDepths.set(node.id, 0);
@@ -87,7 +79,6 @@ function getAxiomsByDepth(treeData) {
     const currentId = queue.shift();
     const currentDepth = nodeDepths.get(currentId);
     
-    // Find all children of current node
     const childEdges = treeData.edges.filter(edge => edge.source === currentId);
     childEdges.forEach(edge => {
       if (!nodeDepths.has(edge.target)) {
@@ -100,13 +91,11 @@ function getAxiomsByDepth(treeData) {
   const depthValues = Array.from(nodeDepths.values());
   const maxDepth = depthValues.length > 0 ? Math.max(...depthValues) : 0;
 
-  // Group by depth and select first axiom as representative
   treeData.nodes.forEach(node => {
     const depth = nodeDepths.get(node.id) || 0;
     if (depth >= maxDepth) {
       return;
     }
-    // Only store the first axiom for each depth (representative)
     if (!axiomsByDepth[depth]) {
       axiomsByDepth[depth] = {
         id: node.id,
@@ -120,9 +109,6 @@ function getAxiomsByDepth(treeData) {
   return axiomsByDepth;
 }
 
-/**
- * Create stylesheet for axiom pane
- */
 function createAxiomPaneStylesheet() {
   return [
     {
@@ -198,15 +184,12 @@ function createAxiomPaneStylesheet() {
     {
       selector: 'edge',
       style: {
-        'display': 'none', // Hide edges in axiom pane
+        'display': 'none',
       },
     },
   ];
 }
 
-/**
- * Initialize axiom states for a pane
- */
 function initializeAxiomStates(paneId, treeData) {
   if (!axiomStates.has(paneId)) {
     const states = {};
@@ -220,31 +203,23 @@ function initializeAxiomStates(paneId, treeData) {
   return axiomStates.get(paneId);
 }
 
-/**
- * Get axiom state
- */
 function getAxiomState(paneId, nodeId) {
   const states = axiomStates.get(paneId);
   return states ? states[nodeId] : AXIOM_STATES.UNDECIDED;
 }
 
-/**
- * Set axiom state and update visualization
- */
 function setAxiomState(paneId, nodeId, state, cy) {
   const states = axiomStates.get(paneId);
   if (!states) return;
 
   states[nodeId] = state;
   
-  // Update UI if cy is provided
   if (cy) {
     const node = cy.getElementById(nodeId);
     if (node.length > 0) {
       node.removeClass('kept removed undecided');
       node.addClass(state);
       
-      // Dispatch state change event
       document.dispatchEvent(new CustomEvent('axiom-state-changed', {
         detail: { paneId, nodeId, state },
       }));
@@ -252,22 +227,16 @@ function setAxiomState(paneId, nodeId, state, cy) {
   }
 }
 
-/**
- * Create axiom pane visualization
- */
 export function createAxiomPane(container, treeData, paneId) {
   if (!container || !treeData) {
     console.error('Container or tree data not provided for axiom pane');
     return null;
   }
 
-  // Initialize axiom states
   initializeAxiomStates(paneId, treeData);
 
-  // Get axioms organized by depth
   const axiomsByDepth = getAxiomsByDepth(treeData);
   
-  // Create elements for visualization - vertical layout
   const elements = [];
   const verticalSpacing = 100;
 
@@ -293,7 +262,6 @@ export function createAxiomPane(container, treeData, paneId) {
       });
     });
 
-  // Create Cytoscape instance
   const cy = cytoscape({
     container,
     elements,
@@ -309,7 +277,6 @@ export function createAxiomPane(container, treeData, paneId) {
     wheelSensitivity: 0.05,
   });
 
-  // Store pane ID
   cy.paneId = paneId;
   cy.scratch('_summaryUserInteracting', false);
 
@@ -340,7 +307,6 @@ export function createAxiomPane(container, treeData, paneId) {
     }
   });
 
-  // Add context menu for state changes
   if (cy.contextMenus) {
     cy.ctxmenu = cy.contextMenus({
       menuItems: [
@@ -406,9 +372,6 @@ export function createAxiomPane(container, treeData, paneId) {
     });
   }
 
-  // Axiom pane operates independently - no synchronization with decision tree
-
-  // Fit to view initially
   setTimeout(() => {
     cy.fit(undefined, 30);
   }, 100);
@@ -416,16 +379,10 @@ export function createAxiomPane(container, treeData, paneId) {
   return cy;
 }
 
-/**
- * Get all axiom states for a pane
- */
 export function getAxiomStatesForPane(paneId) {
   return axiomStates.get(paneId) || {};
 }
 
-/**
- * Clear axiom states for a pane
- */
 export function clearAxiomStatesForPane(paneId) {
   axiomStates.delete(paneId);
 }
@@ -456,19 +413,13 @@ export function resetSummaryStates(cy, paneId) {
   });
 }
 
-/**
- * Update axiom pane with new tree data
- */
 export function updateAxiomPane(cy, treeData, paneId) {
   if (!cy || !treeData) return;
 
-  // Reinitialize axiom states
   initializeAxiomStates(paneId, treeData);
 
-  // Remove all elements
   cy.elements().remove();
 
-  // Get axioms organized by depth
   const axiomsByDepth = getAxiomsByDepth(treeData);
   const elements = [];
   const verticalSpacing = 100;
@@ -497,7 +448,6 @@ export function updateAxiomPane(cy, treeData, paneId) {
 
   cy.add(elements);
 
-  // Reset zoom and pan
   cy.zoom(0.9);
   cy.pan({ x: 0, y: 50 });
   setTimeout(() => {

@@ -8,9 +8,6 @@ import { setPane } from '../utils/controls.js';
 
 let activeDecisionTreeCy = null;
 
-/**
- * Fit all panes to view after a layout animation
- */
 function fitAllPanesAfterLayout(delayMs = 300) {
   setTimeout(() => {
     const panes = getPanes();
@@ -31,10 +28,6 @@ function dispatchPaneDataChanged(cy) {
   }));
 }
 
-/**
- * Create stylesheet for decision tree visualization
- * Using PRISM model checker style
- */
 function createDecisionTreeStylesheet() {
   return [
     {
@@ -99,14 +92,12 @@ function createDecisionTreeStylesheet() {
     {
       selector: 'node.s.has-children',
       style: {
-        // Unexpanded nodes - solid background
         'background-opacity': 1,
       },
     },
     {
       selector: 'node.s.expanded',
       style: {
-        // Expanded nodes - hollow with just border
         'background-opacity': 0,
         color: COLORS.DARK_TEXT,
         'border-color': COLORS.NODE_COLOR,
@@ -115,7 +106,6 @@ function createDecisionTreeStylesheet() {
     {
       selector: 'node.s.partially-expanded',
       style: {
-        // Partially expanded nodes - gray fill
         'background-opacity': 1,
         'background-color': '#c6c6c6',
         color: COLORS.DARK_TEXT,
@@ -158,7 +148,6 @@ function createDecisionTreeStylesheet() {
     {
       selector: 'node.s.leaf',
       style: {
-        // Leaf nodes - empty circle or with repair status
         label: 'data(repairSymbol)',
         shape: 'ellipse',
         width: 18,
@@ -202,36 +191,30 @@ function createDecisionTreeStylesheet() {
     {
       selector: 'edge[type="keep"]',
       style: {
-        'line-color': '#22c55e', // Green for keep
+        'line-color': '#22c55e',
         'target-arrow-color': '#22c55e',
       },
     },
     {
       selector: 'edge[type="remove"]',
       style: {
-        'line-color': '#ef4444', // Red for remove
+        'line-color': '#ef4444',
         'target-arrow-color': '#ef4444',
       },
     },
   ];
 }
 
-/**
- * Create and render decision tree visualization
- */
 export function createDecisionTree(container, treeData, fullTreeData) {
   if (!container) {
     console.error('Container not provided for decision tree');
     return null;
   }
 
-  // Use fullTreeData for node classification if provided, otherwise use treeData
   const classificationData = fullTreeData || treeData;
 
-  // Convert tree data to Cytoscape format
   const elements = [];
 
-  // Add nodes
   treeData.nodes.forEach(node => {
     elements.push({
       data: {
@@ -249,7 +232,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     });
   });
 
-  // Add edges
   treeData.edges.forEach(edge => {
     elements.push({
       data: {
@@ -262,7 +244,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     });
   });
 
-  // Create Cytoscape instance
   const cy = cytoscape({
     container,
     elements,
@@ -270,7 +251,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     layout: {
       name: 'dagre',
       directed: true,
-      rankDir: 'LR', // Left-to-right horizontal layout
+      rankDir: 'LR',
       animate: true,
       animationDuration: 500,
     },
@@ -281,7 +262,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     wheelSensitivity: 0.1,
   });
 
-  // Store tree data and expanded nodes
   cy.treeData = treeData;
   cy.expandedNodes = new Map();
   cy.vars ||= {};
@@ -321,7 +301,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     }));
   };
 
-  // Add interaction handlers
   cy.on('tap', 'node', (event) => {
     activeDecisionTreeCy = cy;
     const nodeId = event.target.data('nodeId');
@@ -356,7 +335,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     dispatchNodeHovered(null);
   });
 
-  // Handle double-click to expand nodes
   cy.on('dbltap', 'node', (event) => {
     activeDecisionTreeCy = cy;
     const node = event.target;
@@ -364,9 +342,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     expandNode(cy, nodeId);
   });
 
-  // Store reference to keyboard handler for this cy instance
   const keyboardHandler = (e) => {
-    // Only process if this cy instance's container is in focus or has selected nodes
     if (!cy.container() || document.activeElement.tagName === 'INPUT') {
       return;
     }
@@ -377,10 +353,9 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     
     const selectedNodes = cy.$('node:selected');
     if (selectedNodes.length === 0) {
-      return; // This cy instance doesn't have selected nodes
+      return;
     }
     
-    // k/r: expand keep/remove edge in current pane
     if (e.key === 'k' || e.key === 'K') {
       if (e._dlRepairHandled) {
         return;
@@ -401,33 +376,27 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       return;
     }
 
-    // Cmd+Enter: expand in same pane, Ctrl+Enter: expand in new pane
     if (e.key === 'Enter' || e.keyCode === 13) {
-      // Check if event was already handled by another instance
       if (e._dlRepairHandled) {
         return;
       }
       
       e.preventDefault();
-      e._dlRepairHandled = true; // Mark as handled
+      e._dlRepairHandled = true;
       
       if (e.ctrlKey && !e.metaKey) {
-        // Ctrl+Enter: Expand in new pane
         expandNodeInNewPane(cy, selectedNodes[0].data('nodeId'));
       } else if (e.metaKey) {
-        // Cmd+Enter: Expand in same pane
         expandNode(cy, selectedNodes[0].data('nodeId'));
       }
     }
 
-    // Arrow key navigation
     if (e.key === 'ArrowLeft') {
       if (e._dlRepairHandled) {
         return;
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      // Go to parent node
       const currentNode = selectedNodes[0];
       const parentEdges = cy.treeData.edges.filter(edge => edge.target === currentNode.id());
       if (parentEdges.length > 0) {
@@ -447,17 +416,14 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      // Go to first visible child, preferring 'keep' over 'remove'
       const currentNode = selectedNodes[0];
       const childEdges = cy.treeData.edges.filter(edge => edge.source === currentNode.id());
       if (childEdges.length > 0) {
-        // Find visible children
         const visibleChildren = childEdges
           .map(edge => ({ edge, node: cy.getElementById(edge.target) }))
           .filter(item => item.node.length > 0);
         
         if (visibleChildren.length > 0) {
-          // Prefer 'keep' child over 'remove' child
           const keepChild = visibleChildren.find(item => item.edge.type === 'keep');
           const targetChild = keepChild || visibleChildren[0];
           
@@ -475,7 +441,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      // Go to next sibling
       const currentNode = selectedNodes[0];
       const parentEdges = cy.treeData.edges.filter(edge => edge.target === currentNode.id());
       if (parentEdges.length > 0) {
@@ -501,7 +466,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
       }
       e.preventDefault();
       e._dlRepairHandled = true;
-      // Go to previous sibling
       const currentNode = selectedNodes[0];
       const parentEdges = cy.treeData.edges.filter(edge => edge.target === currentNode.id());
       if (parentEdges.length > 0) {
@@ -510,7 +474,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
           edge => edge.source === parentId && edge.target !== currentNode.id(),
         );
         if (siblings.length > 0) {
-          // Get the last sibling as previous
           const prevSibling = cy.getElementById(siblings[siblings.length - 1].target);
           if (prevSibling.length > 0) {
             currentNode.unselect();
@@ -525,10 +488,8 @@ export function createDecisionTree(container, treeData, fullTreeData) {
   
   document.addEventListener('keydown', keyboardHandler);
   
-  // Store handler reference for cleanup if needed
   cy.keyboardHandler = keyboardHandler;
 
-  // Add context menu
   if (cy.contextMenus) {
     cy.ctxmenu = cy.contextMenus({
       menuItems: [
@@ -627,7 +588,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     });
   }
 
-  // Handle edge clicks for navigation
   cy.on('tap', 'edge', (event) => {
     setPane(cy.paneId);
     const edge = event.target;
@@ -642,13 +602,10 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     }));
   });
 
-  // Mark pane as active on any tap
   cy.on('tap', (event) => {
     setPane(cy.paneId);
   });
 
-  // Fit to view on load
-  // Mark this pane as active
   if (cy.paneId) {
     setPane(cy.paneId);
   }
@@ -658,9 +615,6 @@ export function createDecisionTree(container, treeData, fullTreeData) {
   return cy;
 }
 
-/**
- * Update decision tree with new data
- */
 export function updateDecisionTree(cy, treeData) {
   if (!cy) return;
 
@@ -668,7 +622,6 @@ export function updateDecisionTree(cy, treeData) {
 
   const elements = [];
 
-  // Add nodes
   treeData.nodes.forEach(node => {
     elements.push({
       data: {
@@ -685,7 +638,6 @@ export function updateDecisionTree(cy, treeData) {
     });
   });
 
-  // Add edges
   treeData.edges.forEach(edge => {
     elements.push({
       data: {
@@ -702,7 +654,7 @@ export function updateDecisionTree(cy, treeData) {
   cy.layout({
     name: 'dagre',
     directed: true,
-    rankDir: 'LR', // Horizontal layout
+    rankDir: 'LR',
     animate: true,
     animationDuration: 500,
   }).run();
@@ -710,9 +662,6 @@ export function updateDecisionTree(cy, treeData) {
   fitAllPanesAfterLayout();
 }
 
-/**
- * Navigate to a specific node in the tree
- */
 export function navigateToNode(cy, nodeId) {
   const node = cy.getElementById(`node-${nodeId}`);
   if (node.nonempty()) {
@@ -726,11 +675,7 @@ export function navigateToNode(cy, nodeId) {
   }
 }
 
-/**
- * Highlight path from root to a specific node
- */
 export function highlightPath(cy, nodeId) {
-  // Reset all elements
   cy.elements().removeClass('on-path');
   cy.edges().style('opacity', 0.2);
 
@@ -739,7 +684,6 @@ export function highlightPath(cy, nodeId) {
     const path = [];
     let current = node;
 
-    // Walk up to root
     while (current.nonempty()) {
       path.unshift(current);
       const incomers = current.incomers('edge');
@@ -750,12 +694,10 @@ export function highlightPath(cy, nodeId) {
       }
     }
 
-    // Highlight path
     path.forEach(element => {
       element.addClass('on-path');
     });
 
-    // Highlight connecting edges
     for (let i = 0; i < path.length - 1; i++) {
       const edges = path[i].edgesTo(path[i + 1]);
       edges.forEach(edge => {
@@ -766,14 +708,10 @@ export function highlightPath(cy, nodeId) {
   }
 }
 
-/**
- * Update leaf node symbols based on parent repair status
- */
 async function updateLeafNodeSymbols(cy, nodeId) {
   if (!cy || !cy.treeData) return;
   
   try {
-    // Dynamically import dlRepairApi to avoid circular dependencies
     const dlRepairApi = (await import('../utils/mock-dl-repair-api.js')).default;
     const nodeIdStr = `node-${nodeId}`;
     
@@ -835,9 +773,6 @@ async function updateLeafNodeSymbols(cy, nodeId) {
   }
 }
 
-/**
- * Expand a node to show its children
- */
 function getExpandedTypes(cy, nodeId) {
   let types = cy.expandedNodes.get(nodeId);
   if (!types) {
@@ -890,40 +825,26 @@ export function expandNode(cy, nodeId) {
 
   const nodeIdStr = `node-${nodeId}`;
   
-  console.log(`Expanding node ${nodeId}, looking for ${nodeIdStr}`);
-  console.log('Current nodes in cy:', cy.nodes().map(n => n.id()).join(', '));
-  console.log('Tree data has', cy.treeData.nodes.length, 'nodes');
-  
-  // Check if node exists in cy
   if (cy.getElementById(nodeIdStr).length === 0) {
     console.error(`Node ${nodeIdStr} does not exist in cy instance!`);
     return;
   }
   
-  // Check if already fully expanded
   const expandedTypes = getExpandedTypes(cy, nodeId);
   if (expandedTypes.has('all')) {
-    console.log(`Node ${nodeId} already expanded`);
     return;
   }
 
-  // Find children edges from tree data
   const childEdges = cy.treeData.edges.filter(edge => edge.source === nodeIdStr);
-  
-  console.log(`Found ${childEdges.length} child edges for ${nodeIdStr}`);
-  
+
   if (childEdges.length === 0) {
-    console.log(`Node ${nodeId} is a leaf node`);
     return;
   }
 
-  // Get target node IDs
   const targetNodeIds = childEdges.map(edge => edge.target);
   
-  // Find child nodes from tree data
   const childNodes = cy.treeData.nodes.filter(node => targetNodeIds.includes(node.id));
 
-  // Add child nodes that don't exist yet
   const newElements = [];
   childNodes.forEach(node => {
     if (cy.getElementById(node.id).length === 0) {
@@ -944,7 +865,6 @@ export function expandNode(cy, nodeId) {
     }
   });
 
-  // Add edges that don't exist yet
   childEdges.forEach(edge => {
     if (cy.getElementById(edge.id).length === 0) {
       newElements.push({
@@ -967,7 +887,6 @@ export function expandNode(cy, nodeId) {
     expandedTypes.add('all');
     syncNodeExpansionClass(cy, nodeId);
     
-    // Re-run layout
     cy.layout({
       name: 'dagre',
       directed: true,
@@ -982,15 +901,11 @@ export function expandNode(cy, nodeId) {
   }
 }
 
-/**
- * Expand a node only along a specific edge type (keep/remove)
- */
 export function expandNodeByType(cy, nodeId, edgeType) {
   if (!cy || !cy.treeData) return;
 
   const nodeIdStr = `node-${nodeId}`;
 
-  // Check if node exists in cy
   if (cy.getElementById(nodeIdStr).length === 0) {
     console.error(`Node ${nodeIdStr} does not exist in cy instance!`);
     return;
@@ -1066,9 +981,6 @@ export function expandNodeByType(cy, nodeId, edgeType) {
   }
 }
 
-/**
- * Collapse a node by removing its visible descendants
- */
 function collapseNode(cy, nodeId) {
   if (!cy || !cy.treeData) return;
 
@@ -1138,9 +1050,6 @@ function collapseNode(cy, nodeId) {
   fitAllPanesAfterLayout();
 }
 
-/**
- * Extract subtree starting from a given node
- */
 function extractSubtree(treeData, nodeId) {
   const nodeIdStr = `node-${nodeId}`;
   const visited = new Set();
@@ -1151,13 +1060,11 @@ function extractSubtree(treeData, nodeId) {
     if (visited.has(currentIdStr)) return;
     visited.add(currentIdStr);
 
-    // Find the node
     const node = treeData.nodes.find(n => n.id === currentIdStr);
     if (node) {
       subtreeNodes.push(node);
     }
 
-    // Find edges from this node
     const edges = treeData.edges.filter(e => e.source === currentIdStr);
     edges.forEach(edge => {
       subtreeEdges.push(edge);
@@ -1173,13 +1080,9 @@ function extractSubtree(treeData, nodeId) {
   };
 }
 
-/**
- * Expand node in a new pane
- */
 export function expandNodeInNewPane(cy, nodeId) {
   if (!cy || !cy.treeData) return;
 
-  // Extract subtree from this node
   const subtree = extractSubtree(cy.treeData, nodeId);
   
   if (subtree.nodes.length === 0) {
@@ -1187,10 +1090,8 @@ export function expandNodeInNewPane(cy, nodeId) {
     return;
   }
 
-  // Get pane ID if available
   const paneId = cy.container().closest('.pane')?.id || 'pane-0';
   
-  // Create new pane
   const newPane = spawnPane({
     spawner: paneId,
     id: `dl-repair-${Date.now()}`,
@@ -1202,14 +1103,12 @@ export function expandNodeInNewPane(cy, nodeId) {
     return;
   }
 
-  // Get the actual DOM container element
   const newContainer = document.getElementById(newPane.container);
   if (!newContainer) {
     console.error('Failed to find pane container element');
     return;
   }
 
-  // Create decision tree in new pane
   const newCy = createInitialTree(newContainer, subtree);
   
   if (newCy) {
@@ -1221,40 +1120,29 @@ export function expandNodeInNewPane(cy, nodeId) {
     }));
     dispatchPaneDataChanged(newCy);
     
-    // Auto-expand the root node in the new pane
     setTimeout(() => {
       const rootNode = subtree.nodes[0];
       if (rootNode) {
         expandNode(newCy, rootNode.nodeId);
       }
 
-      // Fit all panes to view after new pane creation and root expansion
       fitAllPanesAfterLayout(300);
     }, 100);
   }
 }
 
-/**
- * Create initial tree with only root node
- */
 export function createInitialTree(container, treeData) {
   if (!container || !treeData) {
     console.error('Container or tree data not provided');
     return null;
   }
 
-  // Find root node - either the one with no incoming edges, or the first node
   let rootNode = null;
   
-  // Get all target node IDs (nodes that have incoming edges)
   const targetIds = new Set(treeData.edges.map(e => e.target));
-  
-  console.log('Finding root node. Total nodes:', treeData.nodes.length, 'Targets:', targetIds.size);
-  
-  // Find node with no incoming edges
+
   rootNode = treeData.nodes.find(node => !targetIds.has(node.id));
   
-  // If all nodes have incoming edges (shouldn't happen), use first node
   if (!rootNode && treeData.nodes.length > 0) {
     console.warn('No node without incoming edges found, using first node');
     rootNode = treeData.nodes[0];
@@ -1265,9 +1153,6 @@ export function createInitialTree(container, treeData) {
     return null;
   }
   
-  console.log('Found root node:', JSON.stringify(rootNode));
-
-  // Create tree with only root node
   const initialData = {
     nodes: [
       {
@@ -1279,33 +1164,19 @@ export function createInitialTree(container, treeData) {
     edges: [],
   };
 
-  console.log('Creating initial tree with root node:', rootNode.id, 'nodeId:', rootNode.nodeId);
-  console.log('Root node structure:', {id: rootNode.id, nodeId: rootNode.nodeId, label: rootNode.label});
-  console.log('Full tree data has', treeData.nodes.length, 'nodes and', treeData.edges.length, 'edges');
-
-  // Pass full treeData as third parameter for proper node classification
   const cy = createDecisionTree(container, initialData, treeData);
   
   if (!cy) {
     console.error('Failed to create cy instance');
     return null;
   }
-  
-  console.log('Cy instance created, nodes in cy:', cy.nodes().length);
-  cy.nodes().forEach(n => {
-    console.log('Node in cy:', n.id(), 'label:', n.data('label'), 'nodeId:', n.data('nodeId'));
-  });
-  
-  // Store full tree data for later expansion
+
   cy.treeData = treeData;
   cy.expandedNodes = new Map();
 
   return cy;
 }
 
-/**
- * Get node classes based on whether it has children
- */
 function getNodeClasses(nodeId, treeData) {
   const hasChildren = treeData.edges.some(edge => edge.source === nodeId);
   if (!hasChildren) {
