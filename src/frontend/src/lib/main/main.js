@@ -4,8 +4,8 @@ import { spawnGraph } from '../views/graph/node-link.js';
 import { PROJECT } from '../utils/controls.js';
 import { CONSTANTS } from '../utils/names.js';
 import { socket } from '../views/imports/import-socket.js';
-import { createDecisionTree, createInitialTree, expandNode, expandNodeByType } from '../views/decision-tree.js';
-import { createAxiomPane, getAxiomStatesForPane, clearAxiomStatesForPane, AXIOM_STATES, setSummaryNodeState, setSummaryStateByDepth, resetSummaryStates } from '../views/axiom-pane.js';
+import { createInitialTree, expandNodeByType } from '../views/decision-tree.js';
+import { createAxiomPane, getAxiomStatesForPane, AXIOM_STATES, setSummaryNodeState, setSummaryStateByDepth, resetSummaryStates } from '../views/axiom-pane.js';
 import { parallelCoords } from '../views/attributes/parallel-coords.js';
 import dlRepairApi from '../utils/mock-dl-repair-api.js';
 
@@ -1228,7 +1228,7 @@ async function updateDecisionTreePCP(pane, selectedNodeIds) {
     };
 
     requestAnimationFrame(renderMatchedAxisBorders);
-    setTimeout(renderMatchedAxisBorders, 0);
+    queueMicrotask(renderMatchedAxisBorders);
 
     return svg;
   };

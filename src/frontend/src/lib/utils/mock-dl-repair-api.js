@@ -1,35 +1,20 @@
-/**
- * Mock API service for DL Repair mode
- * Reads data from API_outputs directory statically
- */
-
-// Decision tree data structure
 const decisionTreeData = {
   nodes: [],
   edges: [],
 };
 
-// Cache for node info responses
 const nodeInfoCache = new Map();
 
-// Cache for impact responses
 const impactCache = {
   probabilities: new Map(),
   classHierarchy: new Map(),
   hammingDistance: new Map(),
 };
-
-/**
- * Initialize decision tree data
- * This would normally be fetched from the backend
- */
 export async function initializeDecisionTree() {
   try {
-    // Load decision tree structure
     const treeResponse = await fetch('/API_outputs/DecisionTreeResponse/decision_tree.json');
     const treeNodes = await treeResponse.json();
 
-    // Build graph structure
     decisionTreeData.nodes = treeNodes.map(node => ({
       id: `node-${node.nodeId}`,
       label: node.axiomStr || `Leaf Node ${node.nodeId}`,
@@ -39,7 +24,6 @@ export async function initializeDecisionTree() {
       children: [],
     }));
 
-    // Build edges based on keep/remove relationships
     treeNodes.forEach(node => {
       if (node.yes !== undefined && node.yes !== null) {
         const yesChildId = `node-${node.yes}`;
@@ -50,7 +34,6 @@ export async function initializeDecisionTree() {
           label: 'keep',
           type: 'keep',
         });
-        // Find and mark child
         const yesChild = decisionTreeData.nodes.find(n => n.id === yesChildId);
         if (yesChild) {
           yesChild.parent = `node-${node.nodeId}`;
@@ -66,7 +49,6 @@ export async function initializeDecisionTree() {
           label: 'remove',
           type: 'remove',
         });
-        // Find and mark child
         const noChild = decisionTreeData.nodes.find(n => n.id === noChildId);
         if (noChild) {
           noChild.parent = `node-${node.nodeId}`;
@@ -80,10 +62,6 @@ export async function initializeDecisionTree() {
     throw error;
   }
 }
-
-/**
- * Get node information for a specific node ID
- */
 export async function getNodeInfo(nodeId) {
   try {
     if (nodeInfoCache.has(nodeId)) {
@@ -103,10 +81,6 @@ export async function getNodeInfo(nodeId) {
     return null;
   }
 }
-
-/**
- * Get impact probabilities for a specific node ID
- */
 export async function getImpactProbabilities(nodeId) {
   try {
     if (impactCache.probabilities.has(nodeId)) {
@@ -126,10 +100,6 @@ export async function getImpactProbabilities(nodeId) {
     return null;
   }
 }
-
-/**
- * Get class hierarchy difference for a specific node ID
- */
 export async function getClassHierarchyDifference(nodeId) {
   try {
     if (impactCache.classHierarchy.has(nodeId)) {
@@ -149,10 +119,6 @@ export async function getClassHierarchyDifference(nodeId) {
     return null;
   }
 }
-
-/**
- * Get Hamming distance for a specific node ID
- */
 export async function getHammingDistance(nodeId) {
   try {
     if (impactCache.hammingDistance.has(nodeId)) {
@@ -172,10 +138,6 @@ export async function getHammingDistance(nodeId) {
     return null;
   }
 }
-
-/**
- * Get all impact data for a node (probabilities, class hierarchy, hamming distance)
- */
 export async function getNodeImpact(nodeId) {
   try {
     const [probabilities, hierarchy, distance] = await Promise.all([
@@ -195,17 +157,9 @@ export async function getNodeImpact(nodeId) {
     return null;
   }
 }
-
-/**
- * Get the complete decision tree structure
- */
 export function getDecisionTree() {
   return decisionTreeData;
 }
-
-/**
- * Get next nodes for a given node (yes/no branches)
- */
 export function getNextNodes(nodeId) {
   const edges = decisionTreeData.edges.filter(edge => 
     edge.source === `node-${nodeId}`
@@ -217,20 +171,12 @@ export function getNextNodes(nodeId) {
     type: edge.type,
   }));
 }
-
-/**
- * Get all child nodes for a given node
- */
 export function getChildNodes(nodeId) {
   const children = decisionTreeData.nodes.filter(node => 
     node.parent === `node-${nodeId}`
   );
   return children;
 }
-
-/**
- * Get parent node for a given node
- */
 export function getParentNode(nodeId) {
   const node = decisionTreeData.nodes.find(n => n.id === `node-${nodeId}`);
   if (node && node.parent) {
