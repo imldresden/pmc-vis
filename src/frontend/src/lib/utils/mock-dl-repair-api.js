@@ -10,6 +10,37 @@ const impactCache = {
   classHierarchy: new Map(),
   hammingDistance: new Map(),
 };
+
+async function fetchCachedJson(cache, cacheKey, url, errorMessage) {
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(errorMessage);
+  }
+
+  const payload = await response.json();
+  cache.set(cacheKey, payload);
+  return payload;
+}
+
+function linkChildNode(parentNodeId, childNodeId, edgeType) {
+  decisionTreeData.edges.push({
+    id: `edge-${parentNodeId}-${edgeType}`,
+    source: parentNodeId,
+    target: childNodeId,
+    label: edgeType,
+    type: edgeType,
+  });
+
+  const childNode = decisionTreeData.nodes.find(n => n.id === childNodeId);
+  if (childNode) {
+    childNode.parent = parentNodeId;
+  }
+}
+
 export async function initializeDecisionTree() {
   try {
     const treeResponse = await fetch('/API_outputs/DecisionTreeResponse/decision_tree.json');
@@ -26,33 +57,11 @@ export async function initializeDecisionTree() {
 
     treeNodes.forEach(node => {
       if (node.yes !== undefined && node.yes !== null) {
-        const yesChildId = `node-${node.yes}`;
-        decisionTreeData.edges.push({
-          id: `edge-${node.nodeId}-yes`,
-          source: `node-${node.nodeId}`,
-          target: yesChildId,
-          label: 'keep',
-          type: 'keep',
-        });
-        const yesChild = decisionTreeData.nodes.find(n => n.id === yesChildId);
-        if (yesChild) {
-          yesChild.parent = `node-${node.nodeId}`;
-        }
+        linkChildNode(`node-${node.nodeId}`, `node-${node.yes}`, 'keep');
       }
 
       if (node.no !== undefined && node.no !== null) {
-        const noChildId = `node-${node.no}`;
-        decisionTreeData.edges.push({
-          id: `edge-${node.nodeId}-no`,
-          source: `node-${node.nodeId}`,
-          target: noChildId,
-          label: 'remove',
-          type: 'remove',
-        });
-        const noChild = decisionTreeData.nodes.find(n => n.id === noChildId);
-        if (noChild) {
-          noChild.parent = `node-${node.nodeId}`;
-        }
+        linkChildNode(`node-${node.nodeId}`, `node-${node.no}`, 'remove');
       }
     });
 
@@ -64,18 +73,12 @@ export async function initializeDecisionTree() {
 }
 export async function getNodeInfo(nodeId) {
   try {
-    if (nodeInfoCache.has(nodeId)) {
-      return nodeInfoCache.get(nodeId);
-    }
-
-    const response = await fetch(`/API_outputs/NodeInfoResponses/infoResponse_node_${nodeId}.json`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch node info for node ${nodeId}`);
-    }
-
-    const nodeInfo = await response.json();
-    nodeInfoCache.set(nodeId, nodeInfo);
-    return nodeInfo;
+    return await fetchCachedJson(
+      nodeInfoCache,
+      nodeId,
+      `/API_outputs/NodeInfoResponses/infoResponse_node_${nodeId}.json`,
+      `Failed to fetch node info for node ${nodeId}`,
+    );
   } catch (error) {
     console.error(`Error loading node info for node ${nodeId}:`, error);
     return null;
@@ -83,18 +86,12 @@ export async function getNodeInfo(nodeId) {
 }
 export async function getImpactProbabilities(nodeId) {
   try {
-    if (impactCache.probabilities.has(nodeId)) {
-      return impactCache.probabilities.get(nodeId);
-    }
-
-    const response = await fetch(`/API_outputs/Impact1Responses/probabilities_${nodeId}.json`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch probabilities for node ${nodeId}`);
-    }
-
-    const probabilities = await response.json();
-    impactCache.probabilities.set(nodeId, probabilities);
-    return probabilities;
+    return await fetchCachedJson(
+      impactCache.probabilities,
+      nodeId,
+      `/API_outputs/Impact1Responses/probabilities_${nodeId}.json`,
+      `Failed to fetch probabilities for node ${nodeId}`,
+    );
   } catch (error) {
     console.error(`Error loading probabilities for node ${nodeId}:`, error);
     return null;
@@ -102,18 +99,12 @@ export async function getImpactProbabilities(nodeId) {
 }
 export async function getClassHierarchyDifference(nodeId) {
   try {
-    if (impactCache.classHierarchy.has(nodeId)) {
-      return impactCache.classHierarchy.get(nodeId);
-    }
-
-    const response = await fetch(`/API_outputs/Impact2Responses/classHierarchyDifference_${nodeId}.json`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch class hierarchy for node ${nodeId}`);
-    }
-
-    const hierarchy = await response.json();
-    impactCache.classHierarchy.set(nodeId, hierarchy);
-    return hierarchy;
+    return await fetchCachedJson(
+      impactCache.classHierarchy,
+      nodeId,
+      `/API_outputs/Impact2Responses/classHierarchyDifference_${nodeId}.json`,
+      `Failed to fetch class hierarchy for node ${nodeId}`,
+    );
   } catch (error) {
     console.error(`Error loading class hierarchy for node ${nodeId}:`, error);
     return null;
@@ -121,18 +112,12 @@ export async function getClassHierarchyDifference(nodeId) {
 }
 export async function getHammingDistance(nodeId) {
   try {
-    if (impactCache.hammingDistance.has(nodeId)) {
-      return impactCache.hammingDistance.get(nodeId);
-    }
-
-    const response = await fetch(`/API_outputs/Impact3Responses/hammingDistance_${nodeId}.json`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch hamming distance for node ${nodeId}`);
-    }
-
-    const distance = await response.json();
-    impactCache.hammingDistance.set(nodeId, distance);
-    return distance;
+    return await fetchCachedJson(
+      impactCache.hammingDistance,
+      nodeId,
+      `/API_outputs/Impact3Responses/hammingDistance_${nodeId}.json`,
+      `Failed to fetch hamming distance for node ${nodeId}`,
+    );
   } catch (error) {
     console.error(`Error loading hamming distance for node ${nodeId}:`, error);
     return null;
@@ -140,7 +125,11 @@ export async function getHammingDistance(nodeId) {
 }
 export async function getNodeImpact(nodeId) {
   try {
-    const [probabilities, hierarchy, distance] = await Promise.all([
+    const [
+      probabilities,
+      hierarchy,
+      distance,
+    ] = await Promise.all([
       getImpactProbabilities(nodeId),
       getClassHierarchyDifference(nodeId),
       getHammingDistance(nodeId),
@@ -161,8 +150,8 @@ export function getDecisionTree() {
   return decisionTreeData;
 }
 export function getNextNodes(nodeId) {
-  const edges = decisionTreeData.edges.filter(edge => 
-    edge.source === `node-${nodeId}`
+  const edges = decisionTreeData.edges.filter(
+    edge => edge.source === `node-${nodeId}`,
   );
 
   return edges.map(edge => ({
@@ -172,8 +161,8 @@ export function getNextNodes(nodeId) {
   }));
 }
 export function getChildNodes(nodeId) {
-  const children = decisionTreeData.nodes.filter(node => 
-    node.parent === `node-${nodeId}`
+  const children = decisionTreeData.nodes.filter(
+    node => node.parent === `node-${nodeId}`,
   );
   return children;
 }

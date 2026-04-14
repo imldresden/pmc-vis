@@ -32,16 +32,28 @@ function createEdgeKey(source, target) {
   return `${source}->${target}`;
 }
 
+function createEdgeKeySet(edges) {
+  return new Set(
+    edges.map(([source, target]) => createEdgeKey(source, target)),
+  );
+}
+
+function isLabelReferenced(edges, label) {
+  return edges.some(
+    ([source, target]) => source === label || target === label,
+  );
+}
+
 function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyDifference) {
   const initialEdges = normalizeEdgeList(initialHierarchy);
   const modifiedEdges = normalizeEdgeList(modifiedHierarchy);
   const removedEdges = normalizeEdgeList(hierarchyDifference?.removedEdges);
   const addedEdges = normalizeEdgeList(hierarchyDifference?.addedEdges);
 
-  const initialEdgeKeys = new Set(initialEdges.map(([source, target]) => createEdgeKey(source, target)));
-  const modifiedEdgeKeys = new Set(modifiedEdges.map(([source, target]) => createEdgeKey(source, target)));
-  const removedEdgeKeys = new Set(removedEdges.map(([source, target]) => createEdgeKey(source, target)));
-  const addedEdgeKeys = new Set(addedEdges.map(([source, target]) => createEdgeKey(source, target)));
+  const initialEdgeKeys = createEdgeKeySet(initialEdges);
+  const modifiedEdgeKeys = createEdgeKeySet(modifiedEdges);
+  const removedEdgeKeys = createEdgeKeySet(removedEdges);
+  const addedEdgeKeys = createEdgeKeySet(addedEdges);
 
   const allEdgeKeys = new Set([...initialEdgeKeys, ...modifiedEdgeKeys]);
 
@@ -62,8 +74,8 @@ function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyD
   });
 
   nodeLabels.forEach((label) => {
-    const isInInitial = initialEdges.some(([source, target]) => source === label || target === label);
-    const isInModified = modifiedEdges.some(([source, target]) => source === label || target === label);
+    const isInInitial = isLabelReferenced(initialEdges, label);
+    const isInModified = isLabelReferenced(modifiedEdges, label);
 
     let state = NODE_STATE.UNCHANGED;
     if (!isInInitial && isInModified) {
@@ -324,7 +336,10 @@ function getNodeAxiomText(sourceCy, nodeId) {
 
 export async function openClassHierarchyPane(sourceCy, nodeId) {
   const hierarchyPayload = await dlRepairApi.getClassHierarchyDifference(nodeId);
-  if (!hierarchyPayload || !hierarchyPayload.initialHierarchy || !hierarchyPayload.modifiedHierarchy) {
+  const hasInitialHierarchy = Boolean(hierarchyPayload?.initialHierarchy);
+  const hasModifiedHierarchy = Boolean(hierarchyPayload?.modifiedHierarchy);
+  const hasHierarchyData = hasInitialHierarchy && hasModifiedHierarchy;
+  if (!hasHierarchyData) {
     console.error(`Hierarchy data not available for node ${nodeId}`);
     return null;
   }

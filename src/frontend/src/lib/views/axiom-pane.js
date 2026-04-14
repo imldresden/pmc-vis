@@ -72,17 +72,18 @@ function bindSummaryKeyboardShortcuts() {
 }
 
 function getAxiomsByDepth(treeData) {
-  if (!treeData || !treeData.nodes) {
+  if (!treeData || !Array.isArray(treeData.nodes)) {
     return {};
   }
 
   const axiomsByDepth = {};
+  const edges = Array.isArray(treeData.edges) ? treeData.edges : [];
 
   const nodeDepths = new Map();
-  const targetIds = new Set(treeData.edges.map(e => e.target));
-  
+  const targetIds = new Set(edges.map(edge => edge.target));
+
   const rootNodes = treeData.nodes.filter(node => !targetIds.has(node.id));
-  
+
   const queue = [];
   rootNodes.forEach(node => {
     nodeDepths.set(node.id, 0);
@@ -92,8 +93,8 @@ function getAxiomsByDepth(treeData) {
   while (queue.length > 0) {
     const currentId = queue.shift();
     const currentDepth = nodeDepths.get(currentId);
-    
-    const childEdges = treeData.edges.filter(edge => edge.source === currentId);
+
+    const childEdges = edges.filter(edge => edge.source === currentId);
     childEdges.forEach(edge => {
       if (!nodeDepths.has(edge.target)) {
         nodeDepths.set(edge.target, currentDepth + 1);
@@ -121,6 +122,30 @@ function getAxiomsByDepth(treeData) {
   });
 
   return axiomsByDepth;
+}
+
+function createAxiomElements(axiomsByDepth, verticalSpacing) {
+  return Object.keys(axiomsByDepth)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(depth => {
+      const axiom = axiomsByDepth[depth];
+
+      return {
+        data: {
+          id: axiom.id,
+          label: axiom.label,
+          nodeId: axiom.nodeId,
+          depth,
+          fullLabel: axiom.label,
+        },
+        position: {
+          x: 0,
+          y: depth * verticalSpacing,
+        },
+        classes: AXIOM_STATES.UNDECIDED,
+      };
+    });
 }
 
 function createAxiomPaneStylesheet() {
@@ -198,7 +223,7 @@ function createAxiomPaneStylesheet() {
     {
       selector: 'edge',
       style: {
-        'display': 'none',
+        display: 'none',
       },
     },
   ];
@@ -245,31 +270,8 @@ export function createAxiomPane(container, treeData, paneId) {
   initializeAxiomStates(paneId, treeData);
 
   const axiomsByDepth = getAxiomsByDepth(treeData);
-  
-  const elements = [];
   const verticalSpacing = 100;
-
-  Object.keys(axiomsByDepth)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .forEach(depth => {
-      const axiom = axiomsByDepth[depth];
-      
-      elements.push({
-        data: {
-          id: axiom.id,
-          label: axiom.label,
-          nodeId: axiom.nodeId,
-          depth: depth,
-          fullLabel: axiom.label,
-        },
-        position: {
-          x: 0,
-          y: depth * verticalSpacing,
-        },
-        classes: AXIOM_STATES.UNDECIDED,
-      });
-    });
+  const elements = createAxiomElements(axiomsByDepth, verticalSpacing);
 
   const cy = cytoscape({
     container,
@@ -428,30 +430,8 @@ export function updateAxiomPane(cy, treeData, paneId) {
   cy.elements().remove();
 
   const axiomsByDepth = getAxiomsByDepth(treeData);
-  const elements = [];
   const verticalSpacing = 100;
-
-  Object.keys(axiomsByDepth)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .forEach(depth => {
-      const axiom = axiomsByDepth[depth];
-
-      elements.push({
-        data: {
-          id: axiom.id,
-          label: axiom.label,
-          nodeId: axiom.nodeId,
-          depth: depth,
-          fullLabel: axiom.label,
-        },
-        position: {
-          x: 0,
-          y: depth * verticalSpacing,
-        },
-        classes: AXIOM_STATES.UNDECIDED,
-      });
-    });
+  const elements = createAxiomElements(axiomsByDepth, verticalSpacing);
 
   cy.add(elements);
 

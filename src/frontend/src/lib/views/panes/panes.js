@@ -843,7 +843,7 @@ document
   ?.addEventListener('click', async () => {
     let redirectName;
     
-    const result = await Swal.fire({
+    await Swal.fire({
       title: 'Create new project',
       html: `
         <div style="text-align: left;">
@@ -1002,7 +1002,6 @@ document
       }
     });
   });
-
 
 function getAllPanesRegistry() {
   return allPanesRegistry;
