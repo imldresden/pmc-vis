@@ -1,4 +1,4 @@
-## **PMC-VIS:** Interactive Visualization meets Probabilistic Model Checking
+## **pmc-vis:** Interactive Visualization for Probabilistic Model Checking
 
 ### Requirements
 1. Active Docker Daemon (min 2GB RAM, recommended 4+GB RAM)

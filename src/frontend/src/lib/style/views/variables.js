@@ -11,6 +11,16 @@ const COLORS = {
   SELECTED_NODE_COLOR: '#4887b9',
   SECONDARY_SELECTION: '#ee8c31',
   DUAL_SELECTION: '#a4c35d',
+  SHARED_BORDER: '#439843',
+  UNIQUE_BORDER: '#afafaf',
+
+  // Unified comparison view COLORS
+  GRAPH_A_ONLY: '#4caf50',
+  GRAPH_B_ONLY: '#f44336',
+  GRAPH_SHARED: '#9e9e9e',
+  GRAPH_A_BG: '#e8f5e9',
+  GRAPH_B_BG: '#ffebee',
+  GRAPH_SHARED_BG: '#f5f5f5',
 
   EDGE_COLOR: '#dadada',
   HL_EDGE_COLOR: '#d6730f',

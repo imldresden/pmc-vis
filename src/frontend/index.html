@@ -60,6 +60,10 @@
   <div id="config" class="config ui padded grid">
     <div class="ui column">
       <h3 class="label label-info">Legend </h3>
+
+      <div id="info-box">
+      </div>
+
       <div style="display:flex">
         <div style="float:right">  
           <b>Nodes</b>
@@ -102,10 +106,6 @@
         </div>
       </div>
 
-      <div id="info-box">
-
-      </div>
-
       <div class="param">
         <p class="label inline label-info">Max # of panes</p> </br>
         <input type="number" name="numberOfPanes" id="numberOfPanes" value="5" min="1">
@@ -114,6 +114,10 @@
       <div class="param">
         <p class="label inline label-info">Max # of nodes per pane</p> </br>
         <input type="number" name="nodesPerPane" id="nodesPerPane" value="1000" min="100">
+      </div>
+
+      <div id="pane-config">
+        <!-- pane-related options appended here -->
       </div>
 
       <div class="ui negative message to-do">
@@ -143,7 +147,7 @@
       </div>
       
       <div id="props-config">
-        <!-- layout specific options are appended here-->
+        <!-- property options are appended here-->
       </div>
     
       <div class="ui divider"></div>
@@ -218,6 +222,26 @@
       
       <div id="overview-config">
         <!-- layout specific options are appended here-->
+      </div>
+      <div class="ui divider"></div>
+
+      <h3 class="label label-info" id="graph-comparison-config-span">Graph Comparison</h3>
+
+      <div class="ui negative message to-do">
+        <i class="close icon"></i>
+        <div class="header">
+          TODO: Missing / potential controls: 
+        </div>  
+        <ul class="list">
+          <li>[MUST] define comparison criteria (e.g., nodes, edges, metrics)</li>
+          <li>[COULD] file input: upload second graph/model</li>
+          <li>[COULD] toggle: highlight differences vs similarities</li>
+          <li>[COULD] export comparison report</li>
+        </ul>   
+      </div>
+      
+      <div id="graph-comparison-config">
+        <!-- graph comparison specific options are appended here-->
       </div>
     </div>
   </div>

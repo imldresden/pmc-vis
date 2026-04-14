@@ -32,6 +32,11 @@ body {
   }
 }
 
+/* Ensure global popups are always above view overlays (e.g. matrix mode uses z-index: 9999). */
+.swal2-container {
+  z-index: 20000 !important;
+}
+
 ::-moz-scrollbar-button,
 ::-webkit-scrollbar-button {
   width: 0px;

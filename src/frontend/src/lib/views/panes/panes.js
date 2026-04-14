@@ -1,7 +1,12 @@
 import shortid from 'shortid';
 import Swal from 'sweetalert2/dist/sweetalert2.all.min.js';
 
-import { setPane, PROJECT } from '../../utils/controls.js';
+import {
+  setPane,
+  PROJECT,
+  updateGraphComparison,
+  updateCurvedConnectors,
+} from '../../utils/controls.js';
 import { colorList } from '../../utils/utils.js';
 import { CONSTANTS } from '../../utils/names.js';
 import makeCtxMenu from './ctx-menu.js';
@@ -10,9 +15,9 @@ import { socket } from '../imports/import-socket.js';
 
 const MIN_FLEX_GROW = 0.005;
 const MIN_SIZE = 10;
-const panes = {};
+const panes = {}; // governs the pane-based exploration
 const allPanesRegistry = {};
-const tracker = {};
+const tracker = {}; // keeps track of already seen nodes, marks, etc.
 
 let height;
 const maxheight = () => height - MIN_SIZE * 2;
@@ -26,6 +31,162 @@ socket.on('overview node clicked', (data) => {
 socket.on('disconnect', () => {
   location.reload();
 });
+
+// ============================================================================
+// Matrix Hover Cross-Pane Synchronization
+// ============================================================================
+
+/**
+ * Resolve a state node element in Cytoscape by its ID.
+ * Tries direct ID lookup first, then falls back to searching by data ID.
+ * Only returns state nodes (type === 's').
+ *
+ * @param {Object} cy - Cytoscape instance
+ * @param {string} nodeId - The node ID to resolve
+ * @returns {Object|null} The Cytoscape node element, or null if not found
+ */
+function resolveStateNodeElement(cy, nodeId) {
+  if (!cy || !nodeId) return null;
+
+  // Try direct ID lookup first
+  try {
+    const direct = cy.getElementById(nodeId);
+    if (direct && direct.nonempty && direct.isNode && direct.isNode() && direct.data('type') === 's') {
+      return direct;
+    }
+  } catch {
+    // Ignore errors and try fallback
+  }
+
+  // Fallback: search by data('id') property
+  try {
+    const fallback = cy.nodes().filter((n) => n.data('id') === nodeId && n.data('type') === 's');
+    if (fallback && fallback.length > 0) {
+      return fallback;
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return null;
+}
+
+/**
+ * Apply matrix hover highlighting to Cytoscape nodes and edges.
+ * Called in response to the global 'matrix-hover' event to synchronize
+ * hover state across all panes.
+ *
+ * @param {Object} cy - Cytoscape instance
+ * @param {Array<string>} ids - Array of node IDs to highlight
+ * @param {Object} [edge] - Optional edge info {fromId, toId} for edge highlighting
+ */
+function applyMatrixHoverToCy(cy, ids, edge = null) {
+  if (!cy) return;
+
+  // Initialize tracking set for previously highlighted nodes
+  cy._matrixHoverGlobalIds ||= new Set();
+  cy._matrixHoverEdges ||= [];
+
+  // Clear previous hover highlights (nodes)
+  if (cy._matrixHoverGlobalIds.size > 0) {
+    Array.from(cy._matrixHoverGlobalIds).forEach((id) => {
+      const el = resolveStateNodeElement(cy, id);
+      try {
+        el?.removeClass?.('matrix-hover');
+      } catch {
+        // Ignore errors
+      }
+    });
+    cy._matrixHoverGlobalIds.clear();
+  }
+
+  // Clear previous hover highlights (edges)
+  if (cy._matrixHoverEdges.length > 0) {
+    cy._matrixHoverEdges.forEach((edgeEl) => {
+      try {
+        edgeEl?.removeClass?.('matrix-hover');
+      } catch {
+        // Ignore errors
+      }
+    });
+    cy._matrixHoverEdges = [];
+  }
+
+  // Apply new highlights to nodes
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
+  uniqueIds.forEach((id) => {
+    const el = resolveStateNodeElement(cy, id);
+    try {
+      el?.addClass?.('matrix-hover');
+      cy._matrixHoverGlobalIds.add(id);
+    } catch {
+      // Ignore errors
+    }
+  });
+
+  // Apply highlight to edge if edge info is provided
+  if (edge && edge.fromId && edge.toId) {
+    try {
+      // The graph structure uses transition nodes (t-nodes) between state nodes.
+      // So an edge from state A to state B is actually: A -> tX -> B
+      // We need to find the transition node(s) that connect the two states.
+      const allEdges = cy.edges();
+
+      // Build a map of outgoing edges from each node
+      const outgoingEdges = new Map(); // nodeId -> [{ edge, targetId }]
+
+      allEdges.forEach((e) => {
+        const sourceId = e.data('source');
+        const targetId = e.data('target');
+
+        if (!outgoingEdges.has(sourceId)) outgoingEdges.set(sourceId, []);
+        outgoingEdges.get(sourceId).push({ edge: e, targetId });
+      });
+
+      // Find edges: fromId -> t* -> toId
+      const fromOutgoing = outgoingEdges.get(edge.fromId) || [];
+
+      fromOutgoing.forEach(({ edge: edgeToT, targetId: tNodeId }) => {
+        if (tNodeId && tNodeId.toString().startsWith('t')) {
+          const tOutgoing = outgoingEdges.get(tNodeId) || [];
+          tOutgoing.forEach(({ edge: edgeFromT, targetId: finalTarget }) => {
+            if (finalTarget === edge.toId) {
+              edgeToT.addClass('matrix-hover');
+              edgeFromT.addClass('matrix-hover');
+              cy._matrixHoverEdges.push(edgeToT);
+              cy._matrixHoverEdges.push(edgeFromT);
+            }
+          });
+        }
+      });
+
+      // Also check reverse direction: toId -> t* -> fromId
+      const toOutgoing = outgoingEdges.get(edge.toId) || [];
+
+      toOutgoing.forEach(({ edge: edgeToT, targetId: tNodeId }) => {
+        if (tNodeId && tNodeId.toString().startsWith('t')) {
+          const tOutgoing = outgoingEdges.get(tNodeId) || [];
+          tOutgoing.forEach(({ edge: edgeFromT, targetId: finalTarget }) => {
+            if (finalTarget === edge.fromId) {
+              edgeToT.addClass('matrix-hover');
+              edgeFromT.addClass('matrix-hover');
+              cy._matrixHoverEdges.push(edgeToT);
+              cy._matrixHoverEdges.push(edgeFromT);
+            }
+          });
+        }
+      });
+    } catch {
+      // Ignore errors
+    }
+  }
+}
+
+// ============================================================================
+// Pane Management Utilities
+// ============================================================================
 
 function uid() {
   return 'id' + shortid.generate();
@@ -53,8 +214,8 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     container: uid(),
     dragbar: uid(),
     height,
-    split: 0.3,
-    cy: undefined,
+    split: 0.3, // defines how much height the pcp has
+    cy: undefined, // must be set later!,
     backgroundColor,
     nodesIds: new Set(nodesIds),
     spawner,
@@ -73,12 +234,14 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   pane.details = pane.container + '-details';
 
+  // pane div
   const div = document.createElement('div');
   div.className = 'cy-s flex-item pane';
   div.id = pane.id;
   div.style.flex = paneKeysBefore.length + 1;
   div.style.height = pane.height + 'px';
 
+  // add the node-link diagram view
   const cyContainer = document.createElement('div');
   cyContainer.id = pane.container;
   cyContainer.className = 'cy';
@@ -90,6 +253,7 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   const buttons = createPaneControls(pane);
 
+  // add the pane for the detail view (pcp)
   const details = document.createElement('div');
   details.className = 'detail-inspector';
   details.id = pane.details;
@@ -170,7 +334,6 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     destroyed: false,
   };
   const paneKeysAfter = Object.keys(panes);
-
   if (spawner) {
     const spawners = Array.isArray(spawner) ? spawner : [spawner];
     spawners.forEach(spawnerId => {
@@ -186,7 +349,7 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
 
   if (paneKeysAfter.length > numberOfPanes.value) {
     destroyPanes(
-      panes[paneKeysAfter[1]].id,
+      panes[paneKeysAfter[1]].id, // skip the first pane
       {
         firstOnly: true,
         pre: true,
@@ -196,7 +359,17 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     });
   }
 
-  redrawPanesNextFrame();
+  // trigger graph comparison update if enabled
+  const checkbox = document.getElementById('checkbox-graph-comparison');
+  if (checkbox?.checked) {
+    updateGraphComparison(true);
+  }
+
+  // trigger curved connectors update if enabled
+  const curvedCheckbox = document.getElementById('checkbox-curved-connectors');
+  if (curvedCheckbox?.checked) {
+    updateCurvedConnectors(true);
+  }
 
   return pane;
 }
@@ -296,6 +469,7 @@ function enableDragBars() {
   enableSplitDragBars();
 }
 
+// https://stackoverflow.com/questions/28767221/flexbox-resizing
 function enablePaneDragBars() {
   const isDlRepairSummaryPane = (paneElement) => {
     return Boolean(
@@ -334,6 +508,7 @@ function enablePaneDragBars() {
   dragbars.forEach(d => {
     d.onmousedown = (e) => {
       const resizer = e.target;
+      // e.button === 0 means left click
       if (e.button > 0 || !resizer.classList.contains('dragbar')) {
         return;
       }
@@ -358,6 +533,7 @@ function enablePaneDragBars() {
 
       e.preventDefault();
 
+      // Avoid cursor flickering (reset in onMouseUp)
       document.body.style.cursor = getComputedStyle(resizer).cursor;
 
       let prevSize = prev[sizeProp];
@@ -432,6 +608,7 @@ function enableSplitDragBars() {
       const elementId = e.target ? e.target.id : e.srcElement.id;
       const bar = document.getElementById(elementId);
 
+      // e.button === 0 means left click
       if (e.button > 0 || !bar) {
         return;
       }
@@ -450,7 +627,7 @@ function enableSplitDragBars() {
     };
     d.ondblclick = null;
     if (d && d.previousElementSibling && d.parentElement) {
-      makeCtxMenu(d, d.previousElementSibling);
+      makeCtxMenu(d, d.previousElementSibling); // pane is: panes[d.parentElement.id]
     }
   });
 }
@@ -605,6 +782,20 @@ async function destroyPanes(firstId, {
 
       highlightPaneById(lastPaneId);
     }
+
+    socket.emit('pane removed', firstId);
+
+    // trigger graph comparison update if enabled
+    const checkbox = document.getElementById('checkbox-graph-comparison');
+    if (checkbox?.checked) {
+      updateGraphComparison(true);
+    }
+
+    // trigger curved connectors update if enabled
+    const curvedCheckbox = document.getElementById('checkbox-curved-connectors');
+    if (curvedCheckbox?.checked) {
+      updateCurvedConnectors(true);
+    }
   }
 }
 
@@ -694,6 +885,7 @@ async function highlightPaneById(paneId) {
 
 function updateDocDims() {
   const navHeight = parseInt(
+    // turns NNpx into NN
     window.getComputedStyle(document.body).getPropertyValue('--nav-height'),
   );
 
@@ -702,6 +894,7 @@ function updateDocDims() {
       || document.documentElement.clientHeight
       || document.body.clientHeight);
 
+  // width -= document.getElementById("config")?.clientWidth;
   updateHeights();
 }
 
@@ -716,7 +909,7 @@ addEventListener('resize', () => {
     document.getElementById(panes[pane].container).style.height = height * (1 - panes[pane].split) + 'px';
     document.getElementById(panes[pane].details).style.height = height * panes[pane].split + 'px';
   });
-});
+}, { passive: true });
 
 addEventListener('global-action', (e) => {
   if (e.detail.action === 'propagate') {
@@ -735,6 +928,7 @@ addEventListener('global-action', (e) => {
         tracker[e.detail.action],
       );
     } else {
+      // "undo-"
       e.detail.elements.forEach(
         tracker[e.detail.action].delete,
         tracker[e.detail.action],
@@ -746,6 +940,68 @@ addEventListener('global-action', (e) => {
     });
   }
 });
+
+window.addEventListener('matrix-hover', (e) => {
+  const ids = e?.detail?.ids || [];
+  const edge = e?.detail?.edge || null;
+  Object.values(getPanes()).forEach((pane) => {
+    applyMatrixHoverToCy(pane?.cy, ids, edge);
+    try {
+      // Also highlight in PCP if available
+      if (pane?.cy?.pcp) {
+        if (ids.length > 0) {
+          // Highlight all hovered node IDs in the PCP
+          pane.cy.pcp.highlightNode(ids);
+        } else {
+          pane.cy.pcp.clearHighlight();
+        }
+      }
+    } catch {
+      console.log('tried to draw on unrendered pcp canvas...');
+    }
+  });
+});
+
+// Synchronize matrix selection across all panes
+// window.addEventListener('matrix-selection', (e) => {
+//   const sourcePaneId = e?.detail?.sourcePaneId;
+//   const nodeId = e?.detail?.nodeId;
+//   const isSelected = e?.detail?.isSelected;
+
+//   if (!nodeId) return;
+
+//   Object.values(getPanes()).forEach((pane) => {
+//     // Skip the source pane (it already has the selection)
+//     if (pane?.id === sourcePaneId) return;
+
+//     const cy = pane?.cy;
+//     if (!cy) return;
+
+//     // Find the node in this pane
+//     let el = cy.getElementById(nodeId);
+//     if (!(el && el.nonempty && el.isNode && el.isNode() && el.data('type') === 's')) {
+//       el = cy.nodes().filter((n) => n.data('id') === nodeId && n.data('type') === 's');
+//     }
+
+//     const empty = (
+//       !el || (el.nonempty !== undefined && !el.nonempty)
+//       || (el.length !== undefined && el.length === 0));
+//     if (empty) return;
+
+//     try {
+//       // Make selectable temporarily if needed
+//       if (typeof el.selectify === 'function') el.selectify();
+
+//       if (isSelected) {
+//         if (typeof el.select === 'function') el.select();
+//       } else if (typeof el.unselect === 'function') {
+//         el.unselect();
+//       }
+//     } catch {
+//       // Ignore errors
+//     }
+//   });
+// });
 
 document.getElementById('export-strat')?.addEventListener('click', () => {
   if (!tracker['mark']) {
@@ -1003,15 +1259,10 @@ document
     });
   });
 
-function getAllPanesRegistry() {
-  return allPanesRegistry;
-}
-
 export {
   enablePaneDragBars,
   spawnPane,
   getPanes,
-  getAllPanesRegistry,
   updatePanes,
   destroyPanes,
   togglePane,
