@@ -12,6 +12,20 @@ const axiomStates = new Map();
 let activeSummaryCy = null;
 let summaryKeyboardBound = false;
 
+function fitPaneNextFrame(cy) {
+  if (!cy || cy.destroyed()) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    if (!cy || cy.destroyed()) {
+      return;
+    }
+    cy.resize();
+    cy.fit(undefined, 30);
+  });
+}
+
 function bindSummaryKeyboardShortcuts() {
   if (summaryKeyboardBound) {
     return;
@@ -203,11 +217,6 @@ function initializeAxiomStates(paneId, treeData) {
   return axiomStates.get(paneId);
 }
 
-function getAxiomState(paneId, nodeId) {
-  const states = axiomStates.get(paneId);
-  return states ? states[nodeId] : AXIOM_STATES.UNDECIDED;
-}
-
 function setAxiomState(paneId, nodeId, state, cy) {
   const states = axiomStates.get(paneId);
   if (!states) return;
@@ -372,9 +381,7 @@ export function createAxiomPane(container, treeData, paneId) {
     });
   }
 
-  setTimeout(() => {
-    cy.fit(undefined, 30);
-  }, 100);
+  fitPaneNextFrame(cy);
 
   return cy;
 }
@@ -450,9 +457,7 @@ export function updateAxiomPane(cy, treeData, paneId) {
 
   cy.zoom(0.9);
   cy.pan({ x: 0, y: 50 });
-  setTimeout(() => {
-    cy.fit(undefined, 30);
-  }, 100);
+  fitPaneNextFrame(cy);
 }
 
 export default {

@@ -8,15 +8,24 @@ import { setPane } from '../utils/controls.js';
 
 let activeDecisionTreeCy = null;
 
-function fitAllPanesAfterLayout(delayMs = 300) {
-  setTimeout(() => {
+function runAfterRender(callback) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      callback();
+    });
+  });
+}
+
+function fitAllPanesAfterLayout() {
+  runAfterRender(() => {
     const panes = getPanes();
     Object.values(panes).forEach(pane => {
       if (pane.cy) {
+        pane.cy.resize();
         pane.cy.fit(undefined, 30);
       }
     });
-  }, delayMs);
+  });
 }
 
 function dispatchPaneDataChanged(cy) {
@@ -304,10 +313,10 @@ export function createDecisionTree(container, treeData, fullTreeData) {
   cy.on('tap', 'node', (event) => {
     activeDecisionTreeCy = cy;
     const nodeId = event.target.data('nodeId');
-    setTimeout(() => {
+    queueMicrotask(() => {
       dispatchNodeSelected(nodeId);
       dispatchSelectionChange();
-    }, 0);
+    });
   });
 
   cy.on('select', 'node', () => {
@@ -1120,14 +1129,14 @@ export function expandNodeInNewPane(cy, nodeId) {
     }));
     dispatchPaneDataChanged(newCy);
     
-    setTimeout(() => {
+    runAfterRender(() => {
       const rootNode = subtree.nodes[0];
       if (rootNode) {
         expandNode(newCy, rootNode.nodeId);
       }
 
-      fitAllPanesAfterLayout(300);
-    }, 100);
+      fitAllPanesAfterLayout();
+    });
   }
 }
 

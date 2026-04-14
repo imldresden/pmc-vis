@@ -38,6 +38,12 @@ function updateHeights() {
   });
 }
 
+function redrawPanesNextFrame() {
+  requestAnimationFrame(() => {
+    Object.values(panes).forEach(p => p.cy?.pcp?.redraw());
+  });
+}
+
 function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
   const paneKeysBefore = Object.keys(panes);
   const index = paneKeysBefore.length % colorList.length;
@@ -190,9 +196,7 @@ function spawnPane({ spawner, id, newPanePosition }, nodesIds, spawnerNodes) {
     });
   }
 
-  setTimeout(() => {
-    Object.values(panes).forEach(p => p.cy?.pcp?.redraw());
-  }, 0);
+  redrawPanesNextFrame();
 
   return pane;
 }
