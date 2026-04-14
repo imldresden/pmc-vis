@@ -37,6 +37,42 @@ function dispatchPaneDataChanged(cy) {
   }));
 }
 
+function createNodeElement(node, treeData) {
+  return {
+    data: {
+      id: node.id,
+      label: node.label || node.axiom,
+      nodeId: node.nodeId,
+      axiom: node.label || node.axiom,
+      repairSymbol: '',
+      symbolColor: '#333',
+      symbolBackground: 'transparent',
+      symbolBorderColor: COLORS.NODE_COLOR,
+      symbolBackgroundOpacity: 0,
+    },
+    classes: getNodeClasses(node.id, treeData),
+  };
+}
+
+function createEdgeElement(edge) {
+  return {
+    data: {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.label,
+      type: edge.type,
+    },
+  };
+}
+
+function createTreeElements(treeData, classificationData = treeData) {
+  const nodeElements = treeData.nodes.map(node => createNodeElement(node, classificationData));
+  const edgeElements = treeData.edges.map(edge => createEdgeElement(edge));
+
+  return [...nodeElements, ...edgeElements];
+}
+
 function createDecisionTreeStylesheet() {
   return [
     {
@@ -221,37 +257,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
   }
 
   const classificationData = fullTreeData || treeData;
-
-  const elements = [];
-
-  treeData.nodes.forEach(node => {
-    elements.push({
-      data: {
-        id: node.id,
-        label: node.label || node.axiom,
-        nodeId: node.nodeId,
-        axiom: node.label || node.axiom,
-        repairSymbol: '',
-        symbolColor: '#333',
-        symbolBackground: 'transparent',
-        symbolBorderColor: COLORS.NODE_COLOR,
-        symbolBackgroundOpacity: 0,
-      },
-      classes: getNodeClasses(node.id, classificationData),
-    });
-  });
-
-  treeData.edges.forEach(edge => {
-    elements.push({
-      data: {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        type: edge.type,
-      },
-    });
-  });
+  const elements = createTreeElements(treeData, classificationData);
 
   const cy = cytoscape({
     container,
@@ -611,7 +617,7 @@ export function createDecisionTree(container, treeData, fullTreeData) {
     }));
   });
 
-  cy.on('tap', (event) => {
+  cy.on('tap', () => {
     setPane(cy.paneId);
   });
 
@@ -629,35 +635,7 @@ export function updateDecisionTree(cy, treeData) {
 
   cy.elements().remove();
 
-  const elements = [];
-
-  treeData.nodes.forEach(node => {
-    elements.push({
-      data: {
-        id: node.id,
-        label: node.label,
-        nodeId: node.nodeId,
-        axiom: node.label,
-        repairSymbol: '',
-        symbolColor: '#333',
-        symbolBackground: 'transparent',
-        symbolBorderColor: COLORS.NODE_COLOR,
-        symbolBackgroundOpacity: 0,
-      },
-    });
-  });
-
-  treeData.edges.forEach(edge => {
-    elements.push({
-      data: {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        type: edge.type,
-      },
-    });
-  });
+  const elements = createTreeElements(treeData);
 
   cy.add(elements);
   cy.layout({
@@ -707,13 +685,13 @@ export function highlightPath(cy, nodeId) {
       element.addClass('on-path');
     });
 
-    for (let i = 0; i < path.length - 1; i++) {
-      const edges = path[i].edgesTo(path[i + 1]);
+    path.slice(0, -1).forEach((currentNode, index) => {
+      const edges = currentNode.edgesTo(path[index + 1]);
       edges.forEach(edge => {
         edge.style('opacity', 1);
         edge.style('width', 3);
       });
-    }
+    });
   }
 }
 
@@ -857,34 +835,13 @@ export function expandNode(cy, nodeId) {
   const newElements = [];
   childNodes.forEach(node => {
     if (cy.getElementById(node.id).length === 0) {
-      newElements.push({
-        data: {
-          id: node.id,
-          label: node.label,
-          nodeId: node.nodeId,
-          axiom: node.label,
-          repairSymbol: '',
-          symbolColor: '#333',
-          symbolBackground: 'transparent',
-          symbolBorderColor: COLORS.NODE_COLOR,
-          symbolBackgroundOpacity: 0,
-        },
-        classes: getNodeClasses(node.id, cy.treeData),
-      });
+      newElements.push(createNodeElement(node, cy.treeData));
     }
   });
 
   childEdges.forEach(edge => {
     if (cy.getElementById(edge.id).length === 0) {
-      newElements.push({
-        data: {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          label: edge.label,
-          type: edge.type,
-        },
-      });
+      newElements.push(createEdgeElement(edge));
     }
   });
 
@@ -939,34 +896,13 @@ export function expandNodeByType(cy, nodeId, edgeType) {
   const newElements = [];
   childNodes.forEach(node => {
     if (cy.getElementById(node.id).length === 0) {
-      newElements.push({
-        data: {
-          id: node.id,
-          label: node.label,
-          nodeId: node.nodeId,
-          axiom: node.label,
-          repairSymbol: '',
-          symbolColor: '#333',
-          symbolBackground: 'transparent',
-          symbolBorderColor: COLORS.NODE_COLOR,
-          symbolBackgroundOpacity: 0,
-        },
-        classes: getNodeClasses(node.id, cy.treeData),
-      });
+      newElements.push(createNodeElement(node, cy.treeData));
     }
   });
 
   childEdges.forEach(edge => {
     if (cy.getElementById(edge.id).length === 0) {
-      newElements.push({
-        data: {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          label: edge.label,
-          type: edge.type,
-        },
-      });
+      newElements.push(createEdgeElement(edge));
     }
   });
 
