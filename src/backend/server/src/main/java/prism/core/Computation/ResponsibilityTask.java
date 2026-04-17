@@ -118,7 +118,7 @@ public class ResponsibilityTask extends DataProviderTask {
                 output.add(line);
             }
 
-            boolean finished = process.waitFor(Long.getLong(arguments.get("timeout")), TimeUnit.MILLISECONDS);
+            boolean finished = process.waitFor(Long.parseLong(arguments.get("timeout")), TimeUnit.MILLISECONDS);
 
             if (!finished) {
                 throw new RuntimeException("Timeout after " + arguments.get("timeout") + " milliseconds");
@@ -203,6 +203,7 @@ public class ResponsibilityTask extends DataProviderTask {
     public List<EditorHighlighting> getEditorHighlighting(List<String> arguments){
         try{
             System.out.println(arguments);
+            
             String call = String.format("./%s", binaryLocation);
             String modelPath = String.format("%s/%s", model.parent.getPath(), model.getModelFile().getName());
 
