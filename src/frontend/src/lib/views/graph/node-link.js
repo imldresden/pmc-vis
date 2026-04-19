@@ -2,7 +2,9 @@ import { _ } from 'lodash';
 import Swal from 'sweetalert2';
 
 import { info, BACKEND } from '../../main/main.js';
-import { stylesheet } from '../../style/views/cy-style.js';
+import {
+  stylesheet,
+} from '../../style/views/cy-style.js';
 import { COLORS } from '../../style/views/variables.js';
 import {
   getPanes,
@@ -21,9 +23,6 @@ import {
   hideAllTippies,
   setPane,
   PROJECT,
-  updateGraphComparison,
-  updateCurvedConnectors,
-  updateSidebarLegends,
 } from '../../utils/controls.js';
 import { parallelCoords } from '../attributes/parallel-coords.js';
 import { ndl_to_pcp } from '../format.js';
@@ -80,7 +79,7 @@ function setStyles(cy) {
         const node = cy.elementMapper.nodes.get(source);
 
         if (node && node.data.scheduler) {
-          const nodeSchedulerValue =            node.data.scheduler[cy.vars['scheduler'].value];
+          const nodeSchedulerValue = node.data.scheduler[cy.vars['scheduler'].value];
           return nodeSchedulerValue > 0;
         }
 
@@ -91,7 +90,7 @@ function setStyles(cy) {
       if (target && target.startsWith('t')) {
         const node = cy.elementMapper.nodes.get(target);
         if (node && node.data.scheduler) {
-          const nodeSchedulerValue =            node.data.scheduler[cy.vars['scheduler'].value];
+          const nodeSchedulerValue = node.data.scheduler[cy.vars['scheduler'].value];
           return nodeSchedulerValue > 0;
         }
 
@@ -110,24 +109,24 @@ async function renewInfo(cy) {
     const idus = nodes.closed.join('&idu=');
 
     const call = `${BACKEND}/${PROJECT}/reset?${
-      ids.length > 0 ? '&id=' + ids : ''
-    }${idus.length > 0 ? '&idu=' + idus : ''}`;
+      ids.length > 0 ? '&id=' + ids : ''}${
+      idus.length > 0 ? '&idu=' + idus : ''}`;
 
     return await (await fetch(call)).json();
   }
 
   const graph = {
-    open: cy.$('node.s[[outdegree > 0]]').map((n) => n.data().id),
-    closed: cy.$('node.s[[outdegree = 0]]').map((n) => n.data().id),
+    open: cy.$('node.s[[outdegree > 0]]').map(n => n.data().id),
+    closed: cy.$('node.s[[outdegree = 0]]').map(n => n.data().id),
   };
   const data = await getSameGraph(graph);
   const mapper = {};
 
-  data.nodes.forEach((n) => {
+  data.nodes.forEach(n => {
     mapper[n.id] = n;
   });
 
-  cy.nodes().forEach((n) => {
+  cy.nodes().forEach(n => {
     const id = n.data().id;
 
     if (!mapper[id]) console.error('/reset returned unexisiting node');
@@ -143,11 +142,10 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
   if (!nodes.length) return;
 
   const collapsed = nodes
-    .filter((n) => n.outgoers().length === 0)
-    .map((n) => n.data().id);
+    .filter(n => n.outgoers().length === 0)
+    .map(n => n.data().id);
 
-  if (collapsed.length === 0) {
-    // everything already expanded
+  if (collapsed.length === 0) { // everything already expanded
     const layout = cy.layout(cy.params);
     layout.pon('layoutstop').then(() => {
       getNexts(cy, cy.$('node.s:selected')).select();
@@ -157,20 +155,18 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
     return;
   }
 
-  const res = await fetch(
-    `${BACKEND}/${PROJECT}/outgoing?id=${collapsed.join('&id=')}`,
-  );
+  const res = await fetch(`${BACKEND}/${PROJECT}/outgoing?id=${collapsed.join('&id=')}`);
   const data = await res.json();
 
   function finalizeExpand(cy, data) {
     const new_nodes = data.nodes
-      .map((d) => ({
+      .map(d => ({
         group: 'nodes',
         data: setNeedsHTML(d),
         // position: node.position()
         // WARNING: setting this prop makes nodes immutable, possible bug with cytoscape
       }))
-      .filter((d) => {
+      .filter(d => {
         const accept = !cy.elementMapper.nodes.has(d.data.id);
         if (accept) {
           cy.elementMapper.nodes.set(d.data.id, d);
@@ -178,7 +174,7 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
         return accept;
       });
     const new_edges = data.edges
-      .map((d) => ({
+      .map(d => ({
         group: 'edges',
         data: {
           id: d.id,
@@ -187,7 +183,7 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
           target: d.target,
         },
       }))
-      .filter((d) => {
+      .filter(d => {
         const accept = !cy.elementMapper.edges.has(getEdgeId(d));
         if (accept) {
           cy.elementMapper.edges.set(getEdgeId(d), d);
@@ -230,34 +226,14 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
     const panes = getPanes();
     panes[cy.paneId].nodesIds = new Set([...(panes[cy.paneId].nodesIds || []), ...nodesIds]);
     updatePanes(panes);
-
-    // trigger graph comparison update if enabled
-    const checkbox = document.getElementById('checkbox-graph-comparison');
-    if (checkbox?.checked) {
-      updateGraphComparison(true);
-    }
-
-    // trigger curved connectors update if enabled
-    const curvedCheckbox = document.getElementById(
-      'checkbox-curved-connectors',
-    );
-    if (curvedCheckbox?.checked) {
-      updateCurvedConnectors(true);
-    }
   }
 
   const limit = document.getElementById('nodesPerPane').value;
   const m = cy.vars['mode'].value;
-  const incoming = new Set(
-    data.nodes
-      .filter((n) => m.includes(n.type) && !cy.elementMapper.nodes.get(n.id))
-      .map((n) => n.id),
-  );
+  const incoming = new Set(data.nodes.filter(n => m.includes(n.type)
+    && !cy.elementMapper.nodes.get(n.id)).map(n => n.id));
 
-  if (
-    cy.$(`node${m === 's+t' ? '' : '.' + m}`).length + incoming.size
-    > limit
-  ) {
+  if (cy.$(`node${m === 's+t' ? '' : '.' + m}`).length + incoming.size > limit) {
     Swal.fire({
       title: 'Too many nodes in this pane!',
       text: `The new total amount of nodes exceeds your set limit of ${limit}.`,
@@ -270,10 +246,7 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
       denyButtonText: 'Expand Here Anyway',
     }).then((result) => {
       if (result.isConfirmed) {
-        return fetchAndSpawn(
-          cy,
-          nodes.map((n) => n.data()),
-        );
+        return fetchAndSpawn(cy, nodes.map(n => n.data()));
       } else if (result.isDenied) {
         return finalizeExpand(cy, data);
       }
@@ -285,16 +258,18 @@ async function expandGraph(cy, nodes, onLayoutStopFn) {
 
 function setNeedsHTML(d) {
   // allows checking for 'node[needsHTML = "true"]' to not create empty divs per node
-  const aps = d?.details?.[CONSTANTS.atomicPropositions];
-  d.needsHTML =    ''
-    + (aps
-      && (aps[CONSTANTS.ap_init]
-        || aps[CONSTANTS.ap_deadlock]
-        || aps[CONSTANTS.ap_end]));
+  // Handle both cases: details at top level or inside data property
+  const details = d.details || (d.data && d.data.details) || {};
+  const aps = details[CONSTANTS.atomicPropositions];
+  d.needsHTML = '' + (aps && (
+    aps[CONSTANTS.ap_init]
+    || aps[CONSTANTS.ap_deadlock]
+    || aps[CONSTANTS.ap_end]
+  ));
   return d;
 }
 
-const initHTML = _.debounce((cy) => {
+const initHTML = _.debounce((cy) =>{
   const html = document.getElementById(cy.container().id);
 
   Array.from(html.childNodes[0].childNodes).forEach((d, i) => {
@@ -320,10 +295,10 @@ const initHTML = _.debounce((cy) => {
   // };
 
   function apsfn(cy, data, padding) {
-    const aps = data?.details?.[CONSTANTS.atomicPropositions] || {};
+    const aps = data.details[CONSTANTS.atomicPropositions];
 
     let html = '';
-    Object.keys(info.badges).forEach((ap) => {
+    Object.keys(info.badges).forEach(ap => {
       if (aps[CONSTANTS[ap]]) {
         html += info.badges[ap];
       }
@@ -332,32 +307,29 @@ const initHTML = _.debounce((cy) => {
     return `<div style="position: relative; padding-top:${padding}px" id="${cy.paneId}-${data.id}">${html}</div>`;
   }
 
-  cy.nodeHtmlLabel(
-    [
-      // this is extremely costly:
-      // notable lag after ~100 nodes are on a pane, even if only a few nodes have html
-      {
-        query: 'node[needsHTML = "true"].s',
-        tpl(data) {
-          return apsfn(cy, data, 36.5);
-        },
+  cy.nodeHtmlLabel([
+    // this is extremely costly:
+    // notable lag after ~100 nodes are on a pane, even if only a few nodes have html
+    {
+      query: 'node[needsHTML = "true"].s',
+      tpl(data) {
+        return apsfn(cy, data, 36.5);
       },
-      {
-        query: 'node[needsHTML = "true"].s:selected',
-        tpl(data) {
-          return apsfn(cy, data, 45);
-        },
+    },
+    {
+      query: 'node[needsHTML = "true"].s:selected',
+      tpl(data) {
+        return apsfn(cy, data, 45);
       },
-    ],
-    { enablePointerEvents: false },
-  );
+    },
+  ], { enablePointerEvents: false });
 }, 50);
 
 // inits cy with graph data on a pane
 function spawnGraph(pane, data, params, vars = {}) {
   const elements = {
-    nodes: data.nodes.map((d) => ({ data: setNeedsHTML(d) })),
-    edges: data.edges.map((d) => ({ data: d })),
+    nodes: data.nodes.map(d => ({ data: setNeedsHTML(d) })),
+    edges: data.edges.map(d => ({ data: d })),
   };
 
   const cytoscapeInit = {
@@ -379,11 +351,13 @@ function spawnGraph(pane, data, params, vars = {}) {
     const nodes = cy
       .elements()
       .nodes()
-      .map((d) => ({ data: d.data() }));
+      .map(d => ({ data: d.data() }));
 
     setElementMapper(cy, {
       nodes: nodes,
-      edges: cy.edges().map((d) => ({ data: d.data() })),
+      edges: cy
+        .edges()
+        .map(d => ({ data: d.data() })),
     });
 
     cy.startBatch();
@@ -411,7 +385,7 @@ function spawnGraph(pane, data, params, vars = {}) {
 function haveCommonNodes(array1, obj2) {
   var isInclude = null;
   if (array1 && obj2) {
-    array1.forEach((i) => {
+    array1.forEach(i => {
       Object.keys(obj2).forEach((key) => {
         const list = obj2[key].spawnerNodes;
         if (list?.includes(array1[i])) {
@@ -472,9 +446,7 @@ function spawnGraphOnNewPane(cy, nodes) {
 async function fetchAndSpawn(cy, nodes) {
   if (!nodes.length) return;
 
-  const res = await fetch(
-    `${BACKEND}/${PROJECT}/outgoing?id=${nodes.map((n) => n.id).join('&id=')}`,
-  );
+  const res = await fetch(`${BACKEND}/${PROJECT}/outgoing?id=${nodes.map((n) => n.id).join('&id=')}`);
   const data = await res.json();
 
   const nodesIds = data.nodes
@@ -484,8 +456,7 @@ async function fetchAndSpawn(cy, nodes) {
 
   const newPanePosition = cy.vars['panePosition'];
   const pane = spawnPane(
-    {
-      // pane that spawns the new one
+    { // pane that spawns the new one
       spawner: cy.container().parentElement.id,
       id: null,
       newPanePosition,
@@ -515,10 +486,10 @@ function getNexts(cy, sources) {
   let ids;
   if (cy.vars['scheduler'].value === '_none_') {
     // open everything, as there is no decider / DOI / scheduler
-    ids = sources.map((src) => getNextInPath(cy, src.data().id).next).flat();
+    ids = sources.map(src => getNextInPath(cy, src.data().id).next).flat();
   } else {
     // follow only the "best" path according to DOI/scheduler
-    ids = sources.map((src) => getNextBestInPath(cy, src.data().id).bestNext);
+    ids = sources.map(src => getNextBestInPath(cy, src.data().id).bestNext);
   }
 
   const nexts = cy.nodes('#' + ids.join(', #'));
@@ -526,13 +497,13 @@ function getNexts(cy, sources) {
 }
 
 async function expandBestPath(cy, allSources) {
-  let sources = allSources.filter(
-    (s) => !s.data()?.details?.[CONSTANTS.atomicPropositions]?.[CONSTANTS.ap_end]?.value,
-  );
+  let sources = allSources.filter(s => !s.data()
+    ?.details[CONSTANTS.atomicPropositions][CONSTANTS.ap_end]
+    ?.value);
 
   while (
     iteration < maxIteration
-    && sources.filter((n) => n.outgoers().length === 0).length === 0
+    && sources.filter(n => n.outgoers().length === 0).length === 0
   ) {
     sources = getNexts(cy, cy.$('node.s:selected'));
     sources.select();
@@ -572,7 +543,7 @@ function getNextBestInPath(cy, sourceNodeId) {
     if (target && target.startsWith('t')) {
       const node = cy.elementMapper.nodes.get(target);
       if (node && node.data.scheduler && source === sourceNodeId) {
-        const nodeSchedulerValue =          node.data.scheduler[cy.vars['scheduler'].value];
+        const nodeSchedulerValue = node.data.scheduler[cy.vars['scheduler'].value];
         if (nodeSchedulerValue >= bestValue) {
           bestValue = nodeSchedulerValue;
           bestNext = target;
@@ -590,7 +561,7 @@ function getNextBestInPath(cy, sourceNodeId) {
     if (source && source.startsWith('t') && source === tId) {
       const node = cy.elementMapper.nodes.get(source);
       if (node && node.data.scheduler) {
-        const nodeSchedulerValue =          node.data.scheduler[cy.vars['scheduler'].value];
+        const nodeSchedulerValue = node.data.scheduler[cy.vars['scheduler'].value];
         if (nodeSchedulerValue >= bestValue) {
           bestValue = nodeSchedulerValue;
           bestNext = target;
@@ -613,13 +584,13 @@ function getNextInPath(cy, sourceNodeId) {
   const nextActions = cy
     .$(`#${sourceNodeId}`)
     .outgoers('node.t')
-    .map((n) => n.data().id);
+    .map(n => n.data().id);
 
   // gathers states children to the actions
   const next = cy
     .$('#' + nextActions.join(', #'))
     .outgoers('node.s')
-    .map((n) => n.data().id);
+    .map(n => n.data().id);
 
   return { cy, next };
 }
@@ -634,49 +605,43 @@ function getPreviousInPath(cy, sourceNodeId) {
   const prevActions = cy
     .$(`#${sourceNodeId}`)
     .incomers('node.t')
-    .map((n) => n.data().id);
+    .map(n => n.data().id);
 
   // gathers states children to the actions
   const prev = cy
     .$('#' + prevActions.join(', #'))
     .incomers('node.s')
-    .map((n) => n.data().id);
+    .map(n => n.data().id);
 
   return { cy, prev };
 }
 
 function spawnPCP(cy, order = undefined) {
-  const m = cy.vars.mode.value;
+  const m = cy.vars['mode'].value;
   const selector = m === 's+t' ? '' : '.' + m;
   let selected = 0;
 
-  // Preserve overlay state from existing PCP if it exists
-  let preservedOverlayState = null;
-  if (cy.pcp && cy.pcp.getOverlayState) {
-    preservedOverlayState = cy.pcp.getOverlayState();
-  }
-
   const { pl, pld } = ndl_to_pcp(
     {
-      nodes: cy.$(`node${selector}`).map((n) => {
+      nodes: cy.$(`node${selector}`).map(n => {
         const d = n.data();
         d._selected = n.selected();
         if (d._selected) selected += 1;
         return d;
       }),
     },
-    cy.vars.details.value,
+    cy.vars['details'].value,
   );
 
   const hidden = new Set(['color']);
-  const props = Object.keys(pld).filter((k) => !hidden.has(k));
+  const props = Object.keys(pld).filter(k => !hidden.has(k));
   const sorted_dim_metadata = {};
 
   const previous_pcp_order = cy.pcp ? cy.pcp.getOrder() : undefined;
   const pcp_order = order ? structuredClone(order) : previous_pcp_order;
 
   if (pcp_order) {
-    pcp_order.forEach((key) => {
+    pcp_order.forEach(key => {
       if (pld[key]) {
         sorted_dim_metadata[key] = pld[key];
         delete pld[key];
@@ -684,21 +649,20 @@ function spawnPCP(cy, order = undefined) {
     });
   }
 
-  Object.keys(pld).forEach((key) => (sorted_dim_metadata[key] = pld[key]));
+  Object.keys(pld).forEach(key => sorted_dim_metadata[key] = pld[key]);
 
-  cy.pcp = parallelCoords(getPanes()[cy.paneId], pl, {
-    data_id: 'id',
-    nominals: props.filter((k) => sorted_dim_metadata[k].type === 'nominal'),
-    booleans: props.filter((k) => sorted_dim_metadata[k].type === 'boolean'),
-    numbers: props.filter((k) => sorted_dim_metadata[k].type === 'number'),
-    pld: sorted_dim_metadata,
-    preselected: selected,
-  });
-
-  // Restore overlay state if it was preserved
-  if (preservedOverlayState && preservedOverlayState.enabled && preservedOverlayState.panes.length > 0) {
-    cy.pcp.enableOverlay(preservedOverlayState.panes);
-  }
+  cy.pcp = parallelCoords(
+    getPanes()[cy.paneId],
+    pl,
+    {
+      data_id: 'id',
+      nominals: props.filter(k => sorted_dim_metadata[k].type === 'nominal'),
+      booleans: props.filter(k => sorted_dim_metadata[k].type === 'boolean'),
+      numbers: props.filter(k => sorted_dim_metadata[k].type === 'number'),
+      pld: sorted_dim_metadata,
+      preselected: selected,
+    },
+  );
 
   cy.paneFromPCP = (pane) => {
     spawnGraphOnNewPane(pane.cy, pane.cy.pcp.getSelection());
@@ -718,134 +682,6 @@ function unbindListeners(cy) {
   if (cy.ctxmenu) {
     cy.ctxmenu.destroy();
   }
-}
-
-let nodeDetailsWindowZ = 10000;
-let nodeDetailsWindowCount = 0;
-
-function openDraggableDetailsWindow({ titleHtml, contentEl, originalEvent }) {
-  const winId = `node-details-window-${Date.now()}-${nodeDetailsWindowCount++}`;
-  const $win = document.createElement('div');
-  $win.id = winId;
-  $win.style.cssText = `
-    position: fixed;
-    width: 760px;
-    max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 40px);
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    overflow: hidden;
-    z-index: ${++nodeDetailsWindowZ};
-  `;
-
-  const $header = document.createElement('div');
-  $header.style.cssText = `
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
-    cursor: grab;
-    user-select: none;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f9fafb;
-  `;
-
-  const $title = document.createElement('div');
-  $title.style.cssText = 'font-weight: 600; font-size: 13px; line-height: 1.2;';
-  $title.innerHTML = titleHtml;
-
-  const $close = document.createElement('button');
-  $close.type = 'button';
-  $close.setAttribute('aria-label', 'Close');
-  $close.style.cssText = `
-    width: 28px;
-    height: 28px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 28px;
-    color: #6b7280;
-  `;
-  $close.textContent = '×';
-
-  const $body = document.createElement('div');
-  $body.style.cssText = 'padding: 12px; overflow: auto; max-height: calc(100vh - 120px);';
-  $body.appendChild(contentEl);
-
-  $header.appendChild($title);
-  $header.appendChild($close);
-  $win.appendChild($header);
-  $win.appendChild($body);
-
-  // Initial positioning
-  const margin = 20;
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-  const baseX = typeof originalEvent?.clientX === 'number' ? originalEvent.clientX : Math.floor(viewportW / 2);
-  const baseY = typeof originalEvent?.clientY === 'number' ? originalEvent.clientY : Math.floor(viewportH / 2);
-  const cascade = (nodeDetailsWindowCount % 10) * 18;
-
-  // Place near cursor, clamped into viewport (use translate so we can measure after append)
-  $win.style.left = Math.max(margin, Math.min(viewportW - margin - 760, baseX + 10 + cascade)) + 'px';
-  $win.style.top = Math.max(margin, Math.min(viewportH - margin - 400, baseY + 10 + cascade)) + 'px';
-
-  document.body.appendChild($win);
-
-  const bringToFront = () => {
-    $win.style.zIndex = String(++nodeDetailsWindowZ);
-  };
-  $win.addEventListener('mousedown', bringToFront, { passive: true });
-
-  // Dragging
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let startLeft = 0;
-  let startTop = 0;
-
-  const onMouseMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    const nextLeft = Math.max(margin, Math.min(window.innerWidth - margin - $win.offsetWidth, startLeft + dx));
-    const nextTop = Math.max(margin, Math.min(window.innerHeight - margin - $win.offsetHeight, startTop + dy));
-    $win.style.left = nextLeft + 'px';
-    $win.style.top = nextTop + 'px';
-  };
-
-  const onMouseUp = () => {
-    if (!dragging) return;
-    dragging = false;
-    $header.style.cursor = 'grab';
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  };
-
-  $header.addEventListener('mousedown', (e) => {
-    // Only left click
-    if (e.button !== 0) return;
-    bringToFront();
-    dragging = true;
-    $header.style.cursor = 'grabbing';
-    startX = e.clientX;
-    startY = e.clientY;
-    startLeft = $win.offsetLeft;
-    startTop = $win.offsetTop;
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseup', onMouseUp, { passive: true });
-  }, { passive: true });
-
-  const destroy = () => {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-    $win.remove();
-  };
-
-  $close.addEventListener('click', destroy, { passive: true });
 }
 
 function buildDetailsTooltipFromNode(cy, n) {
@@ -892,321 +728,6 @@ function buildDetailsTooltipFromNode(cy, n) {
   }
 }
 
-// function buildDetailsTooltipFromNode(cy, n, originalEvent = undefined) {
-// KILLSWITCHED
-//   n.unselectify();
-//   cy.pendingSelectify = true;
-
-//   const g = n.data();
-//   const details = cy.vars.details.value;
-
-//   // Category color themes
-//   const categoryColors = {
-//     'Variable Values': { bg: '#eff6ff', header: '#3b82f6', border: '#bfdbfe' },
-//     'Reward Structures': { bg: '#f0fdf4', header: '#10b981', border: '#bbf7d0' },
-//     'Model Checking Results': { bg: '#faf5ff', header: '#8b5cf6', border: '#e9d5ff' },
-//   };
-
-//   // Gather graph metrics
-//   const incomingEdges = n.incomers('edge').length;
-//   const outgoingEdges = n.outgoers('edge').length;
-//   const degree = n.degree();
-//   const isSelected = n.selected();
-
-//   // Build overview section
-//   const overviewHtml = `
-//     <div style="background: #667eea; color: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-//       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
-//         <div>
-//           <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Incoming</div>
-//           <div style="font-size: 20px; font-weight: bold;">${incomingEdges}</div>
-//         </div>
-//         <div>
-//           <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Outgoing</div>
-//           <div style="font-size: 20px; font-weight: bold;">${outgoingEdges}</div>
-//         </div>
-//         <div>
-//           <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Degree</div>
-//           <div style="font-size: 20px; font-weight: bold;">${degree}</div>
-//         </div>
-//       </div>
-//     </div>
-//   `;
-
-//   const $blocks = [];
-
-//   Object.keys(details).forEach((d) => {
-//     if (!g.details[d]) return;
-
-//     const show =      details[d].all
-//       || Object.values(details[d].props).reduce((a, b) => a || b, false);
-
-//     if (show) {
-//       const colorTheme = categoryColors[d] || { bg: '#f9fafb', header: '#6b7280', border: '#e5e7eb' };
-//       const block = document.createElement('div');
-//       block.style.marginBottom = '20px';
-
-//       // Collect all values for this category to calculate min/max
-//       const categoryValues = {};
-//       const attributes = Object.keys(details[d].props).filter((p) => details[d].props[p]);
-
-//       attributes.forEach((k) => {
-//         const isNumber = details[d].metadata[k]?.type === 'number';
-//         if (isNumber && details[d].metadata[k]) {
-//           const min = details[d].metadata[k].min;
-//           const max = details[d].metadata[k].max;
-//           // Only add if min/max are valid numbers
-//           if (typeof min === 'number' && typeof max === 'number' && !isNaN(min) && !isNaN(max)) {
-//             categoryValues[k] = {
-//               value: g.details[d][k],
-//               min: min,
-//               max: max,
-//             };
-//           }
-//         }
-//       });
-
-//       // Build table HTML
-//       let tableHtml = `
-//         <div style="margin-bottom: 15px;">
-//           <div style="background: ${colorTheme.header}; color: white; padding: 10px; border-radius: 6px 6px 0 0; font-weight: bold; font-size: 14px; text-align: center; display: flex; justify-content: space-between; align-items: center;">
-//             <span>${d}</span>
-//             <span style="font-size: 11px; opacity: 0.9; font-weight: normal;">${attributes.length} attribute${attributes.length !== 1 ? 's' : ''}</span>
-//           </div>
-//           <table style="width: 100%; border-collapse: collapse; border: 1px solid ${colorTheme.border}; border-top: none;">
-//             <tbody>
-//       `;
-
-//       attributes.forEach((k, idx) => {
-//         const isNumber = details[d].metadata[k]?.type === 'number';
-//         const value = g.details[d][k];
-//         const displayValue = isNumber ? fixed(value) : value;
-//         const rowBg = idx % 2 === 0 ? '#ffffff' : colorTheme.bg;
-
-//         let valueCell = `<td style="padding: 10px 12px; text-align: right; border-bottom: 1px solid ${colorTheme.border}; font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace;">
-//           ${displayValue}
-//         </td>`;
-
-//         // Add range visualization for numeric values
-//         if (isNumber && categoryValues[k]) {
-//           const min = categoryValues[k].min;
-//           const max = categoryValues[k].max;
-//           const range = max - min;
-//           const percentage = range > 0 ? ((value - min) / range) * 100 : 50;
-
-//           // Ensure displayValue is valid for numeric display
-//           const safeDisplayValue = typeof value === 'number' && !isNaN(value) ? fixed(value) : value;
-
-//           // Add range indicator bar
-//           valueCell = `
-//             <td style="padding: 8px 12px; border-bottom: 1px solid ${colorTheme.border};">
-//               <div style="display: flex; align-items: center; gap: 10px;">
-//                 <div style="flex: 1; background: #e5e7eb; height: 8px; border-radius: 4px; position: relative; overflow: hidden;">
-//                   <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${percentage}%; background: linear-gradient(90deg, ${colorTheme.header}cc, ${colorTheme.header}); border-radius: 4px; transition: width 0.3s;"></div>
-//                   <div style="position: absolute; left: ${percentage}%; top: 50%; transform: translate(-50%, -50%); width: 3px; height: 14px; background: ${colorTheme.header}; border-radius: 2px; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>
-//                 </div>
-//                 <div style="font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace; min-width: 80px; text-align: right;">
-//                   ${safeDisplayValue}
-//                 </div>
-//               </div>
-//               <div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 10px; color: #9ca3af;">
-//                 <span>min: ${typeof min === 'number' ? fixed(min) : min}</span>
-//                 <span>max: ${typeof max === 'number' ? fixed(max) : max}</span>
-//               </div>
-//             </td>
-//           `;
-//         }
-
-//         tableHtml += `
-//           <tr style="background-color: ${rowBg};">
-//             <td style="padding: 10px 12px; text-align: left; border-bottom: 1px solid ${colorTheme.border}; font-weight: 500; color: #374151; width: 40%;">
-//               ${k}
-//             </td>
-//             ${valueCell}
-//           </tr>
-//         `;
-//       });
-
-//       tableHtml += `
-//             </tbody>
-//           </table>
-//         </div>
-//       `;
-
-//       block.innerHTML = tableHtml;
-//       $blocks.push(block);
-//     }
-//   });
-
-//   if ($blocks.length > 0) {
-//     const container = document.createElement('div');
-//     container.style.textAlign = 'left';
-
-//     // Add overview section
-//     const overviewDiv = document.createElement('div');
-//     overviewDiv.innerHTML = overviewHtml;
-//     container.appendChild(overviewDiv);
-
-//     // Add attribute blocks
-//     $blocks.forEach((block) => container.appendChild(block));
-
-//     const titleHtml = `
-//       <div style="display: flex; align-items: center; gap: 10px;">
-//         <span>Node Details: ${g.id}</span>
-//         ${isSelected ? '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: normal;">SELECTED</span>' : ''}
-//       </div>
-//     `;
-//     openDraggableDetailsWindow({ titleHtml, contentEl: container, originalEvent });
-//   }
-// }
-
-function buildComparisonTooltip(cy, nodes) {
-  // Support both single comparison (2 nodes) and multi-node comparison
-  const nodeArray = Array.isArray(nodes) ? nodes : [nodes];
-  const nodeData = nodeArray.map((n) => n.data());
-  const details = cy.vars.details.value;
-
-  // Highlight in PCP
-  const nodeIds = nodeData.map((g) => g.id);
-  if (cy.pcp && cy.pcp.setComparison) {
-    cy.pcp.setComparison(nodeIds);
-  }
-
-  // Color generator function (same as PCP)
-  const baseColors = [
-    '#3b82f6',
-    '#ef4444',
-    '#10b981',
-    '#f59e0b',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#f97316',
-  ];
-
-  function generateComparisonColor(index) {
-    if (index < baseColors.length) {
-      return baseColors[index];
-    }
-    const hue = (index * 137.5) % 360;
-    const saturation = 65 + (index % 3) * 10;
-    const lightness = 45 + (index % 4) * 5;
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-  }
-
-  const $blocks = [];
-
-  Object.keys(details).forEach((d) => {
-    // Check if any node has data for this category
-    const hasData = nodeData.some((g) => g.details[d]);
-    if (!hasData) return;
-
-    const show =      details[d].all
-      || Object.values(details[d].props).reduce((a, b) => a || b, false);
-
-    if (show) {
-      const block = document.createElement('div');
-      block.style.marginBottom = '25px';
-
-      // Build category header
-      let tableHtml = `<p style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-align: center;">${d}</p>`;
-
-      // Start table
-      tableHtml
-        += '<table style="width: 100%; border-collapse: collapse; margin: 0 auto; max-width: 95%;">';
-
-      // Table header with node IDs
-      tableHtml += '<thead><tr>';
-      tableHtml
-        += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #e5e7eb; font-weight: bold; background-color: #f9fafb;">Attribute</th>';
-      nodeData.forEach((g, idx) => {
-        const color = generateComparisonColor(idx);
-        tableHtml += `<th style="padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb; color: ${color}; font-weight: bold; background-color: #f9fafb;">Node ${g.id}</th>`;
-      });
-      tableHtml += '</tr></thead>';
-
-      tableHtml += '<tbody>';
-
-      Object.keys(details[d].props)
-        .filter((p) => details[d].props[p])
-        .forEach((k, rowIdx) => {
-          const isNumber = details[d].metadata[k].type === 'number';
-
-          // Collect all values for this attribute
-          const values = nodeData.map((g) => {
-            const val = g.details[d]?.[k];
-            return val !== undefined ? (isNumber ? fixed(val) : val) : null;
-          });
-
-          // Check if all values are the same (or all null)
-          const nonNullValues = values.filter((v) => v !== null);
-          const allSame =            nonNullValues.length > 0
-            && nonNullValues.every((v) => v === nonNullValues[0]);
-
-          // Alternating row background
-          const rowBg = rowIdx % 2 === 0 ? '#ffffff' : '#f9fafb';
-
-          // Start row
-          tableHtml += `<tr style="background-color: ${rowBg};">`;
-
-          // Attribute name column
-          tableHtml += `<td style="padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${k}</td>`;
-
-          // Value columns
-          values.forEach((val, idx) => {
-            const color = generateComparisonColor(idx);
-            const displayVal = val !== null ? val : 'N/A';
-            const bgColor = allSame
-              ? 'transparent'
-              : val !== null
-                ? '#fff3cd'
-                : '#f3f4f6';
-            const textColor = val === null ? '#9ca3af' : color;
-            const fontStyle = val === null ? 'italic' : 'normal';
-            const fontWeight = val === null ? 'normal' : '600';
-
-            tableHtml += `<td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; background-color: ${bgColor}; color: ${textColor}; font-style: ${fontStyle}; font-weight: ${fontWeight};">${displayVal}</td>`;
-          });
-
-          tableHtml += '</tr>';
-        });
-
-      tableHtml += '</tbody></table>';
-
-      block.innerHTML = tableHtml;
-      $blocks.push(block);
-    }
-  });
-
-  if ($blocks.length > 0) {
-    const tooltip = document.createElement('div');
-    tooltip.style.textAlign = 'center';
-    $blocks.forEach((block) => tooltip.appendChild(block));
-
-    const nodeIds = nodeData.map((g) => g.id).join(', ');
-    const titleText =      nodeData.length === 2
-      ? `Comparing Nodes: ${nodeIds}`
-      : `Comparing ${nodeData.length} Nodes: ${nodeIds}`;
-
-    Swal.fire({
-      title: titleText,
-      html: tooltip,
-      width: '900px',
-      confirmButtonText: 'Close',
-      confirmButtonColor: '#555',
-    });
-  } else {
-    Swal.fire({
-      title: 'No comparable attributes',
-      text: 'These nodes have no visible attributes to compare.',
-      icon: 'info',
-    });
-  }
-}
-
-// Expose globally for PCP context menu access
-window.buildComparisonTooltip = buildComparisonTooltip;
-
 function bindListeners(cy) {
   unbindListeners(cy);
   cy.edges().unselectify();
@@ -1247,38 +768,27 @@ function bindListeners(cy) {
     hideAllTippies();
   });
 
-  cy.on(
-    'boxselect tapselect tapunselect',
-    _.debounce(() => {
-      if (cy.vars['pcp-auto-sync'].value) {
-        spawnPCP(cy);
-      }
-    }, THROTTLE_DEBOUNCE_DELAY),
-  );
+  cy.on('boxselect tapselect tapunselect', _.debounce(() => {
+    if (cy.vars['pcp-auto-sync'].value) {
+      spawnPCP(cy);
+    }
+  }, THROTTLE_DEBOUNCE_DELAY));
 
   cy.on('box', (e) => {
     if (cy.keyboard?.shiftKey && e.target.selected()) {
       e.target.unselect();
       e.target.unselectify();
       cy.pendingSelectify = true;
-    }
+    };
   });
 
   // re-enable selections after the previous check happened
   cy.on('dbltap mousemove', () => {
-    cy.pendingSelectify &&= selectifyByMode(cy) && false;
+    cy.pendingSelectify &&= (selectifyByMode(cy) && false);
   });
 
   cy.on('select unselect', (e) => {
     handleEditorSelection(e, cy);
-
-    // Emit matrix-selection event for cross-pane synchronization
-    const target = e.target;
-    if (target && target.isNode && target.isNode() && target.data('type') === 's') {
-      const nodeId = target.id();
-      const isSelected = target.selected();
-      window.dispatchEvent(events.MATRIX_SELECTION(cy.paneId, nodeId, isSelected));
-    }
   });
 
   cy.on('tap', 'node', (e) => {
@@ -1290,7 +800,7 @@ function bindListeners(cy) {
     }
 
     if (e.originalEvent.shiftKey) {
-      buildDetailsTooltipFromNode(cy, n, e.originalEvent);
+      buildDetailsTooltipFromNode(cy, n);
     }
   });
 
@@ -1300,7 +810,7 @@ function bindListeners(cy) {
 
     if (
       (e.originalEvent.altKey || e.originalEvent.ctrlKey)
-      && n.classes().filter((c) => c === 's').length > 0
+      && n.classes().filter(c => c === 's').length > 0
     ) {
       spawnGraphOnNewPane(cy, [n.data()]);
     } else if (e.originalEvent.shiftKey) {
@@ -1311,63 +821,20 @@ function bindListeners(cy) {
   });
 
   cy.on('mouseover', 'node', (e) => {
-    if (cy?._matrixViewActive) return;
-    // If this pane is currently showing the matrix view, Cytoscape can still
-    // receive pointer events via its container; ignore hover-sync in that case.
-    try {
-      const container = cy.container();
-      const paneContainerId = container?.parentElement?.id || container?.id;
-      if (paneContainerId && document.getElementById(`${paneContainerId}-matrix`)) return;
-    } catch {
-      // ignore
-    }
-
     var node = e.target;
     const nodeId = node.id();
     markRecurringNodesById(nodeId);
-
-    // Highlight corresponding line in PCP for ALL panes
-    // const panes = getPanes();
-    // Object.values(panes).forEach((pane) => {
-    //   if (pane?.cy?.pcp?.highlightNode) {
-    //     pane.cy.pcp.highlightNode(nodeId);
-    //   }
-    // });
-    if (cy?.pcp?.highlightNode) {
-      cy.pcp.highlightNode(nodeId);
-    }
   });
 
   cy.on('mouseout', 'node', () => {
-    if (cy?._matrixViewActive) return;
-    try {
-      const container = cy.container();
-      const paneContainerId = container?.parentElement?.id || container?.id;
-      if (paneContainerId && document.getElementById(`${paneContainerId}-matrix`)) return;
-    } catch {
-      // ignore
-    }
-
     unmarkRecurringNodes();
-
-    // // Clear PCP highlight for ALL panes
-    // const panes = getPanes();
-    // Object.values(panes).forEach((pane) => {
-    //   if (pane?.cy?.pcp?.clearHighlight) {
-    //     pane.cy.pcp.clearHighlight();
-    //   }
-    // });
-
-    if (cy?.pcp?.clearHighlight) {
-      cy.pcp.clearHighlight();
-    }
   });
 }
 
 function selectifyByMode(cy) {
   cy.nodes().selectify();
 
-  const mode = cy.vars.mode.value;
+  const mode = cy.vars['mode'].value;
   if (mode === 's') {
     cy.$('node.t').unselectify();
   } else if (mode === 't') {
@@ -1377,27 +844,18 @@ function selectifyByMode(cy) {
 
 // functions called from other to set variables (see setPublicVars below)
 function setSelectMode(cy, mode) {
-  cy.vars.mode.value = mode;
+  cy.vars['mode'].value = mode;
   cy.startBatch();
   cy.nodes().unselect();
   // adjust selection styles
-  if (mode === 's') {
-    // states
-    cy.style()
-      .selector('core')
-      .css({ 'selection-box-color': COLORS.SELECTED_NODE_COLOR });
+  if (mode === 's') { // states
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.SELECTED_NODE_COLOR });
     cy.$('node.t').unselectify();
-  } else if (mode === 't') {
-    // actions / transitions
-    cy.style()
-      .selector('core')
-      .css({ 'selection-box-color': COLORS.SECONDARY_SELECTION });
+  } else if (mode === 't') { // actions / transitions
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.SECONDARY_SELECTION });
     cy.$('node.s').unselectify();
-  } else {
-    // both
-    cy.style()
-      .selector('core')
-      .css({ 'selection-box-color': COLORS.DUAL_SELECTION });
+  } else { // both
+    cy.style().selector('core').css({ 'selection-box-color': COLORS.DUAL_SELECTION });
   }
 
   cy.style().update();
@@ -1405,20 +863,20 @@ function setSelectMode(cy, mode) {
 }
 
 function setUpdateState(cy) {
-  const props = cy.vars.details.value[CONSTANTS.results].metadata;
+  const props = cy.vars['details'].value[CONSTANTS.results].metadata;
   let decided = false;
 
-  Object.keys(props).forEach((k) => {
+  Object.keys(props).forEach(k => {
     if (decided) return;
 
     if (info.details[CONSTANTS.results][k].status !== CONSTANTS.STATUS.ready) {
-      cy.vars.update.value = CONSTANTS.STATUS.missing;
+      cy.vars['update'].value = CONSTANTS.STATUS.missing;
       decided = true;
     }
   });
 
   if (!decided) {
-    cy.vars.update.value = CONSTANTS.STATUS.ready;
+    cy.vars['update'].value = CONSTANTS.STATUS.ready;
   }
 }
 
@@ -1432,16 +890,16 @@ function updateDetailsToShow(cy, { update } = {}) {
   }
 
   let mode = CONSTANTS.results;
-  const ready =    details[CONSTANTS.results]
+  const ready = details[CONSTANTS.results]
     && Object.values(details[CONSTANTS.results])
-      .map((a) => a.status === CONSTANTS.STATUS.ready)
+      .map(a => a.status === CONSTANTS.STATUS.ready)
       .reduce((a, b) => a && b, true);
 
   if (!ready) {
     mode = CONSTANTS.variables;
   }
 
-  Object.keys(details).forEach((d) => {
+  Object.keys(details).forEach(d => {
     if (d === CONSTANTS.metadata) {
       return;
     }
@@ -1457,27 +915,28 @@ function updateDetailsToShow(cy, { update } = {}) {
       metadata: {},
     };
 
-    Object.keys(details[d]).forEach((p) => {
-      const iv =        truthVal
-        || (d === CONSTANTS.results
-          && info.details[d][p].status === CONSTANTS.STATUS.ready);
+    Object.keys(details[d]).forEach(p => {
+      const iv = truthVal || (
+        d === CONSTANTS.results
+        && info.details[d][p].status === CONSTANTS.STATUS.ready
+      );
       props[d].props[p] = init ? iv : update[d].props[p];
       props[d].metadata[p] = info.details[d] ? info.details[d][p] : undefined;
     });
   });
 
-  cy.vars.details.value = props;
+  cy.vars['details'].value = props;
   spawnPCP(cy);
 }
 
 function updateScheduler(cy, prop) {
-  cy.vars.scheduler.value = prop;
+  cy.vars['scheduler'].value = prop;
   setStyles(cy);
   cy.resize();
 }
 
 function updateNewPanePosition(cy, prop) {
-  cy.vars.panePosition.value = prop;
+  cy.vars['panePosition'].value = prop;
 }
 
 function toggleFullSync(cy, prop) {
@@ -1503,9 +962,8 @@ function selectBasedOnAP(cy, e, ap) {
 
   if (info.initial !== '#') {
     cy.nodes().deselect();
-    const states = cy
-      .nodes('.s')
-      .filter((d) => d.data()?.details?.[CONSTANTS.atomicPropositions]?.[ap]);
+    const states = cy.nodes('.s')
+      .filter(d => d.data().details[CONSTANTS.atomicPropositions][ap]);
 
     if (states.length > 0) {
       states.select();
@@ -1521,9 +979,6 @@ function mark(cy, selection) {
   if (selection.length > 0) {
     const nodes = cy.$('#' + selection.join(', #'));
     nodes.addClass('marked');
-    // Update sidebar legend counts
-    const pane = Object.values(getPanes()).find(p => p.cy === cy);
-    if (pane) updateSidebarLegends(pane);
   }
 }
 
@@ -1531,9 +986,6 @@ function unmark(cy, selection) {
   if (selection.length > 0) {
     const nodes = cy.$('#' + selection.join(', #'));
     nodes.removeClass('marked');
-    // Update sidebar legend counts
-    const pane = Object.values(getPanes()).find(p => p.cy === cy);
-    if (pane) updateSidebarLegends(pane);
   }
 }
 
@@ -1573,7 +1025,7 @@ async function importCy(cy) {
           let vars = {};
           if (cy.vars) {
             const varsValues = {};
-            Object.keys(cy.vars).forEach((k) => {
+            Object.keys(cy.vars).forEach(k => {
               if (cy.vars[k].avoidInClone) {
                 return;
               }
@@ -1656,23 +1108,26 @@ async function exportCy(cy, selection) {
   }).then((result) => {
     if (result.isConfirmed) {
       const paneData = cy.json();
-      const m = cy.vars.mode.value;
+      const m = cy.vars['mode'].value;
       if (selection) {
         let setSelect = new Set(selection);
-        paneData.elements.nodes = paneData.elements.nodes.filter(
-          (node) => setSelect.has(node.data.id) || !m.includes(node.data.type),
-        );
+        paneData.elements.nodes = paneData
+          .elements
+          .nodes
+          .filter(node => setSelect.has(node.data.id)
+            || !m.includes(node.data.type));
 
-        setSelect = new Set(paneData.elements.nodes.map((d) => d.data.id));
+        setSelect = new Set(paneData.elements.nodes.map(d => d.data.id));
 
-        paneData.elements.edges &&= paneData.elements.edges.filter((edge) => {
+        paneData.elements.edges &&= paneData.elements.edges.filter(edge => {
           return (
-            setSelect.has(edge.data.source) && setSelect.has(edge.data.target)
+            setSelect.has(edge.data.source)
+            && setSelect.has(edge.data.target)
           );
         });
       }
 
-      const dataStr =        'data:text/json;charset=utf-8,'
+      const dataStr = 'data:text/json;charset=utf-8,'
         + encodeURIComponent(JSON.stringify(paneData));
       const dl = document.getElementById('download');
       dl.setAttribute('href', dataStr);
@@ -1683,16 +1138,24 @@ async function exportCy(cy, selection) {
 }
 
 function duplicatePane(cy, initSpawner) {
+  const normalizedNodes = Array.from(cy.elementMapper.nodes.values()).map(node => {
+    if (node.data && typeof node.data === 'object' && node.data.id) {
+      return node.data;
+    }
+
+    return node;
+  });
+
   const data = {
-    nodes: Array.from(cy.elementMapper.nodes.values()),
+    nodes: normalizedNodes,
     edges: Array.from(cy.elementMapper.edges.values()),
     info: info,
     cyImport: cy.json(),
   };
 
   const nodesIds = data.nodes
-    .map((node) => node.data?.id)
-    .filter((id) => !id.startsWith('t'));
+    .map((node) => node.id || node.data?.id)
+    .filter((id) => id && !id.startsWith('t'));
 
   const sourcePaneId = cy.container().parentElement.id;
 
@@ -1704,8 +1167,7 @@ function duplicatePane(cy, initSpawner) {
     {
       // spawner: cy.container().parentElement.id,
       spawner: initSpawner || paneData.spawner,
-      // Must be CSS-selector safe because PCP builds selectors from pane.id
-      id: 'DUPLICATE-' + cy.paneId + '-' + Math.random().toString(36).slice(2),
+      id: 'DUPLICATE-' + cy.paneId + '-' + Math.random().toString().replace('.', '-'), // Replace period with dash to avoid CSS selector issues
     },
     nodesIds,
     spawnerNodes,
@@ -1755,35 +1217,7 @@ function unmarkRecurringNodes() {
   const panes = getPanes();
   Object.keys(panes).forEach((paneId) => {
     const paneCy = panes[paneId].cy;
-    // skip panes without an active cytoscape instance
-    if (!paneCy || typeof paneCy.nodes !== 'function') return;
-    try {
-      const recurring = paneCy.nodes('.recurring');
-      recurring.forEach((n) => {
-        n.style({
-          'background-color': '',
-          'border-color': '',
-          color: '',
-          'background-opacity': '',
-          'border-opacity': '',
-        });
-      });
-      const recurringHover = paneCy.nodes('.recurring-hover');
-      recurringHover.forEach((n) => {
-        n.style({
-          'background-color': '',
-          'border-color': '',
-          color: '',
-          'background-opacity': '',
-          'border-opacity': '',
-        });
-      });
-      paneCy.nodes('.recurring').removeClass('recurring');
-      paneCy.nodes('.recurring-hover').removeClass('recurring-hover');
-    } catch (err) {
-      // don't let one pane failure stop the whole cleanup
-      console.warn(`unmarkRecurringNodes: failed for pane ${paneId}`, err);
-    }
+    paneCy.nodes().removeClass('recurring');
   });
 }
 
@@ -1809,37 +1243,7 @@ function markRecurringNodes() {
 
       duplicatePanes.forEach((paneId) => {
         const paneCy = panes[paneId].cy;
-        const node = paneCy.$('#' + nodeId);
-        // persistent recurring mark (used by the 'Mark recurring' control)
-        node.addClass('recurring');
-        // choose highlight color according to node's classification
-        let bg = COLORS.RECURRING;
-        let border = COLORS.RECURRING;
-        if (node.hasClass('graph-shared')) {
-          bg = COLORS.GRAPH_SHARED_BG;
-          border = COLORS.GRAPH_SHARED;
-        } else if (node.hasClass('graph-a-only')) {
-          bg = COLORS.GRAPH_A_BG;
-          border = COLORS.GRAPH_A_ONLY;
-        } else if (node.hasClass('graph-b-only')) {
-          bg = COLORS.GRAPH_B_BG;
-          border = COLORS.GRAPH_B_ONLY;
-        } else if (node.hasClass('graph-partial-shared')) {
-          bg = '#fff3e0';
-          border = '#ff9800';
-        } else if (node.hasClass('diff-added')) {
-          bg = '#e8f5e9';
-          border = '#1b5e20';
-        } else if (node.hasClass('diff-removed')) {
-          bg = '#ffebee';
-          border = '#b71c1c';
-        } else if (node.hasClass('diff-context')) {
-          bg = '#fafafa';
-          border = '#9e9e9e';
-        }
-        // rely on stylesheet :hover and .recurring rules to apply fill/border
-        // keep text color consistent
-        node.style({ color: '#000' });
+        paneCy.$('#' + nodeId).addClass('recurring');
       });
     }
   });
@@ -1864,22 +1268,14 @@ function markRecurringNodesById(markId, showInOverview = false) {
   var recurringNodes = {};
   Object.keys(duplicates).forEach((nodeId) => {
     const duplicatePanes = duplicates[nodeId];
-
-    // Always mark the hovered node, even if it only appears in one pane
-    duplicatePanes.forEach((paneId) => {
-      const paneCy = panes[paneId].cy;
-      const node = paneCy.$('#' + nodeId);
-      // mark as a temporary hover recurrence so it can be removed reliably
-      node.addClass('recurring-hover');
-      // keep text color consistent
-      node.style({ color: '#000' });
-    });
-
-    // Only track as "recurring" for overview if it appears in multiple panes
     if (duplicatePanes.size > 1) {
       recurringNodes[nodeId] = duplicatePanes;
+      duplicatePanes.forEach((paneId) => {
+        const paneCy = panes[paneId].cy;
+        paneCy.$('#' + nodeId).addClass('recurring');
+      });
     }
-    if (showInOverview && duplicatePanes.size > 1) {
+    if (showInOverview) {
       socket.emit('duplicate pane ids', duplicatePanes);
     }
   });
@@ -1993,7 +1389,7 @@ function mergePanes(panesToMerge, paneCy) {
             prevSpawners.push(paneData?.spawner);
           }
 
-          destroyPanes(id);
+          destroyPanes(id, { manualRemoval: true });
         });
         mergePane(panesToMerge, paneCy, prevSpawners);
       }
@@ -2010,7 +1406,7 @@ function handleMergePane() {
 function handleDeletePane() {
   if (selectedPanesData && selectedPanesData.selectedPanes.length > 0) {
     selectedPanesData.selectedPanes.forEach((pane) => {
-      destroyPanes(pane.paneId, { firstOnly: true });
+      destroyPanes(pane.paneId, { firstOnly: true, manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
     });
   }
 }
@@ -2061,41 +1457,32 @@ function handleMarkNodes(cy) {
   const targets = cy.$('node:selected');
   if (targets.length > 0) {
     if (!targets.classes().includes('marked')) {
-      dispatchEvent(events.GLOBAL_MARK(targets.map((t) => t.data().id)));
+      dispatchEvent(events.GLOBAL_MARK(targets.map(t => t.data().id)));
     } else {
-      dispatchEvent(events.GLOBAL_UNMARK(targets.map((t) => t.data().id)));
+      dispatchEvent(events.GLOBAL_UNMARK(targets.map(t => t.data().id)));
     }
   }
   document.activeElement.blur();
 }
 
 function initControls(cy) {
-  document
-    .getElementById(`${cy.paneId}-expand1`)
-    .addEventListener('click', (e) => {
-      const modifier = e.ctrlKey || e.altKey;
-      if (modifier) {
-        spawnGraphOnNewPane(
-          cy,
-          cy.$('node.s:selected').map((n) => n.data()),
-        );
-      } else {
-        expandGraph(cy, cy.$('node.s:selected'));
-      }
-      document.activeElement.blur();
-    });
+  document.getElementById(`${cy.paneId}-expand1`).addEventListener('click', (e) => {
+    const modifier = (e.ctrlKey || e.altKey);
+    if (modifier) {
+      spawnGraphOnNewPane(cy, cy.$('node.s:selected').map(n => n.data()));
+    } else {
+      expandGraph(cy, cy.$('node.s:selected'));
+    }
+    document.activeElement.blur();
+  });
 
-  document
-    .getElementById(`${cy.paneId}-expandN`)
-    .addEventListener('click', () => {
-      iteration = 0;
-      expandBestPath(cy, cy.$('node.s:selected'));
-      document.activeElement.blur();
-    });
+  document.getElementById(`${cy.paneId}-expandN`).addEventListener('click', () => {
+    iteration = 0;
+    expandBestPath(cy, cy.$('node.s:selected'));
+    document.activeElement.blur();
+  });
 
-  document
-    .getElementById(`${cy.paneId}-mark`)
-    .addEventListener('click', (e) => handleMarkNodes(cy, e));
+  document.getElementById(`${cy.paneId}-mark`).addEventListener('click', (e) => handleMarkNodes(cy, e));
 }
 
 function ctxmenu(cy) {
@@ -2107,7 +1494,13 @@ function ctxmenu(cy) {
     {
       id: 'expand',
       content: CONSTANTS.INTERACTIONS.expand1.name,
-      tooltipText: `${CONSTANTS.INTERACTIONS.expand1.description} \t (${CONSTANTS.INTERACTIONS.expand1.keyboard})`,
+      tooltipText: `${CONSTANTS
+        .INTERACTIONS
+        .expand1
+        .description} \t (${CONSTANTS
+        .INTERACTIONS
+        .expand1
+        .keyboard})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         setPane(cy.paneId);
@@ -2119,9 +1512,13 @@ function ctxmenu(cy) {
     {
       id: 'expand-best-path',
       content: CONSTANTS.INTERACTIONS.expandN.name(l),
-      tooltipText: `${CONSTANTS.INTERACTIONS.expandN.description(l)} \t (${
-        CONSTANTS.INTERACTIONS.expandN.keyboard
-      })`,
+      tooltipText: `${CONSTANTS
+        .INTERACTIONS
+        .expandN
+        .description(l)} \t (${CONSTANTS
+        .INTERACTIONS
+        .expandN
+        .keyboard})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         iteration = 0;
@@ -2132,7 +1529,10 @@ function ctxmenu(cy) {
     {
       id: 'remove',
       content: CONSTANTS.INTERACTIONS.collapse.name,
-      tooltipText: `${CONSTANTS.INTERACTIONS.collapse.description}`,
+      tooltipText: `${CONSTANTS
+        .INTERACTIONS
+        .collapse
+        .description}`,
       selector: 'node.s:selected[[outdegree > 0]]',
       onClickFunction: () => {
         const target = cy.$('node.s:selected'); // event.target || event.cyTarget;
@@ -2148,13 +1548,10 @@ function ctxmenu(cy) {
           }
         };
 
-        outgoer_states
-          .edges()
-          .forEach((oa) => removeOutgoer(oa))
-          .remove();
-        outgoer_actions.forEach((oa) => removeOutgoer(oa)).remove();
+        outgoer_states.edges().forEach(oa => removeOutgoer(oa)).remove();
+        outgoer_actions.forEach(oa => removeOutgoer(oa)).remove();
 
-        outgoer_states.nodes().forEach((n) => {
+        outgoer_states.nodes().forEach(n => {
           if (n.incomers().length === 0 && n.outgoers().length === 0) {
             cy.elementMapper.nodes.delete(n.data().id);
             n.remove();
@@ -2168,9 +1565,15 @@ function ctxmenu(cy) {
     {
       id: 'mark-node',
       content: CONSTANTS.INTERACTIONS.mark.name,
-      tooltipText: `${CONSTANTS.INTERACTIONS.mark.description} \t (${CONSTANTS.INTERACTIONS.mark.keyboard})`,
+      tooltipText: `${CONSTANTS
+        .INTERACTIONS
+        .mark
+        .description} \t (${CONSTANTS
+        .INTERACTIONS
+        .mark
+        .keyboard})`,
       selector: 'node.s:selected',
-      onClickFunction: (e) => {
+      onClickFunction: e => {
         handleMarkNodes(cy, e);
       },
     },
@@ -2180,84 +1583,25 @@ function ctxmenu(cy) {
       tooltipText: 'Opens tooltip with node details',
       selector: 'node',
       onClickFunction: (n) => {
-        buildDetailsTooltipFromNode(cy, n.target, n?.originalEvent);
-      },
-      hasTrailingDivider: false,
-    },
-    {
-      id: 'compare-nodes',
-      content: 'Compare with Selected Nodes',
-      tooltipText: 'Compare this node with the currently selected nodes',
-      selector: 'node',
-      onClickFunction: (event) => {
-        const targetNode = event.target || event.cyTarget;
-        const selectedNodes = cy.$('node.s:selected');
-
-        if (selectedNodes.length === 0) {
-          Swal.fire({
-            title: 'No nodes selected',
-            text: 'Please select one or more nodes first, then right-click another node to compare.',
-            icon: 'info',
-            confirmButtonColor: '#555',
-          });
-        } else {
-          // Check if target is already in selection
-          const isTargetSelected = selectedNodes.some(
-            (n) => n.id() === targetNode.id(),
-          );
-
-          if (isTargetSelected && selectedNodes.length === 1) {
-            Swal.fire({
-              title: 'Same node',
-              text: 'Please select different nodes to compare.',
-              icon: 'info',
-              confirmButtonColor: '#555',
-            });
-          } else {
-            // Build comparison with selected nodes + target (if not already selected)
-            const nodesToCompare = isTargetSelected
-              ? selectedNodes.toArray()
-              : [...selectedNodes.toArray(), targetNode];
-
-            buildComparisonTooltip(cy, nodesToCompare);
-          }
-        }
-      },
-      hasTrailingDivider: false,
-    },
-    {
-      id: 'compare-selected-only',
-      content: 'Compare Selected Nodes',
-      tooltipText: 'Compare all currently selected nodes with each other',
-      selector: 'node.s:selected',
-      onClickFunction: () => {
-        const selectedNodes = cy.$('node.s:selected');
-
-        if (selectedNodes.length < 2) {
-          Swal.fire({
-            title: 'Not enough nodes',
-            text: 'Please select at least 2 nodes to compare.',
-            icon: 'info',
-            confirmButtonColor: '#555',
-          });
-        } else {
-          buildComparisonTooltip(cy, selectedNodes.toArray());
-        }
+        buildDetailsTooltipFromNode(cy, n.target);
       },
       hasTrailingDivider: true,
     },
     {
       id: 'expand-new',
       content: `${CONSTANTS.INTERACTIONS.expand1.name} on New Pane`,
-      tooltipText: `${CONSTANTS.INTERACTIONS.expand1.description} \t (${CONSTANTS.INTERACTIONS.expand1.keyboard_pane})`,
+      tooltipText: `${CONSTANTS
+        .INTERACTIONS
+        .expand1
+        .description} \t (${CONSTANTS
+        .INTERACTIONS
+        .expand1
+        .keyboard_pane})`,
       selector: 'node.s:selected',
       onClickFunction: () => {
         const nodes = cy.$('node.s:selected');
         hideAllTippies();
-        spawnGraphOnNewPane(
-          cy,
-          nodes.map((n) => n.data()),
-        );
+        spawnGraphOnNewPane(cy, nodes.map((n) => n.data()));
       },
       hasTrailingDivider: false,
     },
@@ -2276,16 +1620,18 @@ function ctxmenu(cy) {
   ];
 
   if (!cy.vars['pcp-auto-sync'].value) {
-    node_options.push({
-      id: 'inspect-pcp',
-      content: 'Sync Selection in Details View',
-      tooltipText: 'Shows the current selection of nodes in the Details View',
-      selector: 'node',
-      onClickFunction: () => {
-        spawnPCP(cy);
+    node_options.push(
+      {
+        id: 'inspect-pcp',
+        content: 'Sync Selection in Details View',
+        tooltipText: 'Shows the current selection of nodes in the Details View',
+        selector: 'node',
+        onClickFunction: () => {
+          spawnPCP(cy);
+        },
+        hasTrailingDivider: true,
       },
-      hasTrailingDivider: true,
-    });
+    );
   }
 
   cy.ctxmenu = cy.contextMenus({
@@ -2369,9 +1715,9 @@ function ctxmenu(cy) {
               denyButtonText: 'Remove All From Selected',
             }).then((result) => {
               if (result.isConfirmed) {
-                destroyPanes(getPanes()[cy.paneId].id, { firstOnly: true });
+                destroyPanes(getPanes()[cy.paneId].id, { firstOnly: true, manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
               } else if (result.isDenied) {
-                destroyPanes(getPanes()[cy.paneId].id);
+                destroyPanes(getPanes()[cy.paneId].id, { manualRemoval: true }).catch(err => console.error('Error destroying pane:', err));
               }
             });
           }
@@ -2401,32 +1747,28 @@ function ctxmenu(cy) {
 }
 
 function selectAll(cy) {
-  const m = cy.vars.mode.value;
+  const m = cy.vars['mode'].value;
   const selector = m === 's+t' ? '' : '.' + m;
   cy.$(`node${selector}`).select();
 }
 
 function keyboardShortcuts(cy, e) {
   cy.keyboard = e;
-  const modifier = e.ctrlKey || e.altKey;
+  const modifier = (e.ctrlKey || e.altKey);
   const shift = e.shiftKey;
 
   selectifyByMode(cy);
 
   // ctrl+z: undo
   if (e.keyCode === 90 && modifier) {
-    cy.vars.ur.value.undo();
-    cy.nodes()
-      .filter((d) => d.data()._selected)
-      .select();
+    cy.vars['ur'].value.undo();
+    cy.nodes().filter(d => d.data()._selected).select();
   }
 
   // ctrl+y: redo
   if (e.keyCode === 89 && modifier) {
-    cy.vars.ur.value.redo();
-    cy.nodes()
-      .filter((d) => d.data()._selected)
-      .select();
+    cy.vars['ur'].value.redo();
+    cy.nodes().filter(d => d.data()._selected).select();
   }
 
   // ctrl+a: select all nodes
@@ -2467,9 +1809,7 @@ function keyboardShortcuts(cy, e) {
       // go to previous pane
     } else {
       // if parents, select parents
-      const ids = sources
-        .map((src) => getPreviousInPath(cy, src.data().id).prev)
-        .flat();
+      const ids = sources.map(src => getPreviousInPath(cy, src.data().id).prev).flat();
       const parents = cy.nodes(ids.length > 0 ? '#' + ids.join(', #') : '');
       parents.select();
       if (cy.vars['pcp-auto-sync'].value) {
@@ -2487,18 +1827,14 @@ function keyboardShortcuts(cy, e) {
       // go to next pane
     } else {
       // if children, select next best
-      if (cy.vars.scheduler.value === '_none_') {
+      if (cy.vars['scheduler'].value === '_none_') {
         // open everything, as there is no decider / DOI / scheduler
-        const ids = sources
-          .map((src) => getNextInPath(cy, src.data().id).next)
-          .flat();
+        const ids = sources.map(src => getNextInPath(cy, src.data().id).next).flat();
         const nexts = cy.nodes(ids.length > 0 ? '#' + ids.join(', #') : '');
         nexts.select();
       } else {
         // follow only the "best" path according to DOI/scheduler
-        const ids = sources.map(
-          (src) => getNextBestInPath(cy, src.data().id).bestNext,
-        );
+        const ids = sources.map(src => getNextBestInPath(cy, src.data().id).bestNext);
         const nextBests = cy.nodes('#' + ids.join(', #'));
         nextBests.select();
       }
@@ -2523,10 +1859,7 @@ function keyboardShortcuts(cy, e) {
   // enter, ctrl+enter
   if (e.key === 'Enter' || e.keyCode === 13) {
     if (modifier) {
-      spawnGraphOnNewPane(
-        cy,
-        cy.$('node.s:selected').map((n) => n.data()),
-      );
+      spawnGraphOnNewPane(cy, cy.$('node.s:selected').map(n => n.data()));
     } else if (shift) {
       expandBestPath(cy, cy.$('node.s:selected'));
     } else {
@@ -2615,46 +1948,31 @@ function setPublicVars(cy, preset) {
       value: true,
       fn: toggleFullSync,
     },
-    'pcp-bi': {
-      // bounds-indicator
+    'pcp-bi': { // bounds-indicator
       value: '><',
       fn: updateBoundsIndicator,
     },
-    'pcp-refine': {
-      // brushes overwrite selections
+    'pcp-refine': { // brushes overwrite selections
       value: true,
       fn: (cy, prop) => togglePCPFlag(cy, prop, 'pcp-refine'),
     },
-    'pcp-vs': {
-      // violin plots
+    'pcp-vs': { // violin plots
       value: false,
       fn: (cy, prop) => togglePCPFlag(cy, prop, 'pcp-vs'),
     },
-    'pcp-hs': {
-      // histograms
-      value: false,
+    'pcp-hs': { // histograms
+      value: true,
       fn: (cy, prop) => togglePCPFlag(cy, prop, 'pcp-hs'),
     },
-    'pcp-dfs': {
-      // discreet frequencies
+    'pcp-dfs': { // discreet frequencies
       value: false,
       fn: (cy, prop) => togglePCPFlag(cy, prop, 'pcp-dfs'),
-    },
-    'pcp-colored-comparison': {
-      // colored comparison lines
-      value: false,
-      fn: (cy, prop) => {
-        cy.vars['pcp-colored-comparison'].value = prop;
-        if (cy.pcp && cy.pcp.toggleColoredComparison) {
-          cy.pcp.toggleColoredComparison(prop);
-        }
-      },
     },
     update: {
       value: CONSTANTS.STATUS.ready,
       fn: async () => {
         await renewInfo(cy);
-        updateDetailsToShow(cy, { update: cy.vars.details.value });
+        updateDetailsToShow(cy, { update: cy.vars['details'].value });
         setUpdateState(cy);
       },
     },
@@ -2669,14 +1987,14 @@ function setPublicVars(cy, preset) {
 
   // call functions that need to be init
   if (Object.keys(preset).length === 0) {
-    setSelectMode(cy, cy.vars.mode.value);
+    setSelectMode(cy, cy.vars['mode'].value);
     updateDetailsToShow(cy, { update: false });
     updateScheduler(cy, '_none_');
   } else {
-    setSelectMode(cy, preset.mode.value);
-    updateDetailsToShow(cy, { update: preset.details.value });
-    updateScheduler(cy, preset.scheduler.value);
-    updateNewPanePosition(cy, preset.panePosition.value);
+    setSelectMode(cy, preset['mode'].value);
+    updateDetailsToShow(cy, { update: preset['details'].value });
+    updateScheduler(cy, preset['scheduler'].value);
+    updateNewPanePosition(cy, preset['panePosition'].value);
     toggleFullSync(cy, preset['pcp-auto-sync'].value);
   }
   setUpdateState(cy);
@@ -2689,7 +2007,4 @@ export {
   setMaxIteration,
   mergePane,
   handleMergePane,
-  duplicatePane,
-  importCy,
-  exportCy,
 };

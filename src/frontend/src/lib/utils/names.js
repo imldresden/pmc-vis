@@ -26,7 +26,6 @@ const CONSTANTS = {
     'pcp-hs': 'Axis Histograms',
     'pcp-dfs': 'Axis Value Frequencies',
     'pcp-refine': 'Brushes overwrite graph selection',
-    'pcp-colored-comparison': 'Colored Comparison Lines',
   },
 
   INTERACTIONS: {
