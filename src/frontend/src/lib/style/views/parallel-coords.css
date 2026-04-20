@@ -102,6 +102,26 @@ path.highlighted-path {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 128, 138, 0.45) transparent;
+}
+
+.detail-inspector .decision-tree-star-root::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.detail-inspector .decision-tree-star-root::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detail-inspector .decision-tree-star-root::-webkit-scrollbar-thumb {
+  background: rgba(120, 128, 138, 0.45);
+  border-radius: 999px;
+}
+
+.detail-inspector .decision-tree-star-root::-webkit-scrollbar-thumb:hover {
+  background: rgba(95, 103, 113, 0.7);
 }
 
 .detail-inspector .decision-tree-star-empty {
