@@ -31,7 +31,7 @@ function ensureMatrixLayer(pane) {
     top: '0',
     right: '0',
     bottom: '0',
-    zIndex: '9999',
+    zIndex: '4',
     background: '#fff',
     overflow: 'hidden',
     pointerEvents: 'auto',
@@ -107,14 +107,14 @@ function computeDegrees(sNodes, edges) {
   const degrees = new Map();
   sNodes.forEach((n) => degrees.set(n.id, 0));
 
-  for (const edge of edges) {
+  edges.forEach(edge =>  {
     if (degrees.has(edge.source)) {
       degrees.set(edge.source, degrees.get(edge.source) + 1);
     }
     if (degrees.has(edge.target)) {
       degrees.set(edge.target, degrees.get(edge.target) + 1);
     }
-  }
+  });
 
   return degrees;
 }
@@ -138,7 +138,7 @@ function applyBfsOrdering(sNodes, edges) {
     }
 
     // Find neighbors
-    for (const edge of edges) {
+    edges.forEach(edge => {
       if (edge.source === currentId && !visited.has(edge.target)) {
         const targetExists = sNodes.some((n) => n.id === edge.target);
         if (targetExists) {
@@ -146,7 +146,7 @@ function applyBfsOrdering(sNodes, edges) {
           queue.push(edge.target);
         }
       }
-    }
+    });
   }
 
   // Add any unvisited nodes
@@ -193,7 +193,11 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
 
   // Apply ordering strategy
   if (ordering === 'id') {
-    sNodes.sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+    sNodes.sort((a, b) => {
+      if (a.id > b.id) return 1;
+      if (a.id < b.id) return -1;
+      return 0;
+    });
   } else if (ordering === 'degree') {
     const degrees = computeDegrees(sNodes, edges);
     sNodes.sort((a, b) => (degrees.get(b.id) || 0) - (degrees.get(a.id) || 0));
@@ -218,7 +222,7 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
   const stateToTransitions = new Map(); // stateIdx -> Set(transitionId)
   const transitionToStates = new Map(); // transitionId -> Set(stateIdx)
 
-  for (const edge of edges) {
+  edges.forEach(edge => {
     const sourceIdx = indexMap.get(edge.source);
     const targetIdx = indexMap.get(edge.target);
 
@@ -227,7 +231,7 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
       const transitions = stateToTransitions.get(sourceIdx) || new Set();
       transitions.add(edge.target);
       stateToTransitions.set(sourceIdx, transitions);
-      continue;
+      return;
     }
 
     // Transition -> State edge
@@ -235,30 +239,32 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
       const states = transitionToStates.get(edge.source) || new Set();
       states.add(targetIdx);
       transitionToStates.set(edge.source, states);
-      continue;
+      return;
     }
 
     // Direct state-to-state edge (if present)
     if (sourceIdx != null && targetIdx != null) {
       counts[sourceIdx * n + targetIdx] += 1;
     }
-  }
+  });
 
   // Construct state-to-state connections via transition nodes
-  for (const [stateIdx, transitionSet] of stateToTransitions.entries()) {
-    for (const transitionId of transitionSet) {
-      const successorStates = transitionToStates.get(transitionId);
-      if (!successorStates) continue;
+  stateToTransitions.entries().forEach(entry => {
+    const [stateIdx, transitionSet] = entry;
 
-      for (const successorIdx of successorStates) {
+    transitionSet.forEach(transitionId => {
+      const successorStates = transitionToStates.get(transitionId);
+      if (!successorStates) return;
+
+      successorStates.forEach(successorIdx => {
         counts[stateIdx * n + successorIdx] += 1;
-      }
-    }
-  }
+      });
+    });
+  });
 
   // Find maximum count for color scaling
   let max = 0;
-  for (let i = 0; i < counts.length; i++) {
+  for (let i = 0; i < counts.length; i += 1) {
     if (counts[i] > max) max = counts[i];
   }
 
@@ -291,7 +297,7 @@ function createTooltip(pane, layer) {
       borderRadius: '4px',
       fontSize: '12px',
       pointerEvents: 'none',
-      zIndex: '1000',
+      zIndex: '4',
       whiteSpace: 'nowrap',
     });
     layer.appendChild(tooltip);
@@ -892,7 +898,7 @@ function createRenderer(pane) {
 
     const st = state.get(pane.id);
     if (!st || !st.matrixData) return;
-    const { nodes, counts, n } = st.matrixData;
+    const { nodes, n } = st.matrixData;
     const { cell, originX, originY } = st.layout;
 
     const rect = canvas.getBoundingClientRect();
@@ -1131,7 +1137,7 @@ function createRenderer(pane) {
       position: 'fixed',
       left: `${e.clientX}px`,
       top: `${e.clientY}px`,
-      zIndex: '10000',
+      zIndex: '4',
       display: 'block',
     });
 
