@@ -7,8 +7,9 @@
 ### **Tool** Version
 If you want to use the PMC-VIS version with more tools added,
 follow the **Tool** keyword. Before starting any build option:
-1. add switss-multi to `src/backend/switss`
-2. add an active gurobi license to `src/backend/gurobi`
+1. add SVAResp to `src/backend/SVaBResp` (`git clone https://github.com/johannesalehmann/SVaBResp.git SVaBResp`)
+2. add switss-multi to `src/backend/switss`
+3. add an active gurobi WSL license to `src/backend/gurobi`
 
 ----------------------------
 

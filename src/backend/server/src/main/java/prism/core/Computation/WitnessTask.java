@@ -4,10 +4,7 @@ import prism.core.Model;
 import prism.core.Namespace;
 import prism.core.Property.Property;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -102,18 +99,25 @@ public class WitnessTask extends DataProviderTask {
         // Declare files for communication with switss-multi
         Path propFile = null;
         Path witnessFile = null;
-
+        
         try {
             // Create temporary file containing property
             propFile = Files.createTempFile("property", ".prop");
             Files.writeString(propFile, property);
-            //System.out.println(property);
             ProcessBuilder builder = new ProcessBuilder(call, modelPath, "--prop", propFile.toAbsolutePath().toString(), "--grb-timelimit", Integer.toString(this.gurobiTimelimit), "--witness", "--export-subsystem-states");
-            //System.out.println(builder.command());
-
             Process process = builder.start();
 
             int exitVal = process.waitFor();
+            if (exitVal != 0) {
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                StringBuilder logger = new StringBuilder();
+                String line;
+                while ((line = errorReader.readLine()) != null) {
+                    logger.append(line).append("\n");
+                }
+                throw new RuntimeException("Error in SwittsMulti Execution:\n" + logger);
+            }
+
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
@@ -125,6 +129,7 @@ public class WitnessTask extends DataProviderTask {
                 logger.append(line).append("\n");
             }
             //System.out.println(logger);
+
 
             Path subsystemPath = Paths.get(this.subsystemFilename);
             if (Files.exists(subsystemPath)){

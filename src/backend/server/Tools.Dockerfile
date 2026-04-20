@@ -22,7 +22,6 @@ RUN rustup default stable
 WORKDIR /home/prismServer
 
 RUN git clone https://github.com/prismmodelchecker/prism prism
-RUN git clone https://github.com/johannesalehmann/SVaBResp.git SVaBResp
 
 #build prism
 WORKDIR /home/prismServer/prism/prism
@@ -32,14 +31,6 @@ RUN git checkout 17a47f8
 WORKDIR /home/prismServer/prism/prism
 
 RUN make
-
-#build SVaBResp
-WORKDIR /home/prismServer/SVaBResp
-
-#To lock to a certain commit
-#RUN git checkout c541affb994f3ed044ae4e1dce3ed3dd078323be
-
-RUN cargo build --release --package svabresp-cli --bin svabresp-cli
 
 # Load Switts-Multi
 WORKDIR /home/prismServer
@@ -52,15 +43,19 @@ RUN make
 
 RUN cp switss-multi /usr/local/bin/
 
-#Hook gurobi license
-VOLUME ["/data"]
-ENV GRB_LICENSE_FILE="/data/gurobi.lic"
-
 WORKDIR /home/prismServer
+
+#build SVaBResp
+COPY SVaBResp SVaBResp
+WORKDIR /home/prismServer/SVaBResp
+
+#To lock to a certain commit
+#RUN git checkout c541affb994f3ed044ae4e1dce3ed3dd078323be
+RUN cargo build --release --package svabresp-cli --bin svabresp-cli
 
 #Load the SPR Tool
 #COPY spr-storm spr-storm
-
+WORKDIR /home/prismServer
 #Load PMC-Vis backend (dependencies first)
 COPY server/pom.xml server/pom.xml
 WORKDIR /home/prismServer/server
@@ -85,6 +80,10 @@ RUN sed -i 's/\r$//' bin/run && chmod +x bin/run && chmod +x bin/initdb
 USER prismServer
 
 RUN /bin/bash -c 'bin/initdb'
+
+#Hook gurobi license
+VOLUME ["/data"]
+ENV GRB_LICENSE_FILE="/data/gurobi.lic"
 
 ENTRYPOINT ["bin/run", "server", "DockerTools.yml"]
 

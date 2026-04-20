@@ -43,8 +43,8 @@ public class EditorOption {
                 this.parameters.put(name, parameter);
             }
         }catch(Exception e) {
-            System.out.println(value);
-            System.out.println(e.getMessage());
+            //System.out.println(value);
+            //System.out.println(e.getMessage());
         }
 
     }

@@ -71,12 +71,12 @@ class ProviderViewProvider {
 
     selectParameter(element) {
         console.log(element)
-        element._parent._children.forEach(child => {
-            console.log(child)
-            if (!(element.label === child.label)) {
-                child.deactivate();
-            }
-        });
+        //element._parent._children.forEach(child => {
+        //    console.log(child)
+        //    if (!(element.label === child.label)) {
+        //        child.deactivate();
+        //    }
+        //});
         this._onDidChangeTreeData.fire(undefined);
     }
 }
@@ -133,10 +133,12 @@ class ProviderViewItem extends vscode.TreeItem {
                 const parameter = '$' + child.label;
                 let value = undefined;
                 child._children.forEach(grandChild => {
-                    console.log(grandChild)
-                    console.log(grandChild.checked())
                     if (grandChild.checked()) {
-                        value = grandChild._argument;
+                        if (!value) {
+                            value = grandChild._argument;
+                        } else {
+                            value = value + "§" + grandChild._argument;
+                        }
                     }
                 })
                 console.log(value)
@@ -149,6 +151,7 @@ class ProviderViewItem extends vscode.TreeItem {
             })
 
             argument = argument.split(" ").join("&arg=");
+            argument = argument.replaceAll("§", " ")
 
             const call = `http://${constants.ADDRESS}:8080/${this._decorator._projectID}/highlight:${this._parent._parent.label}:${this._parent.label}?arg=${argument}`
             console.log(call);
@@ -165,7 +168,10 @@ class ProviderViewItem extends vscode.TreeItem {
                     }
                     const sPos = document.positionAt(d.startPosition);
                     const ePos = document.positionAt(d.endPosition);
-                    const decoration = { range: new vscode.Range(sPos, ePos), hoverMessage: d.hoverInfo };
+                    const hover = new vscode.MarkdownString(d.hoverInfo);
+                    hover.isTrusted = true;
+                    hover.supportHtml = true;
+                    const decoration = { range: new vscode.Range(sPos, ePos), hoverMessage: hover };
                     const exDeco = this._decorations.get(d.colorHex)
                     exDeco[1].push(decoration)
 
