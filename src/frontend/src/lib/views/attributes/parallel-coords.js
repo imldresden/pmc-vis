@@ -620,17 +620,18 @@ function parallelCoords(pane, data, metadata) {
     }
 
     const paneDiv = document.getElementById(pane.id);
+    const detailHost = document.getElementById(pane.details);
     if (!paneDiv) {
       // after a pane has been destroyed, clean pcp when invoked from an event listener
       publicFunctions.destroy();
       return;
     }
 
+    const detailRect = detailHost?.getBoundingClientRect();
     const where = {
       id: pane.details,
-      width: paneDiv.getBoundingClientRect().width,
-      height: pane.height * pane.split,
-      // height: document.getElementById(pane.details).getBoundingClientRect().height,
+      width: detailRect?.width || paneDiv.getBoundingClientRect().width,
+      height: detailRect?.height || (pane.height * pane.split),
     };
 
     pcpHtml = {

@@ -55,12 +55,19 @@ function createNodeElement(node, treeData) {
 }
 
 function createEdgeElement(edge) {
+  const edgeLabel = edge.label || edge.type;
+  const normalizedLabel = edgeLabel === 'keep'
+    ? 'kept'
+    : edgeLabel === 'remove'
+      ? 'removed'
+      : edgeLabel;
+
   return {
     data: {
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      label: edge.label,
+      label: normalizedLabel,
       type: edge.type,
     },
   };

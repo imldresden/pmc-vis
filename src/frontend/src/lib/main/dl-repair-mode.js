@@ -10,6 +10,7 @@ import {
   resetSummaryStates,
 } from '../views/axiom-pane.js';
 import { parallelCoords } from '../views/attributes/parallel-coords.js';
+import { DL_REPAIR_CLASS_HIERARCHY_PANE_ID, renderClassHierarchyEmptyState } from '../views/class-hierarchy-pane.js';
 import { PROJECT } from '../utils/controls.js';
 import dlRepairApi from '../utils/mock-dl-repair-api.js';
 
@@ -21,6 +22,282 @@ const STAR_AXIS_HIGHLIGHT_STROKE_WIDTH = '2.6';
 const STAR_SELECTED_AXIOM_BORDER = '#4887b9';
 
 let sidebarResizeInitialized = false;
+let dlRepairLayoutInitialized = false;
+
+const DL_REPAIR_LAYOUT = {
+  leftWidth: 28,
+  centerWidth: 47,
+  rightWidth: 25,
+  summaryHeightPct: 38,
+};
+
+function getDlRepairHostElements() {
+  return {
+    container: document.getElementById('container'),
+    layout: document.getElementById('dl-repair-layout'),
+    leftPaneHost: document.getElementById('dl-repair-left-pane'),
+    summaryHost: document.getElementById('dl-repair-summary-pane'),
+    starHost: document.getElementById('dl-repair-star-pane'),
+    classHierarchyHost: document.getElementById('dl-repair-class-hierarchy-pane'),
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function triggerDLRepairPaneResize() {
+  Object.values(getPanes()).forEach((pane) => {
+    if (!pane?.cy) {
+      return;
+    }
+    pane.cy.resize();
+    pane.cy.fit?.(undefined, 30);
+    pane.cy.pcp?.redraw?.();
+  });
+}
+
+function applyDLRepairLayoutSizing() {
+  const {
+    leftPaneHost,
+    summaryHost,
+    starHost,
+    classHierarchyHost,
+  } = getDlRepairHostElements();
+
+  const panes = getPanes();
+  const decisionPane = panes['pane-0'];
+  const summaryPane = panes['axiom-pane-0'];
+  const classHierarchyPane = panes[DL_REPAIR_CLASS_HIERARCHY_PANE_ID];
+
+  const setPaneRegionSize = (pane, height, width, { containerHeight = height, detailsHeight = 0, hideDetails = false } = {}) => {
+    if (!pane) {
+      return;
+    }
+
+    const paneElement = document.getElementById(pane.id);
+    const cyContainer = document.getElementById(pane.container);
+    const details = document.getElementById(pane.details);
+
+    pane.height = height;
+    pane.width = width;
+    if (paneElement) {
+      paneElement.style.height = `${height}px`;
+      paneElement.style.width = '100%';
+      paneElement.style.flexGrow = '1';
+    }
+    if (cyContainer) {
+      cyContainer.style.height = `${Math.max(0, containerHeight)}px`;
+    }
+    if (details) {
+      details.style.height = `${Math.max(0, detailsHeight)}px`;
+      details.style.display = hideDetails ? 'none' : '';
+    }
+    pane.split = height > 0 ? detailsHeight / height : 0;
+  };
+
+  if (decisionPane && leftPaneHost) {
+    setPaneRegionSize(decisionPane, leftPaneHost.clientHeight, leftPaneHost.clientWidth, {
+      containerHeight: leftPaneHost.clientHeight,
+      detailsHeight: starHost?.clientHeight || 0,
+      hideDetails: false,
+    });
+  }
+
+  if (summaryPane && summaryHost) {
+    setPaneRegionSize(summaryPane, summaryHost.clientHeight, summaryHost.clientWidth, {
+      containerHeight: summaryHost.clientHeight,
+      hideDetails: true,
+    });
+  }
+
+  if (classHierarchyPane && classHierarchyHost) {
+    setPaneRegionSize(classHierarchyPane, classHierarchyHost.clientHeight, classHierarchyHost.clientWidth, {
+      containerHeight: Math.max(0, classHierarchyHost.clientHeight - 32),
+      hideDetails: true,
+    });
+  }
+}
+
+function buildDLRepairLayoutShell() {
+  const container = document.getElementById('container');
+  if (!container) {
+    return;
+  }
+
+  container.classList.add('dl-repair-layout-root');
+  document.body.classList.add('dl-repair-layout-active');
+
+  if (document.getElementById('dl-repair-layout')) {
+    return;
+  }
+
+  const layout = document.createElement('div');
+  layout.id = 'dl-repair-layout';
+  layout.className = 'dl-repair-layout';
+  layout.innerHTML = `
+    <section id="dl-repair-left-pane" class="dl-repair-panel dl-repair-panel-left"></section>
+    <div class="dl-repair-resizer dl-repair-resizer-vertical" data-resize="left-center"></div>
+    <section class="dl-repair-panel dl-repair-panel-center">
+      <div id="dl-repair-summary-pane" class="dl-repair-center-top"></div>
+      <div class="dl-repair-resizer dl-repair-resizer-horizontal" data-resize="summary-star"></div>
+      <div id="dl-repair-star-pane" class="dl-repair-center-bottom"></div>
+    </section>
+    <div class="dl-repair-resizer dl-repair-resizer-vertical" data-resize="center-right"></div>
+    <section id="dl-repair-class-hierarchy-pane" class="dl-repair-panel dl-repair-panel-right"></section>
+  `;
+
+  container.appendChild(layout);
+}
+
+function mountDLRepairPanes({ decisionPaneId, summaryPaneId, classHierarchyPaneId }) {
+  const {
+    container,
+    leftPaneHost,
+    summaryHost,
+    starHost,
+    classHierarchyHost,
+  } = getDlRepairHostElements();
+
+  if (!container || !leftPaneHost || !summaryHost || !starHost || !classHierarchyHost) {
+    return;
+  }
+
+  const decisionPaneElement = document.getElementById(decisionPaneId);
+  const summaryPaneElement = document.getElementById(summaryPaneId);
+  const classHierarchyPaneElement = document.getElementById(classHierarchyPaneId);
+  const decisionDetails = getPanes()[decisionPaneId] ? document.getElementById(getPanes()[decisionPaneId].details) : null;
+
+  if (decisionPaneElement) {
+    decisionPaneElement.classList.add('dl-repair-pane', 'dl-repair-pane-decision');
+    leftPaneHost.appendChild(decisionPaneElement);
+  }
+  if (summaryPaneElement) {
+    summaryPaneElement.classList.add('dl-repair-pane', 'dl-repair-pane-summary');
+    summaryHost.appendChild(summaryPaneElement);
+  }
+  if (decisionDetails) {
+    decisionDetails.classList.add('dl-repair-detached-details');
+    starHost.appendChild(decisionDetails);
+  }
+  if (classHierarchyPaneElement) {
+    classHierarchyPaneElement.classList.add('dl-repair-pane', 'dl-repair-pane-class-hierarchy');
+    classHierarchyHost.appendChild(classHierarchyPaneElement);
+  }
+
+  container.querySelectorAll(':scope > .dragbar').forEach((dragbar) => dragbar.remove());
+}
+
+function initializeDLRepairLayoutResizers() {
+  if (dlRepairLayoutInitialized) {
+    return;
+  }
+
+  const { layout } = getDlRepairHostElements();
+  if (!layout) {
+    return;
+  }
+
+  const getColumnWidths = () => {
+    const total = DL_REPAIR_LAYOUT.leftWidth + DL_REPAIR_LAYOUT.centerWidth + DL_REPAIR_LAYOUT.rightWidth;
+    return {
+      left: (DL_REPAIR_LAYOUT.leftWidth / total) * 100,
+      center: (DL_REPAIR_LAYOUT.centerWidth / total) * 100,
+      right: (DL_REPAIR_LAYOUT.rightWidth / total) * 100,
+    };
+  };
+
+  const applyLayoutStyles = () => {
+    const { left, center, right } = getColumnWidths();
+    const navHeight = Number.parseFloat(getComputedStyle(document.body).getPropertyValue('--nav-height')) || 35;
+    const viewportHeight = Math.max(0, window.innerHeight - navHeight);
+    const layoutHeight = Math.min(layout.clientHeight || viewportHeight, viewportHeight);
+    const centerPaddingY = 16;
+    const centerGap = 4;
+    const usableCenterHeight = Math.max(0, layoutHeight - centerPaddingY - centerGap);
+    const minSummaryHeight = 160;
+    const minStarHeight = 220;
+    const preferredSummaryHeight = Math.round(usableCenterHeight * (DL_REPAIR_LAYOUT.summaryHeightPct / 100));
+    const maxSummaryHeight = Math.max(minSummaryHeight, usableCenterHeight - minStarHeight);
+    const summaryHeight = clamp(preferredSummaryHeight, minSummaryHeight, maxSummaryHeight);
+    const starHeight = Math.max(minStarHeight, usableCenterHeight - summaryHeight);
+
+    layout.style.setProperty('--dl-left-basis', `${left}%`);
+    layout.style.setProperty('--dl-center-basis', `${center}%`);
+    layout.style.setProperty('--dl-right-basis', `${right}%`);
+    layout.style.setProperty('--dl-summary-height-px', `${summaryHeight}px`);
+    layout.style.setProperty('--dl-star-height-px', `${starHeight}px`);
+    applyDLRepairLayoutSizing();
+  };
+
+  const onMouseDown = (event) => {
+    const resizer = event.target.closest('.dl-repair-resizer');
+    if (!resizer) {
+      return;
+    }
+
+    const mode = resizer.getAttribute('data-resize');
+    const rect = layout.getBoundingClientRect();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const start = { ...DL_REPAIR_LAYOUT };
+
+    const onMove = (moveEvent) => {
+      if (mode === 'left-center' || mode === 'center-right') {
+        const delta = ((moveEvent.clientX - startX) / rect.width) * 100;
+        if (mode === 'left-center') {
+          const combined = start.leftWidth + start.centerWidth;
+          DL_REPAIR_LAYOUT.leftWidth = clamp(start.leftWidth + delta, 18, combined - 24);
+          DL_REPAIR_LAYOUT.centerWidth = combined - DL_REPAIR_LAYOUT.leftWidth;
+          DL_REPAIR_LAYOUT.rightWidth = start.rightWidth;
+        } else {
+          const combined = start.centerWidth + start.rightWidth;
+          DL_REPAIR_LAYOUT.centerWidth = clamp(start.centerWidth + delta, 24, combined - 18);
+          DL_REPAIR_LAYOUT.rightWidth = combined - DL_REPAIR_LAYOUT.centerWidth;
+          DL_REPAIR_LAYOUT.leftWidth = start.leftWidth;
+        }
+      } else if (mode === 'summary-star') {
+        const centerHost = document.querySelector('.dl-repair-panel-center');
+        const centerRect = centerHost?.getBoundingClientRect();
+        if (!centerRect) {
+          return;
+        }
+        const usableCenterHeight = Math.max(0, centerRect.height - 4);
+        const minSummaryHeight = 160;
+        const minStarHeight = 220;
+        const startSummaryHeight = (start.summaryHeightPct / 100) * usableCenterHeight;
+        const nextSummaryHeight = clamp(
+          startSummaryHeight + (moveEvent.clientY - startY),
+          minSummaryHeight,
+          Math.max(minSummaryHeight, usableCenterHeight - minStarHeight),
+        );
+        DL_REPAIR_LAYOUT.summaryHeightPct = (nextSummaryHeight / usableCenterHeight) * 100;
+      }
+
+      applyLayoutStyles();
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      triggerDLRepairPaneResize();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    event.preventDefault();
+  };
+
+  layout.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('resize', () => {
+    applyLayoutStyles();
+    requestAnimationFrame(() => triggerDLRepairPaneResize());
+  }, { passive: true });
+
+  applyLayoutStyles();
+  requestAnimationFrame(() => triggerDLRepairPaneResize());
+  dlRepairLayoutInitialized = true;
+}
 
 function resetGlobalStarAxisHighlight() {
   document.querySelectorAll('.decision-tree-star-svg .decision-tree-star-axis-line').forEach((axisLine) => {
@@ -1011,6 +1288,7 @@ async function startDLRepairProject() {
   }
 
   setupDLRepairSidebarResize();
+  buildDLRepairLayoutShell();
 
   try {
     const treeData = await dlRepairApi.initializeDecisionTree();
@@ -1029,15 +1307,67 @@ async function startDLRepairProject() {
       axiomPaneDiv.classList.add('axiom-pane-fixed');
       axiomPaneDiv.style.flexGrow = '0.4';
       axiomPaneDiv.style.minWidth = '180px';
-      const axiomHeader = document.createElement('div');
-      axiomHeader.className = 'axiom-pane-header';
-      axiomHeader.textContent = 'SUMMARY VIEW';
-      axiomPaneDiv.insertBefore(axiomHeader, axiomPaneDiv.firstChild);
     }
+
+    const axiomDetailsDiv = document.getElementById(axiomPane.details);
+    if (axiomDetailsDiv) {
+      axiomDetailsDiv.style.display = 'none';
+    }
+    const axiomControls = document.getElementById(`${axiomPane.container}-controls`);
+    if (axiomControls) {
+      const closeBtn = axiomControls.querySelector('.pane-close');
+      if (closeBtn) {
+        closeBtn.style.display = 'none';
+      }
+    }
+
+    const firstPaneId = 'pane-0';
+    const pane = spawnPane({ id: firstPaneId }, nodesIds);
+    const decisionDetails = document.getElementById(pane.details);
+    if (decisionDetails) {
+      decisionDetails.style.display = '';
+    }
+
+    const classHierarchyPane = spawnPane({ id: DL_REPAIR_CLASS_HIERARCHY_PANE_ID }, nodesIds);
+    const classHierarchyPaneDiv = document.getElementById(classHierarchyPane.id);
+    if (classHierarchyPaneDiv) {
+      classHierarchyPaneDiv.classList.add('axiom-pane-fixed', 'dl-repair-class-hierarchy-fixed');
+    }
+    const classHierarchyContainer = document.getElementById(classHierarchyPane.container);
+    const classHierarchyDetails = document.getElementById(classHierarchyPane.details);
+    if (classHierarchyDetails) {
+      classHierarchyDetails.style.display = 'none';
+    }
+    const classHierarchySplitDragbar = classHierarchyContainer?.nextElementSibling;
+    if (classHierarchySplitDragbar?.classList.contains('split-dragbar')) {
+      classHierarchySplitDragbar.style.display = 'none';
+    }
+    const classHierarchyControls = document.getElementById(`${classHierarchyPane.container}-controls`);
+    if (classHierarchyControls) {
+      const closeBtn = classHierarchyControls.querySelector('.pane-close');
+      if (closeBtn) {
+        closeBtn.style.display = 'none';
+      }
+    }
+    if (classHierarchyContainer) {
+      renderClassHierarchyEmptyState(classHierarchyContainer, 'Open a node menu in the decision tree to load its hierarchy difference.');
+    }
+
+    mountDLRepairPanes({
+      decisionPaneId: firstPaneId,
+      summaryPaneId: axiomPaneId,
+      classHierarchyPaneId: DL_REPAIR_CLASS_HIERARCHY_PANE_ID,
+    });
+    initializeDLRepairLayoutResizers();
+    applyDLRepairLayoutSizing();
 
     const axiomContainer = document.getElementById(axiomPane.container);
     if (!axiomContainer) {
       throw new Error('Failed to find axiom pane container');
+    }
+    const axiomSplitDragbar = axiomContainer.nextElementSibling;
+    if (axiomSplitDragbar?.classList.contains('split-dragbar')) {
+      axiomSplitDragbar.style.display = 'none';
     }
 
     const axiomCy = createAxiomPane(axiomContainer, treeData, axiomPaneId);
@@ -1051,28 +1381,15 @@ async function startDLRepairProject() {
       axiomCy.fit(undefined, 20);
     }));
 
-    const axiomDetailsDiv = document.getElementById(axiomPane.details);
-    if (axiomDetailsDiv) {
-      axiomDetailsDiv.style.display = 'none';
-    }
-    const axiomSplitDragbar = axiomContainer.nextElementSibling;
-    if (axiomSplitDragbar?.classList.contains('split-dragbar')) {
-      axiomSplitDragbar.style.display = 'none';
-    }
-    const axiomControls = document.getElementById(`${axiomPane.container}-controls`);
-    if (axiomControls) {
-      const closeBtn = axiomControls.querySelector('.pane-close');
-      if (closeBtn) {
-        closeBtn.style.display = 'none';
-      }
-    }
-
-    const firstPaneId = 'pane-0';
-    const pane = spawnPane({ id: firstPaneId }, nodesIds);
     const container = document.getElementById(pane.container);
     if (!container) {
       throw new Error('Failed to find pane container');
     }
+    const decisionSplitDragbar = container.nextElementSibling;
+    if (decisionSplitDragbar?.classList.contains('split-dragbar')) {
+      decisionSplitDragbar.style.display = 'none';
+    }
+
     const cy = createInitialTree(container, treeData);
     if (!cy) {
       throw new Error('Failed to create decision tree visualization');

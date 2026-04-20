@@ -1,5 +1,5 @@
 import { cytoscape } from './imports/import-cytoscape.js';
-import { spawnPane, destroyPanes } from './panes/panes.js';
+import { spawnPane, destroyPanes, getPanes } from './panes/panes.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
 import { setPane } from '../utils/controls.js';
 
@@ -17,6 +17,7 @@ const EDGE_STATE = {
   REMOVED: 'removed',
 };
 const CLASS_HIERARCHY_HEADER_HEIGHT = 32;
+const DL_REPAIR_CLASS_HIERARCHY_PANE_ID = 'class-hierarchy-pane-0';
 
 function normalizeEdgeList(rawEdges) {
   if (!Array.isArray(rawEdges)) {
@@ -54,6 +55,12 @@ function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyD
   const modifiedEdgeKeys = createEdgeKeySet(modifiedEdges);
   const removedEdgeKeys = createEdgeKeySet(removedEdges);
   const addedEdgeKeys = createEdgeKeySet(addedEdges);
+  const diffConnectedLabels = new Set();
+
+  [...removedEdges, ...addedEdges].forEach(([source, target]) => {
+    diffConnectedLabels.add(source);
+    diffConnectedLabels.add(target);
+  });
 
   const allEdgeKeys = new Set([...initialEdgeKeys, ...modifiedEdgeKeys]);
 
@@ -89,6 +96,7 @@ function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyD
         id: labelToNodeId.get(label),
         label,
         state,
+        emphasis: diffConnectedLabels.has(label) || state !== NODE_STATE.UNCHANGED ? 'focus' : 'muted',
       },
       classes: 'class-hierarchy-node',
     });
@@ -171,6 +179,24 @@ function createComparisonStylesheet() {
         'background-opacity': 1,
         'border-width': OUTLINES.width,
         'border-color': COLORS.NODE_COLOR,
+        opacity: 0.92,
+      },
+    },
+    {
+      selector: 'node[state = "unchanged"][emphasis = "muted"]',
+      style: {
+        'background-color': '#f3f4f6',
+        'border-color': '#d5dae0',
+        color: '#a0a8b3',
+        'text-outline-color': '#f3f4f6',
+        'text-outline-width': '0px',
+        opacity: 0.92,
+      },
+    },
+    {
+      selector: 'node[state = "unchanged"][emphasis = "focus"]',
+      style: {
+        opacity: 1,
       },
     },
     {
@@ -212,6 +238,17 @@ function createComparisonStylesheet() {
         'line-style': 'solid',
         'line-color': COLORS.EDGE_COLOR,
         'target-arrow-color': COLORS.EDGE_COLOR,
+        opacity: 0.18,
+      },
+    },
+    {
+      selector: 'edge[state = "unchanged"]',
+      style: {
+        width: 1.6,
+        'target-arrow-size': 11,
+        'line-color': '#c8ced6',
+        'target-arrow-color': '#c8ced6',
+        opacity: 0.92,
       },
     },
     {
@@ -220,6 +257,8 @@ function createComparisonStylesheet() {
         'line-color': '#c92a2a',
         'target-arrow-color': '#c92a2a',
         'line-style': 'dashed',
+        width: 3.2,
+        opacity: 1,
       },
     },
     {
@@ -228,6 +267,8 @@ function createComparisonStylesheet() {
         'line-color': '#2b8a3e',
         'target-arrow-color': '#2b8a3e',
         'line-style': 'solid',
+        width: 3.2,
+        opacity: 1,
       },
     },
   ];
@@ -246,6 +287,19 @@ function hidePaneDetails(pane, container) {
 
   container.style.marginTop = `${CLASS_HIERARCHY_HEADER_HEIGHT}px`;
   container.style.height = `${Math.max(80, pane.height - CLASS_HIERARCHY_HEADER_HEIGHT)}px`;
+}
+
+function renderEmptyState(container, message) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="class-hierarchy-empty-state">
+      <div class="class-hierarchy-empty-state-title">Class Hierarchy</div>
+      <div class="class-hierarchy-empty-state-copy">${message}</div>
+    </div>
+  `;
 }
 
 function setPaneTitle(pane, titleText, onLayoutChange) {
@@ -339,21 +393,22 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
   const hasInitialHierarchy = Boolean(hierarchyPayload?.initialHierarchy);
   const hasModifiedHierarchy = Boolean(hierarchyPayload?.modifiedHierarchy);
   const hasHierarchyData = hasInitialHierarchy && hasModifiedHierarchy;
-  if (!hasHierarchyData) {
-    console.error(`Hierarchy data not available for node ${nodeId}`);
-    return null;
-  }
+  const isFixedDlRepairLayout = document.body.classList.contains('dl-repair-layout-active');
 
   const sourcePaneId = sourceCy?.container()?.closest('.pane')?.id || 'pane-0';
-  const newPane = spawnPane(
-    {
-      spawner: sourcePaneId,
-      id: `class-hierarchy-${nodeId}-${Date.now()}`,
-      newPanePosition: 'right',
-    },
-    [`class-hierarchy-${nodeId}`],
-    [nodeId],
-  );
+  let newPane = isFixedDlRepairLayout ? getPanes()[DL_REPAIR_CLASS_HIERARCHY_PANE_ID] : null;
+
+  if (!newPane) {
+    newPane = spawnPane(
+      {
+        spawner: sourcePaneId,
+        id: isFixedDlRepairLayout ? DL_REPAIR_CLASS_HIERARCHY_PANE_ID : `class-hierarchy-${nodeId}-${Date.now()}`,
+        newPanePosition: 'right',
+      },
+      [`class-hierarchy-${nodeId}`],
+      [nodeId],
+    );
+  }
 
   if (!newPane) {
     console.error('Failed to create class hierarchy pane');
@@ -366,7 +421,25 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     return null;
   }
 
+  if (newPane.cy?.destroy) {
+    try {
+      newPane.cy.destroy();
+    } catch (error) {
+      console.warn('Failed to destroy previous class hierarchy view:', error);
+    }
+    newPane.cy = undefined;
+  }
+
+  container.innerHTML = '';
   hidePaneDetails(newPane, container);
+
+  const nodeTitle = getNodeAxiomText(sourceCy, nodeId) || `Node ${nodeId}`;
+
+  if (!hasHierarchyData) {
+    setPaneTitle(newPane, nodeTitle, null);
+    renderEmptyState(container, 'No hierarchy difference is available for this node.');
+    return newPane;
+  }
 
   const elements = buildComparisonElements(
     hierarchyPayload.initialHierarchy,
@@ -405,7 +478,6 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     }).run();
   };
 
-  const nodeTitle = getNodeAxiomText(sourceCy, nodeId) || `Node ${nodeId}`;
   setPaneTitle(newPane, nodeTitle, runLayout);
 
   const initialPositions = new Map();
@@ -451,6 +523,14 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
           tooltipText: 'Close this class hierarchy pane',
           coreAsWell: true,
           onClickFunction: () => {
+            if (isFixedDlRepairLayout) {
+              cy.destroy();
+              newPane.cy = undefined;
+              container.innerHTML = '';
+              setPaneTitle(newPane, nodeTitle, null);
+              renderEmptyState(container, 'Open a node menu in the decision tree to load its hierarchy difference.');
+              return;
+            }
             destroyPanes(newPane.id, { manualRemoval: true }).catch(error => {
               console.error(`Failed to close pane ${newPane.id}:`, error);
             });
@@ -471,3 +551,8 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
 
   return cy;
 }
+
+export {
+  DL_REPAIR_CLASS_HIERARCHY_PANE_ID,
+  renderEmptyState as renderClassHierarchyEmptyState,
+};
