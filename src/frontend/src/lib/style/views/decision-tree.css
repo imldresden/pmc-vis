@@ -248,6 +248,15 @@ body.dl-repair-layout-active #container {
   min-width: 220px;
 }
 
+.dl-repair-layout[data-class-hierarchy-visible="false"] > .dl-repair-panel-right,
+.dl-repair-layout[data-class-hierarchy-visible="false"] > .dl-repair-resizer[data-resize="center-right"] {
+  display: none;
+}
+
+.dl-repair-layout[data-class-hierarchy-visible="false"] > .dl-repair-panel-center {
+  flex: 1 1 auto;
+}
+
 .dl-repair-center-top,
 .dl-repair-center-bottom {
   min-height: 0;

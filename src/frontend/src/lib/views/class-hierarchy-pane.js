@@ -19,6 +19,21 @@ const EDGE_STATE = {
 const CLASS_HIERARCHY_HEADER_HEIGHT = 32;
 const DL_REPAIR_CLASS_HIERARCHY_PANE_ID = 'class-hierarchy-pane-0';
 
+function setDLRepairClassHierarchyVisibility(isVisible) {
+  const layout = document.getElementById('dl-repair-layout');
+  if (!layout) {
+    return;
+  }
+
+  layout.setAttribute('data-class-hierarchy-visible', isVisible ? 'true' : 'false');
+  if (!isVisible && layout.getAttribute('data-fullscreen-target') === 'class-hierarchy') {
+    layout.removeAttribute('data-fullscreen-target');
+  }
+  window.dispatchEvent(new CustomEvent('dl-repair-class-hierarchy-visibility-change', {
+    detail: { visible: isVisible },
+  }));
+}
+
 function normalizeEdgeList(rawEdges) {
   if (!Array.isArray(rawEdges)) {
     return [];
@@ -438,6 +453,11 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
   const sourcePaneId = sourceCy?.container()?.closest('.pane')?.id || 'pane-0';
   let newPane = isFixedDlRepairLayout ? getPanes()[DL_REPAIR_CLASS_HIERARCHY_PANE_ID] : null;
 
+  if (isFixedDlRepairLayout) {
+    setDLRepairClassHierarchyVisibility(true);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  }
+
   if (!newPane) {
     newPane = spawnPane(
       {
@@ -570,8 +590,7 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
               cy.destroy();
               newPane.cy = undefined;
               container.innerHTML = '';
-              setPaneTitle(newPane, nodeTitle, null);
-              renderEmptyState(container, 'Open a node menu in the decision tree to load its hierarchy difference.');
+              setDLRepairClassHierarchyVisibility(false);
               return;
             }
             destroyPanes(newPane.id, { manualRemoval: true }).catch(error => {
@@ -622,6 +641,10 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
   cy.fit(undefined, 30);
   newPane.cy = cy;
   setPane(newPane.id);
+  requestAnimationFrame(() => {
+    cy.resize();
+    cy.fit(undefined, 30);
+  });
 
   return cy;
 }
@@ -629,4 +652,5 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
 export {
   DL_REPAIR_CLASS_HIERARCHY_PANE_ID,
   renderEmptyState as renderClassHierarchyEmptyState,
+  setDLRepairClassHierarchyVisibility,
 };

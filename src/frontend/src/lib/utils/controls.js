@@ -96,14 +96,20 @@ async function setPane(paneId, { make = false, force = false } = {}) {
       pane.cy._layout.run();
     }
 
-    document.onkeydown = (e) => pane.cy.vars['ur'].fn(pane.cy, e);
+    if (pane.cy?.vars?.ur?.fn) {
+      document.onkeydown = (e) => pane.cy.vars['ur'].fn(pane.cy, e);
+    } else {
+      document.onkeydown = null;
+    }
     document.getElementById('selected-pane').innerHTML = paneId;
     document.getElementById(pane.id).classList.add('active-pane');
-    if (info.updating) {
+    if (info.updating && pane.cy?.vars?.update?.fn) {
       await pane.cy.vars['update'].fn();
     }
 
-    createControllers(pane.cy.params);
+    if (pane.cy?.vars?.panePosition) {
+      createControllers(pane.cy.params);
+    }
 
     // Update sidebar legends for active pane
     updateSidebarLegends(pane);

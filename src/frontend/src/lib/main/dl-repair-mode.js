@@ -10,7 +10,7 @@ import {
   resetSummaryStates,
 } from '../views/axiom-pane.js';
 import { parallelCoords } from '../views/attributes/parallel-coords.js';
-import { DL_REPAIR_CLASS_HIERARCHY_PANE_ID, renderClassHierarchyEmptyState } from '../views/class-hierarchy-pane.js';
+import { DL_REPAIR_CLASS_HIERARCHY_PANE_ID, setDLRepairClassHierarchyVisibility } from '../views/class-hierarchy-pane.js';
 import { PROJECT } from '../utils/controls.js';
 import dlRepairApi from '../utils/mock-dl-repair-api.js';
 
@@ -24,6 +24,7 @@ const STAR_SELECTED_AXIOM_BORDER = '#4887b9';
 let sidebarResizeInitialized = false;
 let dlRepairLayoutInitialized = false;
 let dlRepairFullscreenControlsInitialized = false;
+let dlRepairClassHierarchyVisibilityInitialized = false;
 
 const DL_REPAIR_LAYOUT = {
   leftWidth: 28,
@@ -146,6 +147,7 @@ function buildDLRepairLayoutShell() {
   const layout = document.createElement('div');
   layout.id = 'dl-repair-layout';
   layout.className = 'dl-repair-layout';
+  layout.setAttribute('data-class-hierarchy-visible', 'false');
   layout.innerHTML = `
     <section id="dl-repair-left-pane" class="dl-repair-panel dl-repair-panel-left" data-panel-key="decision">
       <button type="button" class="dl-repair-fullscreen-toggle" data-fullscreen-target="decision" title="Expand decision tree panel" aria-label="Expand decision tree panel">
@@ -233,6 +235,19 @@ function initializeDLRepairFullscreenControls() {
 
   updateButtons();
   dlRepairFullscreenControlsInitialized = true;
+}
+
+function initializeDLRepairClassHierarchyVisibilityHandling() {
+  if (dlRepairClassHierarchyVisibilityInitialized) {
+    return;
+  }
+
+  window.addEventListener('dl-repair-class-hierarchy-visibility-change', () => {
+    applyDLRepairLayoutSizing();
+    requestAnimationFrame(() => triggerDLRepairPaneResize());
+  });
+
+  dlRepairClassHierarchyVisibilityInitialized = true;
 }
 
 function mountDLRepairPanes({ decisionPaneId, summaryPaneId, classHierarchyPaneId }) {
@@ -1434,15 +1449,14 @@ async function startDLRepairProject() {
         closeBtn.style.display = 'none';
       }
     }
-    if (classHierarchyContainer) {
-      renderClassHierarchyEmptyState(classHierarchyContainer, 'Open a node menu in the decision tree to load its hierarchy difference.');
-    }
+    setDLRepairClassHierarchyVisibility(false);
 
     mountDLRepairPanes({
       decisionPaneId: firstPaneId,
       summaryPaneId: axiomPaneId,
       classHierarchyPaneId: DL_REPAIR_CLASS_HIERARCHY_PANE_ID,
     });
+    initializeDLRepairClassHierarchyVisibilityHandling();
     initializeDLRepairFullscreenControls();
     initializeDLRepairLayoutResizers();
     applyDLRepairLayoutSizing();
