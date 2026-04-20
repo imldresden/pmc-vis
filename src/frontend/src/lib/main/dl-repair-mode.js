@@ -128,6 +128,16 @@ function buildDLRepairLayoutShell() {
   container.classList.add('dl-repair-layout-root');
   document.body.classList.add('dl-repair-layout-active');
 
+  const activePaneLabel = document.getElementById('selected-pane')?.closest('.nav-text');
+  if (activePaneLabel) {
+    activePaneLabel.style.display = 'none';
+  }
+
+  const exportButton = document.getElementById('export-strat');
+  if (exportButton) {
+    exportButton.style.display = 'none';
+  }
+
   if (document.getElementById('dl-repair-layout')) {
     return;
   }

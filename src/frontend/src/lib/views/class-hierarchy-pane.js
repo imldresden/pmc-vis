@@ -1,7 +1,7 @@
 import { cytoscape } from './imports/import-cytoscape.js';
 import { spawnPane, destroyPanes, getPanes } from './panes/panes.js';
 import { COLORS, OUTLINES } from '../style/views/variables.js';
-import { setPane } from '../utils/controls.js';
+import { hideAllTippies, makeTippy, setPane } from '../utils/controls.js';
 
 import dlRepairApi from '../utils/mock-dl-repair-api.js';
 
@@ -43,6 +43,23 @@ function isLabelReferenced(edges, label) {
   return edges.some(
     ([source, target]) => source === label || target === label,
   );
+}
+
+function isOntologyBoundaryLabel(label) {
+  const normalized = String(label || '').trim().toLowerCase();
+  return normalized === '⊤'
+    || normalized === '⊥'
+    || normalized === 'owl:thing'
+    || normalized === 'owl:nothing'
+    || normalized === 'thing'
+    || normalized === 'nothing';
+}
+
+function isOntologyBottomLabel(label) {
+  const normalized = String(label || '').trim().toLowerCase();
+  return normalized === '⊥'
+    || normalized === 'owl:nothing'
+    || normalized === 'nothing';
 }
 
 function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyDifference) {
@@ -97,6 +114,7 @@ function buildComparisonElements(initialHierarchy, modifiedHierarchy, hierarchyD
         label,
         state,
         emphasis: diffConnectedLabels.has(label) || state !== NODE_STATE.UNCHANGED ? 'focus' : 'muted',
+        ontologyBoundary: isOntologyBoundaryLabel(label) ? 'true' : 'false',
       },
       classes: 'class-hierarchy-node',
     });
@@ -183,6 +201,19 @@ function createComparisonStylesheet() {
       },
     },
     {
+      selector: 'node[ontologyBoundary = "true"]',
+      style: {
+        'background-color': '#edf4ff',
+        'border-color': '#2b6cb0',
+        color: '#2b6cb0',
+        'text-outline-color': '#2b6cb0',
+        'text-outline-width': '0.6px',
+        'font-size': 16,
+        'font-weight': '900',
+        opacity: 1,
+      },
+    },
+    {
       selector: 'node[state = "unchanged"][emphasis = "muted"]',
       style: {
         'background-color': '#f3f4f6',
@@ -191,6 +222,16 @@ function createComparisonStylesheet() {
         'text-outline-color': '#f3f4f6',
         'text-outline-width': '0px',
         opacity: 0.92,
+      },
+    },
+    {
+      selector: 'node[state = "unchanged"][emphasis = "muted"][ontologyBoundary = "true"]',
+      style: {
+        'background-color': '#edf4ff',
+        'border-color': '#2b6cb0',
+        color: '#2b6cb0',
+        'text-outline-color': '#edf4ff',
+        opacity: 1,
       },
     },
     {
@@ -337,40 +378,39 @@ function setPaneTitle(pane, titleText, onLayoutChange) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;flex-wrap:nowrap;">
       <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Class Hierarchy (${titleText})</span>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button type="button" data-layout-mode="vertical" style="font-size:11px;padding:2px 7px;border:1px solid #bfbfbf;background:#f7f7f7;color:#444;cursor:pointer;">Vertical</button>
-        <button type="button" data-layout-mode="horizontal" style="font-size:11px;padding:2px 7px;border:1px solid #bfbfbf;background:#f7f7f7;color:#444;cursor:pointer;">Horizontal</button>
+        <button type="button" data-layout-toggle style="font-size:12px;width:28px;height:24px;border:1px solid #9d9d9d;background:#efefef;color:#444;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Switch to vertical layout" aria-label="Switch to vertical layout">
+          <i class="fa-solid fa-arrows-left-right"></i>
+        </button>
       </div>
     </div>
   `;
 
-  const verticalBtn = header.querySelector('[data-layout-mode="vertical"]');
-  const horizontalBtn = header.querySelector('[data-layout-mode="horizontal"]');
+  const layoutToggle = header.querySelector('[data-layout-toggle]');
+  let currentMode = 'horizontal';
 
-  const setActiveButton = (mode) => {
-    [verticalBtn, horizontalBtn].forEach((button) => {
-      if (!button) {
-        return;
-      }
-      const isActive = button.getAttribute('data-layout-mode') === mode;
-      button.style.background = isActive ? '#efefef' : '#f7f7f7';
-      button.style.borderColor = isActive ? '#9d9d9d' : '#bfbfbf';
-      button.style.color = '#444';
-    });
+  const setLayoutToggleState = (mode) => {
+    currentMode = mode;
+    if (!layoutToggle) {
+      return;
+    }
+
+    const isHorizontal = mode === 'horizontal';
+    layoutToggle.innerHTML = isHorizontal
+      ? '<i class="fa-solid fa-arrows-left-right"></i>'
+      : '<i class="fa-solid fa-arrows-up-down"></i>';
+    layoutToggle.title = isHorizontal
+      ? 'Switch to vertical layout'
+      : 'Switch to horizontal layout';
+    layoutToggle.setAttribute('aria-label', layoutToggle.title);
   };
 
-  setActiveButton('horizontal');
+  setLayoutToggleState('horizontal');
 
-  if (verticalBtn) {
-    verticalBtn.onclick = () => {
-      setActiveButton('vertical');
-      onLayoutChange?.('vertical');
-    };
-  }
-
-  if (horizontalBtn) {
-    horizontalBtn.onclick = () => {
-      setActiveButton('horizontal');
-      onLayoutChange?.('horizontal');
+  if (layoutToggle) {
+    layoutToggle.onclick = () => {
+      const nextMode = currentMode === 'horizontal' ? 'vertical' : 'horizontal';
+      setLayoutToggleState(nextMode);
+      onLayoutChange?.(nextMode);
     };
   }
 }
@@ -478,6 +518,9 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
     }).run();
   };
 
+  const bottomTooltipId = `class-hierarchy-bottom-tooltip-${newPane.id}`;
+  let bottomTooltipVisible = false;
+
   setPaneTitle(newPane, nodeTitle, runLayout);
 
   const initialPositions = new Map();
@@ -543,6 +586,37 @@ export async function openClassHierarchyPane(sourceCy, nodeId) {
 
   cy.on('tap', () => {
     setPane(newPane.id);
+  });
+
+  cy.on('tap', 'node', (event) => {
+    const node = event.target;
+    const isShiftClick = Boolean(event.originalEvent?.shiftKey);
+    if (!isOntologyBottomLabel(node.data('label')) || !isShiftClick || bottomTooltipVisible) {
+      return;
+    }
+
+    const tooltip = document.createElement('div');
+    tooltip.textContent = 'Bottom is a subset of everything.';
+    makeTippy(node, tooltip, bottomTooltipId);
+    bottomTooltipVisible = true;
+  });
+
+  cy.on('tap', (event) => {
+    const tappedBottomNode = event.target?.isNode?.()
+      && isOntologyBottomLabel(event.target.data('label'));
+    if (tappedBottomNode || !bottomTooltipVisible) {
+      return;
+    }
+
+    hideAllTippies();
+    bottomTooltipVisible = false;
+  });
+
+  cy.on('destroy', () => {
+    if (bottomTooltipVisible) {
+      hideAllTippies();
+      bottomTooltipVisible = false;
+    }
   });
 
   cy.fit(undefined, 30);

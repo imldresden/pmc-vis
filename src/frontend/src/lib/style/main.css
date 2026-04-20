@@ -117,7 +117,7 @@ nav {
 #config-toggle {
   position: absolute;
   z-index: 5;
-  top: calc(var(--nav-height) + 20px);
+  top: calc(var(--nav-height) + 56px);
   cursor: pointer;
 
   background-color: var(--pane-background);
