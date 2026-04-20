@@ -26,7 +26,6 @@ import {
   isMatrixEnabled,
   updateMatrixLegendInSidebar,
 } from '../views/matrix/matrix-view.js';
-import { ndl_to_pcp } from '../views/format.js';
 import { socket } from '../views/imports/import-socket.js';
 
 const $ = document.querySelector.bind(document);
@@ -166,17 +165,6 @@ function hideAllTippies() {
   tippies = {};
 }
 
-// ============================================================================
-// Sidebar Legend Management
-// ============================================================================
-
-/**
- * Update sidebar legends based on the currently active pane.
- * Clears existing legends and creates appropriate ones based on pane state
- * (matrix view, unified view, diff graph, PCP overlay, etc.).
- *
- * @param {Object} pane - The active pane object
- */
 function updateSidebarLegends(pane) {
   const infoBox = document.getElementById('info-box');
   if (!infoBox) return;
@@ -217,373 +205,351 @@ function updateSidebarLegends(pane) {
   // createNodeTypeLegendInSidebar(pane);
 }
 
-/**
- * Create an interactive legend for node types in the sidebar.
- * Provides filtering and isolation capabilities:
- * - Single click: Highlight nodes of this type (dim others)
- * - Double-click: Isolate only this type (hide others completely)
- *
- * The legend dynamically updates node counts and supports:
- * - Standard state nodes
- * - Expanded nodes (with children)
- * - Marked nodes
- * - Diff graph types (added/removed/context)
- * - Unified view types (graph A only/graph B only/shared)
- *
- * @param {Object} pane - The pane object
- */
-function createNodeTypeLegendInSidebar(pane) {
-  const infoBox = document.getElementById('info-box');
-  if (!infoBox || !pane || !pane.cy) return;
+// function createNodeTypeLegendInSidebar(pane) {
+//   const infoBox = document.getElementById('info-box');
+//   if (!infoBox || !pane || !pane.cy) return;
 
-  const cy = pane.cy;
+//   const cy = pane.cy;
 
-  // Define node types with their visual properties
-  const nodeTypes = [
-    {
-      id: 'state',
-      label: 'State Nodes',
-      selector: 'node.s',
-      color: '#555555',
-      shape: 'rectangle',
-      description: 'Regular state nodes',
-    },
-    {
-      id: 'expanded',
-      label: 'Expanded Nodes',
-      selector: 'node.s[[outdegree > 0]]',
-      color: '#555555',
-      shape: 'rectangle',
-      border: true,
-      description: 'Nodes with visible children',
-    },
-    {
-      id: 'marked',
-      label: 'Marked Nodes',
-      selector: 'node.s.marked',
-      color: '#4caf50',
-      shape: 'rectangle',
-      description: 'User-marked nodes',
-    },
-  ];
+//   // Define node types with their visual properties
+//   const nodeTypes = [
+//     {
+//       id: 'state',
+//       label: 'State Nodes',
+//       selector: 'node.s',
+//       color: '#555555',
+//       shape: 'rectangle',
+//       description: 'Regular state nodes',
+//     },
+//     {
+//       id: 'expanded',
+//       label: 'Expanded Nodes',
+//       selector: 'node.s[[outdegree > 0]]',
+//       color: '#555555',
+//       shape: 'rectangle',
+//       border: true,
+//       description: 'Nodes with visible children',
+//     },
+//     {
+//       id: 'marked',
+//       label: 'Marked Nodes',
+//       selector: 'node.s.marked',
+//       color: '#4caf50',
+//       shape: 'rectangle',
+//       description: 'User-marked nodes',
+//     },
+//   ];
 
-  // Check if diff graph - add diff-specific types
-  if (cy.isDiffGraph) {
-    nodeTypes.push(
-      {
-        id: 'diff-added',
-        label: 'Added (Graph B)',
-        selector: 'node.diff-added',
-        color: '#4caf50',
-        shape: 'rectangle',
-        description: 'Nodes only in Graph B',
-      },
-      {
-        id: 'diff-removed',
-        label: 'Removed (Graph A)',
-        selector: 'node.diff-removed',
-        color: '#f44336',
-        shape: 'rectangle',
-        description: 'Nodes only in Graph A',
-      },
-      {
-        id: 'diff-context',
-        label: 'Shared (Context)',
-        selector: 'node.diff-context',
-        color: '#9e9e9e',
-        shape: 'rectangle',
-        description: 'Nodes in both graphs',
-      },
-    );
-  }
+//   // Check if diff graph - add diff-specific types
+//   if (cy.isDiffGraph) {
+//     nodeTypes.push(
+//       {
+//         id: 'diff-added',
+//         label: 'Added (Graph B)',
+//         selector: 'node.diff-added',
+//         color: '#4caf50',
+//         shape: 'rectangle',
+//         description: 'Nodes only in Graph B',
+//       },
+//       {
+//         id: 'diff-removed',
+//         label: 'Removed (Graph A)',
+//         selector: 'node.diff-removed',
+//         color: '#f44336',
+//         shape: 'rectangle',
+//         description: 'Nodes only in Graph A',
+//       },
+//       {
+//         id: 'diff-context',
+//         label: 'Shared (Context)',
+//         selector: 'node.diff-context',
+//         color: '#9e9e9e',
+//         shape: 'rectangle',
+//         description: 'Nodes in both graphs',
+//       },
+//     );
+//   }
 
-  // Check if unified view - add comparison types
-  if (cy.unifiedViewData) {
-    nodeTypes.push(
-      {
-        id: 'graph-a-only',
-        label: 'Graph A Only',
-        selector: 'node.graph-a-only',
-        color: '#4caf50',
-        shape: 'rectangle',
-        description: 'Nodes unique to Graph A',
-      },
-      {
-        id: 'graph-b-only',
-        label: 'Graph B Only',
-        selector: 'node.graph-b-only',
-        color: '#f44336',
-        shape: 'rectangle',
-        description: 'Nodes unique to Graph B',
-      },
-      {
-        id: 'graph-shared',
-        label: 'Shared Nodes',
-        selector: 'node.graph-shared',
-        color: '#9e9e9e',
-        shape: 'rectangle',
-        description: 'Nodes in both graphs',
-      },
-    );
-  }
+//   // Check if unified view - add comparison types
+//   if (cy.unifiedViewData) {
+//     nodeTypes.push(
+//       {
+//         id: 'graph-a-only',
+//         label: 'Graph A Only',
+//         selector: 'node.graph-a-only',
+//         color: '#4caf50',
+//         shape: 'rectangle',
+//         description: 'Nodes unique to Graph A',
+//       },
+//       {
+//         id: 'graph-b-only',
+//         label: 'Graph B Only',
+//         selector: 'node.graph-b-only',
+//         color: '#f44336',
+//         shape: 'rectangle',
+//         description: 'Nodes unique to Graph B',
+//       },
+//       {
+//         id: 'graph-shared',
+//         label: 'Shared Nodes',
+//         selector: 'node.graph-shared',
+//         color: '#9e9e9e',
+//         shape: 'rectangle',
+//         description: 'Nodes in both graphs',
+//       },
+//     );
+//   }
 
-  const legend = document.createElement('div');
-  legend.id = `legend-node-types-${pane.id}`;
-  legend.style.cssText = `
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 15px;
-    font-size: 12px;
-  `;
+//   const legend = document.createElement('div');
+//   legend.id = `legend-node-types-${pane.id}`;
+//   legend.style.cssText = `
+//     background: #f9f9f9;
+//     border: 1px solid #ddd;
+//     border-radius: 4px;
+//     padding: 10px;
+//     margin-bottom: 15px;
+//     font-size: 12px;
+//   `;
 
-  const title = document.createElement('div');
-  title.textContent = 'Node Types (click to filter)';
-  title.style.cssText = `
-    font-weight: bold;
-    margin-bottom: 8px;
-    font-size: 13px;
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 5px;
-  `;
-  legend.appendChild(title);
+//   const title = document.createElement('div');
+//   title.textContent = 'Node Types (click to filter)';
+//   title.style.cssText = `
+//     font-weight: bold;
+//     margin-bottom: 8px;
+//     font-size: 13px;
+//     border-bottom: 1px solid #ccc;
+//     padding-bottom: 5px;
+//   `;
+//   legend.appendChild(title);
 
-  // Track active filter state
-  let activeFilter = null;
-  let isolatedType = null;
+//   // Track active filter state
+//   let activeFilter = null;
+//   let isolatedType = null;
 
-  // Store references to count badges for updating
-  const countBadges = new Map();
+//   // Store references to count badges for updating
+//   const countBadges = new Map();
 
-  nodeTypes.forEach(nodeType => {
-    const item = document.createElement('div');
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      padding: 4px 6px;
-      margin: 2px 0;
-      cursor: pointer;
-      border-radius: 3px;
-      transition: background 0.15s;
-    `;
-    item.title = `Click: Highlight ${nodeType.label}\nDouble-click: Show only ${nodeType.label}`;
+//   nodeTypes.forEach(nodeType => {
+//     const item = document.createElement('div');
+//     item.style.cssText = `
+//       display: flex;
+//       align-items: center;
+//       padding: 4px 6px;
+//       margin: 2px 0;
+//       cursor: pointer;
+//       border-radius: 3px;
+//       transition: background 0.15s;
+//     `;
+//     item.title = `Click: Highlight ${nodeType.label}\nDouble-click: Show only ${nodeType.label}`;
 
-    // Color indicator
-    const colorBox = document.createElement('span');
-    const isOutline = nodeType.border || nodeType.id === 'expanded';
-    colorBox.style.cssText = `
-      display: inline-block;
-      width: 14px;
-      height: 10px;
-      ${isOutline ? `border: 2px solid ${nodeType.color}; background: transparent;` : `background: ${nodeType.color};`}
-      border-radius: ${nodeType.shape === 'rectangle' ? '2px' : '50%'};
-      margin-right: 8px;
-      flex-shrink: 0;
-    `;
+//     // Color indicator
+//     const colorBox = document.createElement('span');
+//     const isOutline = nodeType.border || nodeType.id === 'expanded';
+//     colorBox.style.cssText = `
+//       display: inline-block;
+//       width: 14px;
+//       height: 10px;
+//       ${isOutline ? `border: 2px solid ${nodeType.color}; background: transparent;` : `background: ${nodeType.color};`}
+//       border-radius: ${nodeType.shape === 'rectangle' ? '2px' : '50%'};
+//       margin-right: 8px;
+//       flex-shrink: 0;
+//     `;
 
-    const label = document.createElement('span');
-    label.textContent = nodeType.label;
-    label.style.cssText = 'flex: 1; font-size: 11px;';
+//     const label = document.createElement('span');
+//     label.textContent = nodeType.label;
+//     label.style.cssText = 'flex: 1; font-size: 11px;';
 
-    // Count badge
-    const countBadge = document.createElement('span');
-    const count = cy.$(nodeType.selector).length;
-    countBadge.textContent = count;
-    countBadge.style.cssText = `
-      background: #e0e0e0;
-      color: #555;
-      padding: 1px 6px;
-      border-radius: 10px;
-      font-size: 10px;
-      min-width: 20px;
-      text-align: center;
-    `;
-    countBadges.set(nodeType.id, { badge: countBadge, selector: nodeType.selector });
+//     // Count badge
+//     const countBadge = document.createElement('span');
+//     const count = cy.$(nodeType.selector).length;
+//     countBadge.textContent = count;
+//     countBadge.style.cssText = `
+//       background: #e0e0e0;
+//       color: #555;
+//       padding: 1px 6px;
+//       border-radius: 10px;
+//       font-size: 10px;
+//       min-width: 20px;
+//       text-align: center;
+//     `;
+//     countBadges.set(nodeType.id, { badge: countBadge, selector: nodeType.selector });
 
-    item.appendChild(colorBox);
-    item.appendChild(label);
-    item.appendChild(countBadge);
+//     item.appendChild(colorBox);
+//     item.appendChild(label);
+//     item.appendChild(countBadge);
 
-    // Hover effect
-    item.onmouseenter = () => {
-      item.style.background = '#e8e8e8';
-    };
-    item.onmouseleave = () => {
-      let nestedColor = (isolatedType === nodeType.id ? '#ffe0b2' : 'transparent');
-      item.style.background = activeFilter === nodeType.id ? '#d0e8ff' : nestedColor;
-    };
+//     // Hover effect
+//     item.onmouseenter = () => {
+//       item.style.background = '#e8e8e8';
+//     };
+//     item.onmouseleave = () => {
+//       let nestedColor = (isolatedType === nodeType.id ? '#ffe0b2' : 'transparent');
+//       item.style.background = activeFilter === nodeType.id ? '#d0e8ff' : nestedColor;
+//     };
 
-    // Helper function to reset all filters
-    const resetFilters = () => {
-      activeFilter = null;
-      isolatedType = null;
-      // Reset node/edge styles directly
-      cy.batch(() => {
-        cy.nodes().style({ opacity: 1, visibility: 'visible' });
-        cy.edges().style({ opacity: 1, visibility: 'visible' });
-      });
-      legend.querySelectorAll('[data-node-type]').forEach(el => {
-        el.style.background = 'transparent';
-        el.style.opacity = '1';
-      });
-    };
+//     // Helper function to reset all filters
+//     const resetFilters = () => {
+//       activeFilter = null;
+//       isolatedType = null;
+//       // Reset node/edge styles directly
+//       cy.batch(() => {
+//         cy.nodes().style({ opacity: 1, visibility: 'visible' });
+//         cy.edges().style({ opacity: 1, visibility: 'visible' });
+//       });
+//       legend.querySelectorAll('[data-node-type]').forEach(el => {
+//         el.style.background = 'transparent';
+//         el.style.opacity = '1';
+//       });
+//     };
 
-    // Click: Highlight/filter this type
-    item.onclick = (e) => {
-      e.stopPropagation();
+//     // Click: Highlight/filter this type
+//     item.onclick = (e) => {
+//       e.stopPropagation();
 
-      // Update counts first
-      countBadges.forEach((data) => {
-        data.badge.textContent = cy.$(data.selector).length;
-      });
+//       // Update counts first
+//       countBadges.forEach((data) => {
+//         data.badge.textContent = cy.$(data.selector).length;
+//       });
 
-      if (activeFilter === nodeType.id && !isolatedType) {
-        // Deselect - show all
-        resetFilters();
-      } else {
-        // Select this type
-        activeFilter = nodeType.id;
-        isolatedType = null;
+//       if (activeFilter === nodeType.id && !isolatedType) {
+//         // Deselect - show all
+//         resetFilters();
+//       } else {
+//         // Select this type
+//         activeFilter = nodeType.id;
+//         isolatedType = null;
 
-        // Highlight matching nodes by dimming others
-        const matchingNodes = cy.$(nodeType.selector);
-        const nonMatchingNodes = cy.nodes().difference(matchingNodes);
-        const matchingEdges = matchingNodes.connectedEdges();
-        const nonMatchingEdges = cy.edges().difference(matchingEdges);
+//         // Highlight matching nodes by dimming others
+//         const matchingNodes = cy.$(nodeType.selector);
+//         const nonMatchingNodes = cy.nodes().difference(matchingNodes);
+//         const matchingEdges = matchingNodes.connectedEdges();
+//         const nonMatchingEdges = cy.edges().difference(matchingEdges);
 
-        cy.batch(() => {
-          cy.nodes().style({ visibility: 'visible' });
-          cy.edges().style({ visibility: 'visible' });
-          matchingNodes.style({ opacity: 1 });
-          matchingEdges.style({ opacity: 1 });
-          nonMatchingNodes.style({ opacity: 0.15 });
-          nonMatchingEdges.style({ opacity: 0.1 });
-        });
+//         cy.batch(() => {
+//           cy.nodes().style({ visibility: 'visible' });
+//           cy.edges().style({ visibility: 'visible' });
+//           matchingNodes.style({ opacity: 1 });
+//           matchingEdges.style({ opacity: 1 });
+//           nonMatchingNodes.style({ opacity: 0.15 });
+//           nonMatchingEdges.style({ opacity: 0.1 });
+//         });
 
-        // Update item styling
-        legend.querySelectorAll('[data-node-type]').forEach(el => {
-          el.style.background = 'transparent';
-          el.style.opacity = '1';
-        });
-        item.style.background = '#d0e8ff';
-      }
-    };
+//         // Update item styling
+//         legend.querySelectorAll('[data-node-type]').forEach(el => {
+//           el.style.background = 'transparent';
+//           el.style.opacity = '1';
+//         });
+//         item.style.background = '#d0e8ff';
+//       }
+//     };
 
-    // Double-click: Isolate only this type (hide others)
-    item.ondblclick = (e) => {
-      e.stopPropagation();
+//     // Double-click: Isolate only this type (hide others)
+//     item.ondblclick = (e) => {
+//       e.stopPropagation();
 
-      if (isolatedType === nodeType.id) {
-        // Restore all
-        resetFilters();
-      } else {
-        // Isolate this type
-        isolatedType = nodeType.id;
-        activeFilter = nodeType.id;
+//       if (isolatedType === nodeType.id) {
+//         // Restore all
+//         resetFilters();
+//       } else {
+//         // Isolate this type
+//         isolatedType = nodeType.id;
+//         activeFilter = nodeType.id;
 
-        const matchingNodes = cy.$(nodeType.selector);
-        const nonMatchingNodes = cy.nodes().difference(matchingNodes);
-        const matchingEdges = matchingNodes.connectedEdges();
-        const nonMatchingEdges = cy.edges().difference(matchingEdges);
+//         const matchingNodes = cy.$(nodeType.selector);
+//         const nonMatchingNodes = cy.nodes().difference(matchingNodes);
+//         const matchingEdges = matchingNodes.connectedEdges();
+//         const nonMatchingEdges = cy.edges().difference(matchingEdges);
 
-        cy.batch(() => {
-          matchingNodes.style({ opacity: 1, visibility: 'visible' });
-          matchingEdges.style({ opacity: 1, visibility: 'visible' });
-          nonMatchingNodes.style({ visibility: 'hidden' });
-          nonMatchingEdges.style({ visibility: 'hidden' });
-        });
+//         cy.batch(() => {
+//           matchingNodes.style({ opacity: 1, visibility: 'visible' });
+//           matchingEdges.style({ opacity: 1, visibility: 'visible' });
+//           nonMatchingNodes.style({ visibility: 'hidden' });
+//           nonMatchingEdges.style({ visibility: 'hidden' });
+//         });
 
-        // Update item styling
-        legend.querySelectorAll('[data-node-type]').forEach(el => {
-          el.style.background = 'transparent';
-          el.style.opacity = '0.5';
-        });
-        item.style.background = '#ffe0b2';
-        item.style.opacity = '1';
-      }
-    };
+//         // Update item styling
+//         legend.querySelectorAll('[data-node-type]').forEach(el => {
+//           el.style.background = 'transparent';
+//           el.style.opacity = '0.5';
+//         });
+//         item.style.background = '#ffe0b2';
+//         item.style.opacity = '1';
+//       }
+//     };
 
-    item.setAttribute('data-node-type', nodeType.id);
-    legend.appendChild(item);
-  });
+//     item.setAttribute('data-node-type', nodeType.id);
+//     legend.appendChild(item);
+//   });
 
-  // Reset button
-  const resetBtn = document.createElement('button');
-  resetBtn.textContent = 'Reset Filter';
-  resetBtn.style.cssText = `
-    width: 100%;
-    margin-top: 8px;
-    padding: 4px 8px;
-    background: #607d8b;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 11px;
-  `;
-  resetBtn.onmouseenter = () => resetBtn.style.background = '#455a64';
-  resetBtn.onmouseleave = () => resetBtn.style.background = '#607d8b';
-  resetBtn.onclick = () => {
-    activeFilter = null;
-    isolatedType = null;
-    cy.batch(() => {
-      cy.nodes().style({ opacity: 1, visibility: 'visible' });
-      cy.edges().style({ opacity: 1, visibility: 'visible' });
-    });
-    legend.querySelectorAll('[data-node-type]').forEach(el => {
-      el.style.background = 'transparent';
-      el.style.opacity = '1';
-    });
-    // Update counts
-    countBadges.forEach((data, id) => {
-      data.badge.textContent = cy.$(data.selector).length;
-    });
-  };
-  legend.appendChild(resetBtn);
+//   // Reset button
+//   const resetBtn = document.createElement('button');
+//   resetBtn.textContent = 'Reset Filter';
+//   resetBtn.style.cssText = `
+//     width: 100%;
+//     margin-top: 8px;
+//     padding: 4px 8px;
+//     background: #607d8b;
+//     color: white;
+//     border: none;
+//     border-radius: 3px;
+//     cursor: pointer;
+//     font-size: 11px;
+//   `;
+//   resetBtn.onmouseenter = () => resetBtn.style.background = '#455a64';
+//   resetBtn.onmouseleave = () => resetBtn.style.background = '#607d8b';
+//   resetBtn.onclick = () => {
+//     activeFilter = null;
+//     isolatedType = null;
+//     cy.batch(() => {
+//       cy.nodes().style({ opacity: 1, visibility: 'visible' });
+//       cy.edges().style({ opacity: 1, visibility: 'visible' });
+//     });
+//     legend.querySelectorAll('[data-node-type]').forEach(el => {
+//       el.style.background = 'transparent';
+//       el.style.opacity = '1';
+//     });
+//     // Update counts
+//     countBadges.forEach((data, id) => {
+//       data.badge.textContent = cy.$(data.selector).length;
+//     });
+//   };
+//   legend.appendChild(resetBtn);
 
-  // Function to update all counts
-  const updateAllCounts = () => {
-    countBadges.forEach((data, id) => {
-      data.badge.textContent = cy.$(data.selector).length;
-    });
-  };
+//   // Function to update all counts
+//   const updateAllCounts = () => {
+//     countBadges.forEach((data, id) => {
+//       data.badge.textContent = cy.$(data.selector).length;
+//     });
+//   };
 
-  // Listen for class changes (e.g., marking nodes)
-  const classChangeHandler = () => {
-    // Debounce updates
-    if (legend._updateTimeout) clearTimeout(legend._updateTimeout);
-    legend._updateTimeout = setTimeout(updateAllCounts, 100);
-  };
+//   // Listen for class changes (e.g., marking nodes)
+//   const classChangeHandler = () => {
+//     // Debounce updates
+//     if (legend._updateTimeout) clearTimeout(legend._updateTimeout);
+//     legend._updateTimeout = setTimeout(updateAllCounts, 100);
+//   };
 
-  // Register event listeners for node changes
-  cy.on('add remove', 'node', classChangeHandler);
+//   // Register event listeners for node changes
+//   cy.on('add remove', 'node', classChangeHandler);
 
-  // Listen for global mark/unmark events (both use action: 'mark')
-  const globalActionHandler = (e) => {
-    if (e.detail && e.detail.action === 'mark') {
-      // Small delay to ensure class has been applied
-      setTimeout(updateAllCounts, 50);
-    }
-  };
-  document.addEventListener('global-action', globalActionHandler);
+//   // Listen for global mark/unmark events (both use action: 'mark')
+//   const globalActionHandler = (e) => {
+//     if (e.detail && e.detail.action === 'mark') {
+//       // Small delay to ensure class has been applied
+//       setTimeout(updateAllCounts, 50);
+//     }
+//   };
+//   document.addEventListener('global-action', globalActionHandler);
 
-  // Store cleanup function on legend element for potential future cleanup
-  legend._cleanup = () => {
-    cy.off('add remove', 'node', classChangeHandler);
-    document.removeEventListener('global-action', globalActionHandler);
-  };
+//   // Store cleanup function on legend element for potential future cleanup
+//   legend._cleanup = () => {
+//     cy.off('add remove', 'node', classChangeHandler);
+//     document.removeEventListener('global-action', globalActionHandler);
+//   };
 
-  infoBox.appendChild(legend);
-}
+//   infoBox.appendChild(legend);
+// }
 
-/**
- * Create a legend for PCP (Parallel Coordinate Plot) overlays in the sidebar.
- * Shows which pane's data is overlaid on the current pane's PCP view,
- * with color coding and visibility toggles.
- *
- * @param {Object} pane - The pane object
- */
 function createPcpOverlayLegendInSidebar(pane) {
   const infoBox = document.getElementById('info-box');
   if (!infoBox) return;
@@ -796,7 +762,7 @@ function makeViewModeToggle() {
 
   // Check if this is a multi-matrix pane
   const isMultiMatrix = pane?.cy?.multiMatrixData;
-  const initialText = isMultiMatrix ? 'Node-Link' : (isMatrixEnabled(pane) ? 'Node-Link' : 'Matrix');
+  const initialText = isMultiMatrix || isMatrixEnabled(pane) ? 'Node-Link' : 'Matrix';
   const $btn = h('button', { class: 'ui button' }, [h('span', {}, [t(initialText)])]);
 
   // Disable button for multi-matrix panes
@@ -1766,7 +1732,7 @@ function updateCurvedConnectors(enabled) {
           const nodeX = containerBounds.left - containerParentBounds.left + renderedPos.x;
           const nodeY = containerBounds.top - containerParentBounds.top + renderedPos.y;
 
-          nodePositions[id] = nodePositions[id] || [];
+          nodePositions[id] ||= [];
           nodePositions[id].push({
             paneId: p.id,
             x: nodeX,
@@ -1792,40 +1758,42 @@ function updateCurvedConnectors(enabled) {
       const shouldGrayOut = hoveredNodeId && !isHovered;
 
       // Draw curves from each position to the next
-      for (let i = 0; i < positions.length - 1; i++) {
+      for (let i = 0; i < positions.length - 1; i += 1) {
         const start = positions[i];
         const end = positions[i + 1];
 
         // Check if nodes are hidden
-        const startHidden = start.x < start.containerBounds.left || start.x > start.containerBounds.right
-          || start.y < start.containerBounds.top || start.y > start.containerBounds.bottom;
-        const endHidden = end.x < end.containerBounds.left || end.x > end.containerBounds.right
-          || end.y < end.containerBounds.top || end.y > end.containerBounds.bottom;
+        const startHidden = start.x < start.containerBounds.left
+          || start.x > start.containerBounds.right
+          || start.y < start.containerBounds.top
+          || start.y > start.containerBounds.bottom;
+        const endHidden = end.x < end.containerBounds.left
+          || end.x > end.containerBounds.right
+          || end.y < end.containerBounds.top
+          || end.y > end.containerBounds.bottom;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
         let d;
 
         // Only draw connectors when both nodes are visible
-        if (startHidden || endHidden) {
-          // Skip this connector - don't draw anything
-          continue;
+        if (!(startHidden || endHidden)) {
+          // Normal curve when both nodes are visible
+          const midX = (start.x + end.x) / 2;
+          const controlOffset = Math.abs(end.x - start.x) * 0.3;
+          d = `M ${start.x} ${start.y} Q ${midX} ${start.y - controlOffset}, ${end.x} ${end.y}`;
+
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', shouldGrayOut ? '#cccccc' : '#439843');
+          path.setAttribute('stroke-width', isHovered ? '4' : '2');
+          path.setAttribute('fill', 'none');
+          const hov = isHovered ? '0.9' : '0.6';
+          path.setAttribute('opacity', shouldGrayOut ? '0.3' : hov);
+          path.setAttribute('stroke-dasharray', '5,5');
+          path.setAttribute('data-node-id', nodeId);
+
+          svg.appendChild(path);
         }
-
-        // Normal curve when both nodes are visible
-        const midX = (start.x + end.x) / 2;
-        const controlOffset = Math.abs(end.x - start.x) * 0.3;
-        d = `M ${start.x} ${start.y} Q ${midX} ${start.y - controlOffset}, ${end.x} ${end.y}`;
-
-        path.setAttribute('d', d);
-        path.setAttribute('stroke', shouldGrayOut ? '#cccccc' : '#439843');
-        path.setAttribute('stroke-width', isHovered ? '4' : '2');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('opacity', shouldGrayOut ? '0.3' : (isHovered ? '0.9' : '0.6'));
-        path.setAttribute('stroke-dasharray', '5,5');
-        path.setAttribute('data-node-id', nodeId);
-
-        svg.appendChild(path);
       }
     });
   }, 16);
@@ -2042,206 +2010,199 @@ function showPaneDiffDialog() {
   });
 }
 
-function showCompareAllDialog() {
-  const panes = getPanes();
-  const paneList = Object.values(panes).filter(p => p.cy);
+// KILLSWITCHED
+// function showCompareAllDialog() {
+//   const panes = getPanes();
+//   const paneList = Object.values(panes).filter(p => p.cy);
 
-  if (paneList.length < 2) {
-    alert('Need at least 2 panes to compare');
-    return;
-  }
+//   if (paneList.length < 2) {
+//     alert('Need at least 2 panes to compare');
+//     return;
+//   }
 
-  // Create checkboxes for each pane
-  const checkboxHtml = paneList.map((p, idx) => `
-    <div style="margin: 10px 0;">
-      <input type="checkbox" id="compare-all-pane-${idx}" value="${idx}" checked style="margin-right: 5px;">
-      <label for="compare-all-pane-${idx}">Pane ${idx + 1}: ${p.id}</label>
-    </div>
-  `).join('');
+//   // Create checkboxes for each pane
+//   const checkboxHtml = paneList.map((p, idx) => `
+//     <div style="margin: 10px 0;">
+//       <input type="checkbox"
+//          id="compare-all-pane-${idx}"
+//          value="${idx}"
+//          checked
+//          style="margin-right: 5px;">
+//       <label for="compare-all-pane-${idx}">Pane ${idx + 1}: ${p.id}</label>
+//     </div>
+//   `).join('');
 
-  import('sweetalert2').then(({ default: Swal }) => {
-    Swal.fire({
-      title: 'Compare All - Multi-Matrix View',
-      html: `
-        <div style="text-align: left; max-height: 400px; overflow-y: auto;">
-          <p style="margin-bottom: 10px;">Select panes to display in a grid matrix view:</p>
-          <p style="margin-bottom: 15px; font-size: 12px; color: #666;">
-            Selected panes will be shown side-by-side in a single matrix.<br>
-            Layout: 2 columns, multiple rows as needed.
-          </p>
-          ${checkboxHtml}
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Create Multi-Matrix',
-      cancelButtonText: 'Cancel',
-      preConfirm: () => {
-        const selected = [];
-        paneList.forEach((p, idx) => {
-          const checkbox = document.getElementById(`compare-all-pane-${idx}`);
-          if (checkbox && checkbox.checked) {
-            selected.push(idx);
-          }
-        });
+//   import('sweetalert2').then(({ default: Swal }) => {
+//     Swal.fire({
+//       title: 'Compare All - Multi-Matrix View',
+//       html: `
+//         <div style="text-align: left; max-height: 400px; overflow-y: auto;">
+//           <p style="margin-bottom: 10px;">Select panes to display in a grid matrix view:</p>
+//           <p style="margin-bottom: 15px; font-size: 12px; color: #666;">
+//             Selected panes will be shown side-by-side in a single matrix.<br>
+//             Layout: 2 columns, multiple rows as needed.
+//           </p>
+//           ${checkboxHtml}
+//         </div>
+//       `,
+//       showCancelButton: true,
+//       confirmButtonText: 'Create Multi-Matrix',
+//       cancelButtonText: 'Cancel',
+//       preConfirm: () => {
+//         const selected = [];
+//         paneList.forEach((p, idx) => {
+//           const checkbox = document.getElementById(`compare-all-pane-${idx}`);
+//           if (checkbox && checkbox.checked) {
+//             selected.push(idx);
+//           }
+//         });
 
-        if (selected.length < 2) {
-          Swal.showValidationMessage('Please select at least 2 panes');
-          return false;
-        }
+//         if (selected.length < 2) {
+//           Swal.showValidationMessage('Please select at least 2 panes');
+//           return false;
+//         }
 
-        return selected;
-      },
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const selectedIndices = result.value;
-        const selectedPanes = selectedIndices.map(idx => paneList[idx]);
+//         return selected;
+//       },
+//     }).then((result) => {
+//       if (result.isConfirmed && result.value) {
+//         const selectedIndices = result.value;
+//         const selectedPanes = selectedIndices.map(idx => paneList[idx]);
 
-        // Create a multi-matrix comparison view
-        createMultiMatrixView(selectedPanes);
-      }
-    });
-  });
-}
+//         // Create a multi-matrix comparison view
+//         createMultiMatrixView(selectedPanes);
+//       }
+//     });
+//   });
+// }
 
-function createMultiMatrixView(selectedPanes) {
-  function buildPcpOverlayDataFromPanes(panes, modeValue, detailsProp) {
-    const selector = modeValue === 's+t' ? '' : '.' + modeValue;
+// function createMultiMatrixView(selectedPanes) {
+//   function buildPcpOverlayDataFromPanes(panes, modeValue, detailsProp) {
+//     const selector = modeValue === 's+t' ? '' : '.' + modeValue;
 
-    return panes
-      .filter(p => p?.cy)
-      .map((p) => {
-        let selected = 0;
+//     return panes
+//       .filter(p => p?.cy)
+//       .map((p) => {
+//         let selected = 0;
 
-        const { pl, pld } = ndl_to_pcp(
-          {
-            nodes: p.cy.$(`node${selector}`).map((n) => {
-              const d = n.data();
-              d._selected = n.selected();
-              if (d._selected) selected += 1;
-              return d;
-            }),
-          },
-          detailsProp,
-        );
+//         const { pl, pld } = ndl_to_pcp(
+//           {
+//             nodes: p.cy.$(`node${selector}`).map((n) => {
+//               const d = n.data();
+//               d._selected = n.selected();
+//               if (d._selected) selected += 1;
+//               return d;
+//             }),
+//           },
+//           detailsProp,
+//         );
 
-        const hidden = new Set(['color']);
-        const props = Object.keys(pld).filter((k) => !hidden.has(k));
-        if (props.length === 0) return null;
+//         const hidden = new Set(['color']);
+//         const props = Object.keys(pld).filter((k) => !hidden.has(k));
+//         if (props.length === 0) return null;
 
-        return {
-          pane: p,
-          data: pl,
-          metadata: {
-            data_id: 'id',
-            nominals: props.filter((k) => pld[k].type === 'nominal'),
-            booleans: props.filter((k) => pld[k].type === 'boolean'),
-            numbers: props.filter((k) => pld[k].type === 'number'),
-            pld,
-            preselected: selected,
-          },
-        };
-      })
-      .filter(Boolean);
-  }
+//         return {
+//           pane: p,
+//           data: pl,
+//           metadata: {
+//             data_id: 'id',
+//             nominals: props.filter((k) => pld[k].type === 'nominal'),
+//             booleans: props.filter((k) => pld[k].type === 'boolean'),
+//             numbers: props.filter((k) => pld[k].type === 'number'),
+//             pld,
+//             preselected: selected,
+//           },
+//         };
+//       })
+//       .filter(Boolean);
+//   }
 
-  // Import the necessary modules
-  import('../views/panes/panes.js').then((panesModule) => {
-    import('../views/graph/node-link.js').then((graphModule) => {
-      import('../views/matrix/multi-matrix-view.js').then(({ createMultiMatrix }) => {
-        // Create a new pane for the multi-matrix view
-        const paneIds = selectedPanes.map(p => p.id).join('-');
-        const newPane = panesModule.spawnPane({
-          spawner: selectedPanes.map(p => p.id),
-          id: `Multi-Matrix-${paneIds}`,
-        });
+//   // Import the necessary modules
+//   import('../views/panes/panes.js').then((panesModule) => {
+//     import('../views/graph/node-link.js').then((graphModule) => {
+//       import('../views/matrix/multi-matrix-view.js').then(({ createMultiMatrix }) => {
+//         // Create a new pane for the multi-matrix view
+//         const paneIds = selectedPanes.map(p => p.id).join('-');
+//         const newPane = panesModule.spawnPane({
+//           spawner: selectedPanes.map(p => p.id),
+//           id: `Multi-Matrix-${paneIds}`,
+//         });
 
-        // Use the first pane's params as baseline
-        const baseline = selectedPanes[0];
-        const params = baseline.cy.params ? structuredClone(baseline.cy.params) : { name: 'grid' };
+//         // Use the first pane's params as baseline
+//         const baseline = selectedPanes[0];
+//         const params = baseline.cy.params ? structuredClone(baseline.cy.params) : { name: 'grid' };
 
-        // Use the baseline pane's vars as template (avoidInClone fields are excluded)
-        let vars = {};
-        if (baseline.cy?.vars) {
-          const varsValues = {};
-          Object.keys(baseline.cy.vars).forEach((k) => {
-            if (baseline.cy.vars[k].avoidInClone) {
-              return;
-            }
-            varsValues[k] = {
-              value: baseline.cy.vars[k].value,
-            };
-          });
-          vars = structuredClone(varsValues);
-        }
+//         // Use the baseline pane's vars as template (avoidInClone fields are excluded)
+//         let vars = {};
+//         if (baseline.cy?.vars) {
+//           const varsValues = {};
+//           Object.keys(baseline.cy.vars).forEach((k) => {
+//             if (baseline.cy.vars[k].avoidInClone) {
+//               return;
+//             }
+//             varsValues[k] = {
+//               value: baseline.cy.vars[k].value,
+//             };
+//           });
+//           vars = structuredClone(varsValues);
+//         }
 
-        // Seed the pane with the baseline graph so PCP can render
-        const baselineJson = baseline.cy?.json ? baseline.cy.json() : null;
-        const seedData = {
-          nodes: [],
-          edges: [],
-          info: { name: 'Multi-Matrix View' },
-          cyImport: baselineJson
-            ? {
-              elements: baselineJson.elements,
-              style: baselineJson.style,
-            }
-            : { elements: { nodes: [], edges: [] }, style: [] },
-        };
+//         // Seed the pane with the baseline graph so PCP can render
+//         const baselineJson = baseline.cy?.json ? baseline.cy.json() : null;
+//         const seedData = {
+//           nodes: [],
+//           edges: [],
+//           info: { name: 'Multi-Matrix View' },
+//           cyImport: baselineJson
+//             ? {
+//               elements: baselineJson.elements,
+//               style: baselineJson.style,
+//             }
+//             : { elements: { nodes: [], edges: [] }, style: [] },
+//         };
 
-        graphModule.spawnGraph(newPane, seedData, params, vars);
+//         graphModule.spawnGraph(newPane, seedData, params, vars);
 
-        // Wait for Cytoscape to be initialized, then create multi-matrix view
-        setTimeout(() => {
-          if (newPane.cy) {
-            // Store reference to the source panes in the Cytoscape instance
-            newPane.cy.multiMatrixData = {
-              sourcePanes: selectedPanes,
-              paneNames: selectedPanes.map(p => p.id),
-            };
+//         // Wait for Cytoscape to be initialized, then create multi-matrix view
+//         setTimeout(() => {
+//           if (newPane.cy) {
+//             // Store reference to the source panes in the Cytoscape instance
+//             newPane.cy.multiMatrixData = {
+//               sourcePanes: selectedPanes,
+//               paneNames: selectedPanes.map(p => p.id),
+//             };
 
-            // Create and render the multi-matrix view
-            createMultiMatrix(newPane, selectedPanes);
+//             // Create and render the multi-matrix view
+//             createMultiMatrix(newPane, selectedPanes);
 
-            // Enable PCP overlays for the remaining panes so Compare-All includes PCP comparison
-            const modeValue = baseline.cy?.vars?.mode?.value ?? 's';
-            const detailsProp = baseline.cy?.vars?.details?.value ?? {};
-            const overlaySourcePanes = selectedPanes.slice(1);
-            if (newPane.cy?.pcp?.enableOverlay && overlaySourcePanes.length > 0) {
-              const overlayData = buildPcpOverlayDataFromPanes(
-                overlaySourcePanes,
-                modeValue,
-                detailsProp,
-              );
-              if (overlayData.length > 0) {
-                newPane.cy.pcp.enableOverlay(overlayData);
-              }
-            }
+//             // Enable PCP overlays for the remaining panes so Compare-All includes PCP comparison
+//             const modeValue = baseline.cy?.vars?.mode?.value ?? 's';
+//             const detailsProp = baseline.cy?.vars?.details?.value ?? {};
+//             const overlaySourcePanes = selectedPanes.slice(1);
+//             if (newPane.cy?.pcp?.enableOverlay && overlaySourcePanes.length > 0) {
+//               const overlayData = buildPcpOverlayDataFromPanes(
+//                 overlaySourcePanes,
+//                 modeValue,
+//                 detailsProp,
+//               );
+//               if (overlayData.length > 0) {
+//                 newPane.cy.pcp.enableOverlay(overlayData);
+//               }
+//             }
 
-            // Update the pane title (but keep the pane.id as the container ID for DOM access)
-            const displayName = `Multi-Matrix (${selectedPanes.length} panes)`;
-            const titleElem = document.querySelector(`#${newPane.container} .pane-title`);
-            if (titleElem) {
-              titleElem.textContent = displayName;
-            }
-          }
-        }, 100);
-      });
-    });
-  });
-}
+//             // Update the pane title (but keep the pane.id as the container ID for DOM access)
+//             const displayName = `Multi-Matrix (${selectedPanes.length} panes)`;
+//             const titleElem = document.querySelector(`#${newPane.container} .pane-title`);
+//             if (titleElem) {
+//               titleElem.textContent = displayName;
+//             }
+//           }
+//         }, 100);
+//       });
+//     });
+//   });
+// }
 
-// ============================================================================
-// Unified View Legend
-// ============================================================================
-
-/**
- * Initialize unified view legend data on a pane.
- * Stores the pane list and graph colors for sidebar legend rendering.
- *
- * @param {Object} pane - The pane object
- * @param {Array<Object>} paneList - List of source panes being compared
- * @param {Array<string>} graphColors - Array of color strings for each graph
- */
 function createUnifiedViewLegend(pane, paneList, graphColors) {
   // Store data in pane.cy for sidebar legend
   pane.cy.unifiedViewData = { paneList, graphColors };
@@ -2253,16 +2214,6 @@ function createUnifiedViewLegend(pane, paneList, graphColors) {
   }
 }
 
-/**
- * Create a unified view legend in the sidebar.
- * Shows which graphs are being compared and their color coding.
- * For two-graph comparisons, also shows presence indicators
- * (shared, graph A only, graph B only).
- *
- * @param {Object} pane - The pane object
- * @param {Array<Object>} paneList - List of source panes being compared
- * @param {Array<string>} graphColors - Array of color strings for each graph
- */
 function createUnifiedViewLegendInSidebar(pane, paneList, graphColors) {
   const infoBox = document.getElementById('info-box');
   if (!infoBox) return;
@@ -2523,7 +2474,7 @@ function createUnifiedComparisonView(selectedPanes = null, isMatrixMode = false)
 
       // Check if there's any graph where one endpoint is present but the other isn't
       let isCrossEdge = false;
-      for (let i = 0; i < paneList.length; i++) {
+      for (let i = 0; i < paneList.length; i += 1) {
         const sourceHasGraph = sourceGraphs.has(i);
         const targetHasGraph = targetGraphs.has(i);
         if (sourceHasGraph !== targetHasGraph) {
@@ -2651,16 +2602,6 @@ function createUnifiedComparisonView(selectedPanes = null, isMatrixMode = false)
   });
 }
 
-// ============================================================================
-// Diff Graph Legend
-// ============================================================================
-
-/**
- * Initialize diff graph legend data on a pane.
- * Sets the isDiffGraph flag and triggers sidebar legend update.
- *
- * @param {Object} pane - The pane object
- */
 function createDiffLegend(pane) {
   // Store flag in pane.cy for sidebar legend
   pane.cy.isDiffGraph = true;
@@ -2672,18 +2613,6 @@ function createDiffLegend(pane) {
   }
 }
 
-/**
- * Create a diff graph legend in the sidebar.
- * Shows summary statistics (added/removed/context counts) and provides
- * filtering controls for isolating specific diff categories.
- *
- * The legend includes:
- * - KPI badges showing counts of added/removed/context nodes
- * - Color-coded legend items with click-to-filter functionality
- * - Filter dropdown for isolating specific diff states
- *
- * @param {Object} pane - The pane object with diff graph data
- */
 function createDiffLegendInSidebar(pane) {
   const infoBox = document.getElementById('info-box');
   if (!infoBox) return;
@@ -2921,17 +2850,6 @@ function createDiffLegendInSidebar(pane) {
   infoBox.appendChild(legend);
 }
 
-/**
- * Apply diff type filter to show/hide nodes and edges in a diff graph.
- * Filters nodes by their diff class (added/removed/context) and
- * only shows edges where both endpoints are visible.
- *
- * @param {Object} pane - The pane object with diff graph
- * @param {Object} filterState - Filter state object
- * @param {boolean} filterState.added - Show added nodes/edges
- * @param {boolean} filterState.removed - Show removed nodes/edges
- * @param {boolean} filterState.context - Show context (unchanged) nodes/edges
- */
 function applyDiffFilter(pane, filterState) {
   const cy = pane.cy;
   if (!cy) return;
@@ -2962,14 +2880,6 @@ function applyDiffFilter(pane, filterState) {
   cy.endBatch();
 }
 
-/**
- * Create a diff graph comparing multiple panes.
- * Shows nodes/edges as added (only in compared panes), removed (only in baseline),
- * or context (in both).
- *
- * @param {Array<Object>} selectedPanes - Array of panes to compare (first is baseline)
- * @param {boolean} [isMatrixMode=false] - Whether to display as matrix view
- */
 function createDiffGraph(selectedPanes, isMatrixMode = false) {
   if (!selectedPanes || selectedPanes.length < 2) return;
   const baseline = selectedPanes[0];
@@ -3153,935 +3063,940 @@ function createDiffGraph(selectedPanes, isMatrixMode = false) {
   });
 }
 
-function showScatterDiffDialog() {
-  const panes = getPanes();
-  const paneList = Object.values(panes).filter(p => p.cy);
-  if (paneList.length < 2) {
-    alert('Need at least 2 panes to create a scatter-diff view');
-    return;
-  }
-
-  const checkboxHtml = paneList.map((p, idx) => `
-    <div style="margin: 10px 0;">
-      <input type="checkbox" id="scatter-pane-${idx}" value="${idx}" ${idx < 2 ? 'checked' : ''} style="margin-right: 5px;">
-      <label for="scatter-pane-${idx}">Pane ${idx + 1}: ${p.id}</label>
-    </div>
-  `).join('');
-
-  import('sweetalert2').then(({ default: Swal }) => {
-    Swal.fire({
-      title: 'Select Panes for Scatter-Diff View',
-      html: `
-        <div style="text-align: left; max-height: 400px; overflow-y: auto;">
-          <p style="margin-bottom: 15px;">Select at least 2 panes to compare attribute distributions:</p>
-          ${checkboxHtml}
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Create Scatter-Diff',
-      cancelButtonText: 'Cancel',
-      preConfirm: () => {
-        const selected = [];
-        paneList.forEach((p, idx) => {
-          const cb = document.getElementById(`scatter-pane-${idx}`);
-          if (cb && cb.checked) selected.push(idx);
-        });
-        if (selected.length < 2) {
-          Swal.showValidationMessage('Please select at least 2 panes');
-          return false;
-        }
-        if (selected.length > 8) {
-          Swal.showValidationMessage('Maximum 8 panes can be selected');
-          return false;
-        }
-        return selected;
-      },
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const selectedPanes = result.value.map(idx => paneList[idx]);
-        createScatterDiffView(selectedPanes);
-      }
-    });
-  });
-}
-
-function createScatterDiffView(selectedPanes) {
-  if (!selectedPanes || selectedPanes.length < 2) return;
-
-  // Color palette for different panes
-  const paneColors = [
-    { color: '#3b82f6', name: 'Blue' },      // Graph 0
-    { color: '#ef4444', name: 'Red' },       // Graph 1
-    { color: '#10b981', name: 'Green' },     // Graph 2
-    { color: '#f59e0b', name: 'Amber' },     // Graph 3
-    { color: '#8b5cf6', name: 'Purple' },    // Graph 4
-    { color: '#ec4899', name: 'Pink' },      // Graph 5
-    { color: '#14b8a6', name: 'Teal' },      // Graph 6
-    { color: '#f97316', name: 'Orange' },    // Graph 7
-  ];
-
-  // Collect all numeric attributes from all panes by examining node data
-  const allAttributes = new Set();
-  selectedPanes.forEach((pane, paneIdx) => {
-    if (pane.cy) {
-      // Get all non-transition nodes
-      const nodes = pane.cy.nodes().filter(n => {
-        const id = n.data('id') || n.data().id;
-        return id && !id.toString().startsWith('t');
-      });
-
-      if (nodes.length > 0) {
-        const sampleNode = nodes[0].data();
-
-        // Check if attributes are in the details object
-        if (sampleNode.details && typeof sampleNode.details === 'object') {
-          // Check Variable Values
-          if (sampleNode.details['Variable Values']) {
-            Object.keys(sampleNode.details['Variable Values']).forEach(attr => {
-              const value = sampleNode.details['Variable Values'][attr];
-              if (typeof value === 'number' && !isNaN(value)) {
-                allAttributes.add(attr);
-              }
-            });
-          }
-
-          // Check Reward Structures
-          if (sampleNode.details['Reward Structures']) {
-            Object.keys(sampleNode.details['Reward Structures']).forEach(attr => {
-              const value = sampleNode.details['Reward Structures'][attr];
-              if (typeof value === 'number' && !isNaN(value)) {
-                allAttributes.add(attr);
-              }
-            });
-          }
-
-          // Check Model Checking Results
-          if (sampleNode.details['Model Checking Results']) {
-            Object.keys(sampleNode.details['Model Checking Results']).forEach(attr => {
-              const value = sampleNode.details['Model Checking Results'][attr];
-              if (typeof value === 'number' && !isNaN(value)) {
-                allAttributes.add(attr);
-              }
-            });
-          }
-        }
-
-        // Also check top-level attributes
-        Object.keys(sampleNode).forEach(attr => {
-          // Check if it's a numeric attribute by testing the value
-          const value = sampleNode[attr];
-          if (typeof value === 'number' && !isNaN(value) && attr !== 'id') {
-            allAttributes.add(attr);
-          }
-        });
-      }
-    }
-  });
-
-  const attributeList = Array.from(allAttributes).sort();
-
-  if (attributeList.length < 2) {
-    console.error(`Only found ${attributeList.length} numeric attributes:`, attributeList);
-    alert('Need at least 2 numeric attributes to create a scatter plot');
-    return;
-  }
-
-  // Build attribute selection dialog with multi-select option
-  const attributeCheckboxes = attributeList.map((attr, idx) => `<div style="margin: 5px 0;">
-      <label style="display: flex; align-items: center; cursor: pointer;">
-        <input type="checkbox" class="attr-checkbox" value="${attr}" ${idx < 2 ? 'checked' : ''} 
-               style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;">
-        <span>${attr}</span>
-      </label>
-    </div>`).join('');
-
-  import('sweetalert2').then(({ default: Swal }) => {
-    Swal.fire({
-      title: 'Select Attributes for Scatter Plot',
-      html: `
-        <div style="text-align: left; padding: 10px;">
-          <p style="margin-bottom: 10px; color: #666; font-size: 13px;">
-            Select 2 attributes for a single scatter plot, or multiple attributes for a matrix view.
-          </p>
-          <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-            ${attributeCheckboxes}
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; color: #888;">
-            <span id="attr-count">2 attributes selected</span>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Create Plot',
-      cancelButtonText: 'Cancel',
-      didOpen: () => {
-        const checkboxes = document.querySelectorAll('.attr-checkbox');
-        const updateCount = () => {
-          const selected = Array.from(checkboxes).filter(cb => cb.checked);
-          document.getElementById('attr-count').textContent = `${selected.length} attribute${selected.length !== 1 ? 's' : ''} selected`;
-        };
-        checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
-      },
-      preConfirm: () => {
-        const checkboxes = document.querySelectorAll('.attr-checkbox');
-        const selectedAttrs = Array.from(checkboxes)
-          .filter(cb => cb.checked)
-          .map(cb => cb.value);
-
-        if (selectedAttrs.length < 2) {
-          Swal.showValidationMessage('Please select at least 2 attributes');
-          return false;
-        }
-        return { selectedAttrs };
-      },
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const { selectedAttrs } = result.value;
-        if (selectedAttrs.length === 2) {
-          // Single scatter plot
-          renderScatterPlot(selectedPanes, selectedAttrs[0], selectedAttrs[1], paneColors);
-        } else {
-          // Matrix of scatter plots
-          renderScatterMatrix(selectedPanes, selectedAttrs, paneColors);
-        }
-      }
-    });
-  });
-}
-
-function renderScatterPlot(selectedPanes, xAttr, yAttr, paneColors) {
-  // Distinct color for overlapping points (shared coordinates across panes)
-  const overlapColor = '#000000'; // black for high contrast
-  // Helper function to get attribute value from node data
-  const getAttributeValue = (nodeData, attr) => {
-    // Check Variable Values
-    if (nodeData.details && nodeData.details['Variable Values']
-      && nodeData.details['Variable Values'][attr] !== undefined) {
-      return nodeData.details['Variable Values'][attr];
-    }
-    // Check Reward Structures
-    if (nodeData.details && nodeData.details['Reward Structures']
-      && nodeData.details['Reward Structures'][attr] !== undefined) {
-      return nodeData.details['Reward Structures'][attr];
-    }
-    // Check Model Checking Results
-    if (nodeData.details && nodeData.details['Model Checking Results']
-      && nodeData.details['Model Checking Results'][attr] !== undefined) {
-      return nodeData.details['Model Checking Results'][attr];
-    }
-    // Check top-level
-    return nodeData[attr];
-  };
-
-  // Collect data points from all panes
-  const dataPoints = [];
-
-  selectedPanes.forEach((pane, paneIdx) => {
-    if (pane.cy) {
-      let panePointCount = 0;
-      pane.cy.nodes().forEach(node => {
-        const nodeData = node.data();
-        if (!nodeData.id.startsWith('t')) { // Skip transition nodes
-          const xVal = getAttributeValue(nodeData, xAttr);
-          const yVal = getAttributeValue(nodeData, yAttr);
-          if (xVal !== undefined && yVal !== undefined && !isNaN(xVal) && !isNaN(yVal)) {
-            dataPoints.push({
-              x: Number(xVal),
-              y: Number(yVal),
-              id: nodeData.id,
-              paneIdx: paneIdx,
-              paneId: pane.id,
-              nodeData: nodeData,
-            });
-            panePointCount++;
-          }
-        }
-      });
-    }
-  });
-
-  // Check for overlapping points
-  const positionMap = new Map();
-  dataPoints.forEach(pt => {
-    const key = `${pt.x},${pt.y}`;
-    if (!positionMap.has(key)) {
-      positionMap.set(key, []);
-    }
-    positionMap.get(key).push(pt.paneIdx);
-  });
-  const overlaps = new Set(Array.from(positionMap.entries()).filter(([_, panes]) => panes.length > 1).map(([k]) => k));
-  // Flag points as overlapping
-  dataPoints.forEach(pt => {
-    const key = `${pt.x},${pt.y}`;
-    pt.isOverlap = overlaps.has(key);
-  });
-
-  if (dataPoints.length === 0) {
-    alert('No valid data points found for the selected attributes');
-    return;
-  }
-
-  // Create scatter plot HTML with D3.js
-  import('sweetalert2').then(({ default: Swal }) => {
-    const plotHtml = `
-      <div id="scatter-plot-container" style="width: 100%; height: 600px;">
-        <svg id="scatter-plot-svg" style="width: 100%; height: 100%;"></svg>
-      </div>
-    `;
-
-    Swal.fire({
-      title: `Scatter-Diff View: ${xAttr} vs ${yAttr}`,
-      html: plotHtml,
-      width: '80%',
-      showCloseButton: true,
-      showConfirmButton: false,
-      didOpen: () => {
-        // Use D3 to create the scatter plot
-        import('d3').then(d3Module => {
-          const d3 = d3Module;
-
-          const container = document.getElementById('scatter-plot-container');
-          const svg = d3.select('#scatter-plot-svg');
-          const width = container.clientWidth;
-          const height = container.clientHeight;
-          const margin = {
-            top: 40, right: 150, bottom: 60, left: 70,
-          };
-          const plotWidth = width - margin.left - margin.right;
-          const plotHeight = height - margin.top - margin.bottom;
-
-          svg.selectAll('*').remove();
-
-          const g = svg.append('g')
-            .attr('transform', `translate(${margin.left},${margin.top})`);
-
-          // Create scales
-          const xExtent = d3.extent(dataPoints, d => d.x);
-          const yExtent = d3.extent(dataPoints, d => d.y);
-
-          // Add 5% padding to extents
-          const xPadding = (xExtent[1] - xExtent[0]) * 0.05;
-          const yPadding = (yExtent[1] - yExtent[0]) * 0.05;
-
-          const xScale = d3.scaleLinear()
-            .domain([xExtent[0] - xPadding, xExtent[1] + xPadding])
-            .range([0, plotWidth]);
-
-          const yScale = d3.scaleLinear()
-            .domain([yExtent[0] - yPadding, yExtent[1] + yPadding])
-            .range([plotHeight, 0]);
-
-          // Add axes
-          const xAxis = d3.axisBottom(xScale).ticks(10);
-          const yAxis = d3.axisLeft(yScale).ticks(10);
-
-          g.append('g')
-            .attr('transform', `translate(0,${plotHeight})`)
-            .call(xAxis)
-            .append('text')
-            .attr('x', plotWidth / 2)
-            .attr('y', 45)
-            .attr('fill', 'black')
-            .attr('font-size', '14px')
-            .attr('font-weight', 'bold')
-            .attr('text-anchor', 'middle')
-            .text(xAttr);
-
-          g.append('g')
-            .call(yAxis)
-            .append('text')
-            .attr('transform', 'rotate(-90)')
-            .attr('x', -plotHeight / 2)
-            .attr('y', -50)
-            .attr('fill', 'black')
-            .attr('font-size', '14px')
-            .attr('font-weight', 'bold')
-            .attr('text-anchor', 'middle')
-            .text(yAttr);
-
-          // Add grid lines
-          g.append('g')
-            .attr('class', 'grid')
-            .attr('opacity', 0.1)
-            .call(d3.axisLeft(yScale).tickSize(-plotWidth).tickFormat(''));
-
-          g.append('g')
-            .attr('class', 'grid')
-            .attr('opacity', 0.1)
-            .attr('transform', `translate(0,${plotHeight})`)
-            .call(d3.axisBottom(xScale).tickSize(-plotHeight).tickFormat(''));
-
-          // Create tooltip
-          const tooltip = d3.select('body').append('div')
-            .attr('class', 'scatter-tooltip')
-            .style('position', 'absolute')
-            .style('visibility', 'hidden')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ccc')
-            .style('border-radius', '4px')
-            .style('padding', '10px')
-            .style('font-size', '12px')
-            .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
-            .style('pointer-events', 'none')
-            .style('z-index', '10000');
-
-          // Add points grouped by pane
-          selectedPanes.forEach((pane, paneIdx) => {
-            const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
-            const baseColor = paneColors[paneIdx % paneColors.length].color;
-
-            g.selectAll(`.point-pane-${paneIdx}`)
-              .data(paneData)
-              .enter()
-              .append('circle')
-              .attr('class', `point-pane-${paneIdx}`)
-              .attr('cx', d => xScale(d.x))
-              .attr('cy', d => yScale(d.y))
-              .attr('r', 5)
-              .attr('fill', d => d.isOverlap ? overlapColor : baseColor)
-              .attr('fill-opacity', 1)
-              .attr('stroke', '#333')
-              .attr('stroke-width', 1)
-              .style('opacity', 1)
-              .style('pointer-events', 'all')
-              .on('mouseover', function (event, d) {
-                d3.select(this)
-                  .attr('r', 8)
-                  .attr('stroke-width', 2);
-
-                tooltip
-                  .style('visibility', 'visible')
-                  .html(`
-                    <strong>Node ID:</strong> ${d.id}<br>
-                    <strong>Pane:</strong> ${d.paneId}<br>
-                    <strong>${xAttr}:</strong> ${d.x.toFixed(3)}<br>
-                    <strong>${yAttr}:</strong> ${d.y.toFixed(3)}${d.isOverlap ? '<br><em>Overlap position</em>' : ''}
-                  `);
-              })
-              .on('mousemove', function (event) {
-                tooltip
-                  .style('top', (event.pageY - 10) + 'px')
-                  .style('left', (event.pageX + 10) + 'px');
-              })
-              .on('mouseout', function () {
-                d3.select(this)
-                  .attr('r', 5)
-                  .attr('stroke-width', 1);
-
-                tooltip.style('visibility', 'hidden');
-              });
-          });
-
-          // Track visibility state for each pane
-          const paneVisibility = {};
-          selectedPanes.forEach((_, idx) => { paneVisibility[idx] = true; });
-
-          // Add legend with checkboxes
-          const legend = svg.append('g')
-            .attr('transform', `translate(${width - margin.right + 20}, ${margin.top})`);
-
-          legend.append('text')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('font-size', '14px')
-            .attr('font-weight', 'bold')
-            .text('Panes');
-
-          selectedPanes.forEach((pane, paneIdx) => {
-            const color = paneColors[paneIdx % paneColors.length].color;
-            const legendItem = legend.append('g')
-              .attr('transform', `translate(0, ${25 + paneIdx * 30})`)
-              .style('cursor', 'pointer');
-
-            // Add checkbox-like square
-            const checkbox = legendItem.append('rect')
-              .attr('x', 0)
-              .attr('y', -8)
-              .attr('width', 16)
-              .attr('height', 16)
-              .attr('fill', 'white')
-              .attr('stroke', color)
-              .attr('stroke-width', 2)
-              .attr('rx', 2);
-
-            // Add checkmark
-            const checkmark = legendItem.append('text')
-              .attr('x', 8)
-              .attr('y', 5)
-              .attr('font-size', '14px')
-              .attr('font-weight', 'bold')
-              .attr('text-anchor', 'middle')
-              .attr('fill', color)
-              .text('✓');
-
-            // Add color indicator circle
-            legendItem.append('circle')
-              .attr('cx', 26)
-              .attr('cy', 0)
-              .attr('r', 5)
-              .attr('fill', color)
-              .attr('stroke', '#333')
-              .attr('stroke-width', 1);
-
-            // Add label
-            legendItem.append('text')
-              .attr('x', 40)
-              .attr('y', 5)
-              .attr('font-size', '12px')
-              .text(`Pane ${paneIdx}: ${pane.id}`);
-
-            // Add click handler to toggle visibility
-            legendItem.on('click', function () {
-              paneVisibility[paneIdx] = !paneVisibility[paneIdx];
-              const visible = paneVisibility[paneIdx];
-
-              // Update checkbox appearance
-              checkmark.style('opacity', visible ? 1 : 0);
-              checkbox.attr('fill', visible ? 'white' : '#f0f0f0');
-
-              // Recalculate overlaps based on visible panes only
-              const visiblePaneIndices = Object.keys(paneVisibility).filter(idx => paneVisibility[idx]).map(Number);
-              const newPositionMap = new Map();
-              dataPoints.forEach(pt => {
-                if (visiblePaneIndices.includes(pt.paneIdx)) {
-                  const key = `${pt.x},${pt.y}`;
-                  if (!newPositionMap.has(key)) {
-                    newPositionMap.set(key, new Set());
-                  }
-                  newPositionMap.get(key).add(pt.paneIdx);
-                }
-              });
-              const newOverlaps = new Set(
-                Array.from(newPositionMap.entries())
-                  .filter(([_, panes]) => panes.size > 1)
-                  .map(([k]) => k),
-              );
-
-              // Update all panes: visibility for toggled pane, colors for all visible panes
-              selectedPanes.forEach((_, idx) => {
-                const baseColor = paneColors[idx % paneColors.length].color;
-                const isVisible = paneVisibility[idx];
-                g.selectAll(`.point-pane-${idx}`)
-                  .interrupt()
-                  .transition()
-                  .duration(200)
-                  .style('opacity', isVisible ? 1 : 0)
-                  .style('pointer-events', isVisible ? 'all' : 'none')
-                  .attr('fill', d => isVisible && newOverlaps.has(`${d.x},${d.y}`) ? overlapColor : baseColor)
-                  .attr('stroke', d => isVisible && newOverlaps.has(`${d.x},${d.y}`) ? overlapColor : baseColor);
-              });
-            });
-          });
-
-          // Overlap legend entry (only if there are overlaps)
-          if (overlaps.size > 0) {
-            const overlapIndex = selectedPanes.length;
-            const overlapLegend = legend.append('g')
-              .attr('transform', `translate(0, ${25 + overlapIndex * 30})`);
-
-            overlapLegend.append('circle')
-              .attr('cx', 8)
-              .attr('cy', 0)
-              .attr('r', 6)
-              .attr('fill', overlapColor)
-              .attr('stroke', '#333')
-              .attr('stroke-width', 1);
-
-            overlapLegend.append('text')
-              .attr('x', 22)
-              .attr('y', 4)
-              .attr('font-size', '12px')
-              .attr('font-style', 'italic')
-              .text('Overlap (shared position)');
-          }
-
-          // Cleanup tooltip on dialog close
-          const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-              mutation.removedNodes.forEach((node) => {
-                if (node.id === 'scatter-plot-container'
-                  || (node.classList && node.classList.contains('swal2-container'))) {
-                  tooltip.remove();
-                  observer.disconnect();
-                }
-              });
-            });
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        });
-      },
-    });
-  });
-}
-
-function renderScatterMatrix(selectedPanes, attributes, paneColors) {
-  const overlapColor = '#000000'; // consistent overlap color
-  // Helper function to get attribute value from node data
-  const getAttributeValue = (nodeData, attr) => {
-    if (nodeData.details && nodeData.details['Variable Values']
-      && nodeData.details['Variable Values'][attr] !== undefined) {
-      return nodeData.details['Variable Values'][attr];
-    }
-    if (nodeData.details && nodeData.details['Reward Structures']
-      && nodeData.details['Reward Structures'][attr] !== undefined) {
-      return nodeData.details['Reward Structures'][attr];
-    }
-    if (nodeData.details && nodeData.details['Model Checking Results']
-      && nodeData.details['Model Checking Results'][attr] !== undefined) {
-      return nodeData.details['Model Checking Results'][attr];
-    }
-    return nodeData[attr];
-  };
-
-  // Collect data points with all selected attributes
-  const dataPoints = [];
-  selectedPanes.forEach((pane, paneIdx) => {
-    if (pane.cy) {
-      pane.cy.nodes().forEach(node => {
-        const nodeData = node.data();
-        if (!nodeData.id.startsWith('t')) {
-          const point = {
-            id: nodeData.id,
-            paneIdx: paneIdx,
-            paneId: pane.id,
-            values: {},
-          };
-
-          let allValid = true;
-          attributes.forEach(attr => {
-            const val = getAttributeValue(nodeData, attr);
-            if (val === undefined || isNaN(val)) {
-              allValid = false;
-            } else {
-              point.values[attr] = Number(val);
-            }
-          });
-
-          if (allValid) {
-            dataPoints.push(point);
-          }
-        }
-      });
-    }
-  });
-
-  if (dataPoints.length === 0) {
-    alert('No valid data points found for the selected attributes');
-    return;
-  }
-
-  // Create scatter matrix HTML
-  import('sweetalert2').then(({ default: Swal }) => {
-    const plotHtml = `
-      <div id="scatter-matrix-container" style="width: 100%; height: 700px; overflow: auto; display: flex; justify-content: center; align-items: center;">
-        <svg id="scatter-matrix-svg"></svg>
-      </div>
-    `;
-
-    Swal.fire({
-      title: `Scatter Plot Matrix (${attributes.length} attributes)`,
-      html: plotHtml,
-      width: '90%',
-      showCloseButton: true,
-      showConfirmButton: false,
-      didOpen: () => {
-        import('d3').then(d3Module => {
-          const d3 = d3Module;
-
-          const container = document.getElementById('scatter-matrix-container');
-          const svg = d3.select('#scatter-matrix-svg');
-          const containerWidth = container.clientWidth;
-          const containerHeight = container.clientHeight;
-
-          const n = attributes.length;
-          const padding = 20;
-          const legendWidth = 150;
-          const matrixWidth = containerWidth - legendWidth - padding;
-          const cellSize = Math.min((matrixWidth - padding * 2) / n, (containerHeight - padding * 2) / n);
-          const plotSize = cellSize - 10;
-
-          const svgWidth = n * cellSize + padding * 2 + legendWidth;
-          const svgHeight = n * cellSize + padding * 2;
-
-          svg.attr('width', svgWidth)
-            .attr('height', svgHeight);
-
-          svg.selectAll('*').remove();
-
-          // Create scales for each attribute
-          const scales = {};
-          attributes.forEach(attr => {
-            const values = dataPoints.map(d => d.values[attr]);
-            const extent = d3.extent(values);
-            const padding = (extent[1] - extent[0]) * 0.05 || 1;
-            scales[attr] = d3.scaleLinear()
-              .domain([extent[0] - padding, extent[1] + padding])
-              .range([plotSize, 0]);
-          });
-
-          // Create tooltip
-          const tooltip = d3.select('body').append('div')
-            .attr('class', 'scatter-matrix-tooltip')
-            .style('position', 'absolute')
-            .style('visibility', 'hidden')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ccc')
-            .style('border-radius', '4px')
-            .style('padding', '8px')
-            .style('font-size', '11px')
-            .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
-            .style('pointer-events', 'none')
-            .style('z-index', '10000');
-
-          // Track visibility state for each pane
-          const paneVisibility = {};
-          selectedPanes.forEach((_, idx) => { paneVisibility[idx] = true; });
-
-          // Draw matrix cells
-          attributes.forEach((yAttr, i) => {
-            attributes.forEach((xAttr, j) => {
-              const g = svg.append('g')
-                .attr('transform', `translate(${padding + j * cellSize}, ${padding + i * cellSize})`);
-
-              // Add cell border
-              g.append('rect')
-                .attr('width', cellSize)
-                .attr('height', cellSize)
-                .attr('fill', 'white')
-                .attr('stroke', '#ddd')
-                .attr('stroke-width', 1);
-
-              if (i === j) {
-                // Diagonal: show attribute name
-                g.append('text')
-                  .attr('x', cellSize / 2)
-                  .attr('y', cellSize / 2)
-                  .attr('text-anchor', 'middle')
-                  .attr('dominant-baseline', 'middle')
-                  .attr('font-size', '12px')
-                  .attr('font-weight', 'bold')
-                  .text(xAttr);
-              } else {
-                // Off-diagonal: scatter plot
-                const plotG = g.append('g')
-                  .attr('transform', 'translate(5, 5)');
-
-                // Build overlap map for this cell across panes
-                const cellPositionMap = new Map();
-                selectedPanes.forEach((pane, paneIdx) => {
-                  const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
-                  paneData.forEach(d => {
-                    const key = `${d.values[xAttr]},${d.values[yAttr]}`;
-                    if (!cellPositionMap.has(key)) cellPositionMap.set(key, []);
-                    cellPositionMap.get(key).push(paneIdx);
-                  });
-                });
-                const cellOverlaps = new Set(Array.from(cellPositionMap.entries()).filter(([_, arr]) => arr.length > 1).map(([k]) => k));
-
-                // Draw points for each pane with overlap detection
-                selectedPanes.forEach((pane, paneIdx) => {
-                  const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
-                  const baseColor = paneColors[paneIdx % paneColors.length].color;
-
-                  plotG.selectAll(`.point-${i}-${j}-pane-${paneIdx}`)
-                    .data(paneData)
-                    .enter()
-                    .append('circle')
-                    .attr('class', `point-${i}-${j}-pane-${paneIdx} matrix-point-pane-${paneIdx}`)
-                    .attr('cx', d => cellSize - 10 - scales[xAttr](d.values[xAttr]))
-                    .attr('cy', d => scales[yAttr](d.values[yAttr]))
-                    .attr('r', 2.5)
-                    .attr('fill', d => cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
-                    .attr('fill-opacity', 1)
-                    .attr('stroke', d => cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
-                    .attr('stroke-width', 0.5)
-                    .attr('opacity', 1)
-                    .on('mouseover', function (event, d) {
-                      d3.select(this)
-                        .attr('r', 4)
-                        .attr('opacity', 1);
-                      const attrInfo = attributes.map(a => `<strong>${a}:</strong> ${d.values[a].toFixed(3)}`).join('<br>');
-                      const overlapNote = cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? '<br><em>Overlap position</em>' : '';
-                      tooltip
-                        .style('visibility', 'visible')
-                        .html(`
-                          <strong>Node:</strong> ${d.id}<br>
-                          <strong>Pane:</strong> ${d.paneId}${overlapNote}<br>
-                          ${attrInfo}
-                        `);
-                    })
-                    .on('mousemove', function (event) {
-                      tooltip
-                        .style('top', (event.pageY - 10) + 'px')
-                        .style('left', (event.pageX + 10) + 'px');
-                    })
-                    .on('mouseout', function () {
-                      d3.select(this)
-                        .attr('r', 2.5)
-                        .attr('opacity', 1);
-                      tooltip.style('visibility', 'hidden');
-                    });
-                });
-              }
-            });
-          });
-
-          // Add legend
-          const legend = svg.append('g')
-            .attr('transform', `translate(${n * cellSize + padding + 20}, ${padding})`);
-
-          legend.append('text')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('font-size', '14px')
-            .attr('font-weight', 'bold')
-            .text('Panes');
-
-          selectedPanes.forEach((pane, paneIdx) => {
-            const color = paneColors[paneIdx % paneColors.length].color;
-            const legendItem = legend.append('g')
-              .attr('transform', `translate(0, ${25 + paneIdx * 30})`)
-              .style('cursor', 'pointer');
-
-            const checkbox = legendItem.append('rect')
-              .attr('x', 0)
-              .attr('y', -8)
-              .attr('width', 16)
-              .attr('height', 16)
-              .attr('fill', 'white')
-              .attr('stroke', color)
-              .attr('stroke-width', 2)
-              .attr('rx', 2);
-
-            const checkmark = legendItem.append('text')
-              .attr('x', 8)
-              .attr('y', 5)
-              .attr('font-size', '14px')
-              .attr('font-weight', 'bold')
-              .attr('text-anchor', 'middle')
-              .attr('fill', color)
-              .text('✓');
-
-            legendItem.append('circle')
-              .attr('cx', 26)
-              .attr('cy', 0)
-              .attr('r', 5)
-              .attr('fill', color)
-              .attr('stroke', '#333')
-              .attr('stroke-width', 1);
-
-            legendItem.append('text')
-              .attr('x', 40)
-              .attr('y', 5)
-              .attr('font-size', '11px')
-              .text(`Pane ${paneIdx}: ${pane.id.substring(0, 15)}${pane.id.length > 15 ? '...' : ''}`);
-
-            legendItem.on('click', function () {
-              paneVisibility[paneIdx] = !paneVisibility[paneIdx];
-
-              svg.selectAll(`.matrix-point-pane-${paneIdx}`)
-                .transition()
-                .duration(200)
-                .attr('opacity', paneVisibility[paneIdx] ? 1 : 0)
-                .style('pointer-events', paneVisibility[paneIdx] ? 'all' : 'none');
-
-              checkmark.attr('opacity', paneVisibility[paneIdx] ? 1 : 0);
-              checkbox.attr('fill', paneVisibility[paneIdx] ? 'white' : '#f0f0f0');
-
-              // Recalculate overlaps based on visible panes and update colors for each cell
-              const visiblePaneIndices = Object.keys(paneVisibility).filter(idx => paneVisibility[idx]).map(Number);
-
-              // For each cell in the matrix, recalculate overlaps and update colors
-              attributes.forEach((yAttr, i) => {
-                attributes.forEach((xAttr, j) => {
-                  if (i === j) return; // Skip diagonal cells
-
-                  // Build new overlap map for this cell based on visible panes
-                  const cellPositionMap = new Map();
-                  dataPoints.forEach(d => {
-                    if (visiblePaneIndices.includes(d.paneIdx)) {
-                      const key = `${d.values[xAttr]},${d.values[yAttr]}`;
-                      if (!cellPositionMap.has(key)) cellPositionMap.set(key, new Set());
-                      cellPositionMap.get(key).add(d.paneIdx);
-                    }
-                  });
-                  const newCellOverlaps = new Set(
-                    Array.from(cellPositionMap.entries())
-                      .filter(([_, panes]) => panes.size > 1)
-                      .map(([k]) => k),
-                  );
-
-                  // Update colors of visible points in this cell
-                  visiblePaneIndices.forEach(idx => {
-                    const baseColor = paneColors[idx % paneColors.length].color;
-                    svg.selectAll(`.point-${i}-${j}-pane-${idx}`)
-                      .transition()
-                      .duration(200)
-                      .attr('fill', d => newCellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
-                      .attr('stroke', d => newCellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor);
-                  });
-                });
-              });
-            });
-          });
-
-          // Overlap legend entry (static, appears if any cell has overlaps)
-          const anyOverlaps = (() => {
-            // Rough heuristic: if any identical value pair exists across panes for any attribute pair
-            const seen = new Set();
-            let overlapFound = false;
-            dataPoints.forEach(d => {
-              attributes.forEach(a1 => {
-                attributes.forEach(a2 => {
-                  if (a1 === a2) return;
-                  const key = `${a1}:${d.values[a1]},${a2}:${d.values[a2]}`;
-                  if (seen.has(key)) {
-                    overlapFound = true;
-                  } else {
-                    seen.add(key);
-                  }
-                });
-              });
-            });
-            return overlapFound;
-          })();
-          if (anyOverlaps) {
-            const overlapIndex = selectedPanes.length;
-            const overlapLegend = legend.append('g')
-              .attr('transform', `translate(0, ${25 + overlapIndex * 30})`);
-            overlapLegend.append('circle')
-              .attr('cx', 8)
-              .attr('cy', 0)
-              .attr('r', 6)
-              .attr('fill', overlapColor)
-              .attr('stroke', '#333')
-              .attr('stroke-width', 1);
-            overlapLegend.append('text')
-              .attr('x', 22)
-              .attr('y', 4)
-              .attr('font-size', '11px')
-              .attr('font-style', 'italic')
-              .text('Overlap (shared position)');
-          }
-
-          // Cleanup
-          const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-              mutation.removedNodes.forEach((node) => {
-                if (node.id === 'scatter-matrix-container'
-                  || (node.classList && node.classList.contains('swal2-container'))) {
-                  tooltip.remove();
-                  observer.disconnect();
-                }
-              });
-            });
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-        });
-      },
-    });
-  });
-}
+// function showScatterDiffDialog() {
+//   const panes = getPanes();
+//   const paneList = Object.values(panes).filter(p => p.cy);
+//   if (paneList.length < 2) {
+//     alert('Need at least 2 panes to create a scatter-diff view');
+//     return;
+//   }
+
+//   const checkboxHtml = paneList.map((p, idx) => `
+//     <div style="margin: 10px 0;">
+//       <input type="checkbox"
+//          id="scatter-pane-${idx}"
+//          value="${idx}" ${idx < 2 ? 'checked' : ''}
+//          style="margin-right: 5px;">
+//       <label for="scatter-pane-${idx}">Pane ${idx + 1}: ${p.id}</label>
+//     </div>
+//   `).join('');
+
+//   import('sweetalert2').then(({ default: Swal }) => {
+//     Swal.fire({
+//       title: 'Select Panes for Scatter-Diff View',
+//       html: `
+//         <div style="text-align: left; max-height: 400px; overflow-y: auto;">
+//           <p
+//              style="margin-bottom: 15px;"
+//            >Select at least 2 panes to compare attribute distributions:</p>
+//           ${checkboxHtml}
+//         </div>
+//       `,
+//       showCancelButton: true,
+//       confirmButtonText: 'Create Scatter-Diff',
+//       cancelButtonText: 'Cancel',
+//       preConfirm: () => {
+//         const selected = [];
+//         paneList.forEach((p, idx) => {
+//           const cb = document.getElementById(`scatter-pane-${idx}`);
+//           if (cb && cb.checked) selected.push(idx);
+//         });
+//         if (selected.length < 2) {
+//           Swal.showValidationMessage('Please select at least 2 panes');
+//           return false;
+//         }
+//         if (selected.length > 8) {
+//           Swal.showValidationMessage('Maximum 8 panes can be selected');
+//           return false;
+//         }
+//         return selected;
+//       },
+//     }).then((result) => {
+//       if (result.isConfirmed && result.value) {
+//         const selectedPanes = result.value.map(idx => paneList[idx]);
+//         createScatterDiffView(selectedPanes);
+//       }
+//     });
+//   });
+// }
+
+// function createScatterDiffView(selectedPanes) {
+//   if (!selectedPanes || selectedPanes.length < 2) return;
+
+//   // Color palette for different panes
+//   const paneColors = [
+//     { color: '#3b82f6', name: 'Blue' },      // Graph 0
+//     { color: '#ef4444', name: 'Red' },       // Graph 1
+//     { color: '#10b981', name: 'Green' },     // Graph 2
+//     { color: '#f59e0b', name: 'Amber' },     // Graph 3
+//     { color: '#8b5cf6', name: 'Purple' },    // Graph 4
+//     { color: '#ec4899', name: 'Pink' },      // Graph 5
+//     { color: '#14b8a6', name: 'Teal' },      // Graph 6
+//     { color: '#f97316', name: 'Orange' },    // Graph 7
+//   ];
+
+//   // Collect all numeric attributes from all panes by examining node data
+//   const allAttributes = new Set();
+//   selectedPanes.forEach((pane, paneIdx) => {
+//     if (pane.cy) {
+//       // Get all non-transition nodes
+//       const nodes = pane.cy.nodes().filter(n => {
+//         const id = n.data('id') || n.data().id;
+//         return id && !id.toString().startsWith('t');
+//       });
+
+//       if (nodes.length > 0) {
+//         const sampleNode = nodes[0].data();
+
+//         // Check if attributes are in the details object
+//         if (sampleNode.details && typeof sampleNode.details === 'object') {
+//           // Check Variable Values
+//           if (sampleNode.details['Variable Values']) {
+//             Object.keys(sampleNode.details['Variable Values']).forEach(attr => {
+//               const value = sampleNode.details['Variable Values'][attr];
+//               if (typeof value === 'number' && !isNaN(value)) {
+//                 allAttributes.add(attr);
+//               }
+//             });
+//           }
+
+//           // Check Reward Structures
+//           if (sampleNode.details['Reward Structures']) {
+//             Object.keys(sampleNode.details['Reward Structures']).forEach(attr => {
+//               const value = sampleNode.details['Reward Structures'][attr];
+//               if (typeof value === 'number' && !isNaN(value)) {
+//                 allAttributes.add(attr);
+//               }
+//             });
+//           }
+
+//           // Check Model Checking Results
+//           if (sampleNode.details['Model Checking Results']) {
+//             Object.keys(sampleNode.details['Model Checking Results']).forEach(attr => {
+//               const value = sampleNode.details['Model Checking Results'][attr];
+//               if (typeof value === 'number' && !isNaN(value)) {
+//                 allAttributes.add(attr);
+//               }
+//             });
+//           }
+//         }
+
+//         // Also check top-level attributes
+//         Object.keys(sampleNode).forEach(attr => {
+//           // Check if it's a numeric attribute by testing the value
+//           const value = sampleNode[attr];
+//           if (typeof value === 'number' && !isNaN(value) && attr !== 'id') {
+//             allAttributes.add(attr);
+//           }
+//         });
+//       }
+//     }
+//   });
+
+//   const attributeList = Array.from(allAttributes).sort();
+
+//   if (attributeList.length < 2) {
+//     console.error(`Only found ${attributeList.length} numeric attributes:`, attributeList);
+//     alert('Need at least 2 numeric attributes to create a scatter plot');
+//     return;
+//   }
+
+//   // Build attribute selection dialog with multi-select option
+//   const attributeCheckboxes = attributeList.map((attr, idx) => `<div style="margin: 5px 0;">
+//       <label style="display: flex; align-items: center; cursor: pointer;">
+//         <input type="checkbox" class="attr-checkbox" value="${attr}" ${idx < 2 ? 'checked' : ''}
+//                style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;">
+//         <span>${attr}</span>
+//       </label>
+//     </div>`).join('');
+
+//   import('sweetalert2').then(({ default: Swal }) => {
+//     Swal.fire({
+//       title: 'Select Attributes for Scatter Plot',
+//       html: `
+//         <div style="text-align: left; padding: 10px;">
+//           <p style="margin-bottom: 10px; color: #666; font-size: 13px;">
+//             Select 2 attributes for a single scatter plot, or multiple attributes for a matrix view.
+//           </p>
+//           <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+//             ${attributeCheckboxes}
+//           </div>
+//           <div style="margin-top: 10px; font-size: 12px; color: #888;">
+//             <span id="attr-count">2 attributes selected</span>
+//           </div>
+//         </div>
+//       `,
+//       showCancelButton: true,
+//       confirmButtonText: 'Create Plot',
+//       cancelButtonText: 'Cancel',
+//       didOpen: () => {
+//         const checkboxes = document.querySelectorAll('.attr-checkbox');
+//         const updateCount = () => {
+//           const selected = Array.from(checkboxes).filter(cb => cb.checked);
+//           document.getElementById('attr-count').textContent = `${selected.length} attribute${selected.length !== 1 ? 's' : ''} selected`;
+//         };
+//         checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+//       },
+//       preConfirm: () => {
+//         const checkboxes = document.querySelectorAll('.attr-checkbox');
+//         const selectedAttrs = Array.from(checkboxes)
+//           .filter(cb => cb.checked)
+//           .map(cb => cb.value);
+
+//         if (selectedAttrs.length < 2) {
+//           Swal.showValidationMessage('Please select at least 2 attributes');
+//           return false;
+//         }
+//         return { selectedAttrs };
+//       },
+//     }).then((result) => {
+//       if (result.isConfirmed && result.value) {
+//         const { selectedAttrs } = result.value;
+//         if (selectedAttrs.length === 2) {
+//           // Single scatter plot
+//           renderScatterPlot(selectedPanes, selectedAttrs[0], selectedAttrs[1], paneColors);
+//         } else {
+//           // Matrix of scatter plots
+//           renderScatterMatrix(selectedPanes, selectedAttrs, paneColors);
+//         }
+//       }
+//     });
+//   });
+// }
+
+// function renderScatterPlot(selectedPanes, xAttr, yAttr, paneColors) {
+//   // Distinct color for overlapping points (shared coordinates across panes)
+//   const overlapColor = '#000000'; // black for high contrast
+//   // Helper function to get attribute value from node data
+//   const getAttributeValue = (nodeData, attr) => {
+//     // Check Variable Values
+//     if (nodeData.details && nodeData.details['Variable Values']
+//       && nodeData.details['Variable Values'][attr] !== undefined) {
+//       return nodeData.details['Variable Values'][attr];
+//     }
+//     // Check Reward Structures
+//     if (nodeData.details && nodeData.details['Reward Structures']
+//       && nodeData.details['Reward Structures'][attr] !== undefined) {
+//       return nodeData.details['Reward Structures'][attr];
+//     }
+//     // Check Model Checking Results
+//     if (nodeData.details && nodeData.details['Model Checking Results']
+//       && nodeData.details['Model Checking Results'][attr] !== undefined) {
+//       return nodeData.details['Model Checking Results'][attr];
+//     }
+//     // Check top-level
+//     return nodeData[attr];
+//   };
+
+//   // Collect data points from all panes
+//   const dataPoints = [];
+
+//   selectedPanes.forEach((pane, paneIdx) => {
+//     if (pane.cy) {
+//       let panePointCount = 0;
+//       pane.cy.nodes().forEach(node => {
+//         const nodeData = node.data();
+//         if (!nodeData.id.startsWith('t')) { // Skip transition nodes
+//           const xVal = getAttributeValue(nodeData, xAttr);
+//           const yVal = getAttributeValue(nodeData, yAttr);
+//           if (xVal !== undefined && yVal !== undefined && !isNaN(xVal) && !isNaN(yVal)) {
+//             dataPoints.push({
+//               x: Number(xVal),
+//               y: Number(yVal),
+//               id: nodeData.id,
+//               paneIdx: paneIdx,
+//               paneId: pane.id,
+//               nodeData: nodeData,
+//             });
+//             panePointCount++;
+//           }
+//         }
+//       });
+//     }
+//   });
+
+//   // Check for overlapping points
+//   const positionMap = new Map();
+//   dataPoints.forEach(pt => {
+//     const key = `${pt.x},${pt.y}`;
+//     if (!positionMap.has(key)) {
+//       positionMap.set(key, []);
+//     }
+//     positionMap.get(key).push(pt.paneIdx);
+//   });
+//   const overlaps = new Set(Array.from(positionMap.entries()).filter(([_, panes]) => panes.length > 1).map(([k]) => k));
+//   // Flag points as overlapping
+//   dataPoints.forEach(pt => {
+//     const key = `${pt.x},${pt.y}`;
+//     pt.isOverlap = overlaps.has(key);
+//   });
+
+//   if (dataPoints.length === 0) {
+//     alert('No valid data points found for the selected attributes');
+//     return;
+//   }
+
+//   // Create scatter plot HTML with D3.js
+//   import('sweetalert2').then(({ default: Swal }) => {
+//     const plotHtml = `
+//       <div id="scatter-plot-container" style="width: 100%; height: 600px;">
+//         <svg id="scatter-plot-svg" style="width: 100%; height: 100%;"></svg>
+//       </div>
+//     `;
+
+//     Swal.fire({
+//       title: `Scatter-Diff View: ${xAttr} vs ${yAttr}`,
+//       html: plotHtml,
+//       width: '80%',
+//       showCloseButton: true,
+//       showConfirmButton: false,
+//       didOpen: () => {
+//         // Use D3 to create the scatter plot
+//         import('d3').then(d3Module => {
+//           const d3 = d3Module;
+
+//           const container = document.getElementById('scatter-plot-container');
+//           const svg = d3.select('#scatter-plot-svg');
+//           const width = container.clientWidth;
+//           const height = container.clientHeight;
+//           const margin = {
+//             top: 40, right: 150, bottom: 60, left: 70,
+//           };
+//           const plotWidth = width - margin.left - margin.right;
+//           const plotHeight = height - margin.top - margin.bottom;
+
+//           svg.selectAll('*').remove();
+
+//           const g = svg.append('g')
+//             .attr('transform', `translate(${margin.left},${margin.top})`);
+
+//           // Create scales
+//           const xExtent = d3.extent(dataPoints, d => d.x);
+//           const yExtent = d3.extent(dataPoints, d => d.y);
+
+//           // Add 5% padding to extents
+//           const xPadding = (xExtent[1] - xExtent[0]) * 0.05;
+//           const yPadding = (yExtent[1] - yExtent[0]) * 0.05;
+
+//           const xScale = d3.scaleLinear()
+//             .domain([xExtent[0] - xPadding, xExtent[1] + xPadding])
+//             .range([0, plotWidth]);
+
+//           const yScale = d3.scaleLinear()
+//             .domain([yExtent[0] - yPadding, yExtent[1] + yPadding])
+//             .range([plotHeight, 0]);
+
+//           // Add axes
+//           const xAxis = d3.axisBottom(xScale).ticks(10);
+//           const yAxis = d3.axisLeft(yScale).ticks(10);
+
+//           g.append('g')
+//             .attr('transform', `translate(0,${plotHeight})`)
+//             .call(xAxis)
+//             .append('text')
+//             .attr('x', plotWidth / 2)
+//             .attr('y', 45)
+//             .attr('fill', 'black')
+//             .attr('font-size', '14px')
+//             .attr('font-weight', 'bold')
+//             .attr('text-anchor', 'middle')
+//             .text(xAttr);
+
+//           g.append('g')
+//             .call(yAxis)
+//             .append('text')
+//             .attr('transform', 'rotate(-90)')
+//             .attr('x', -plotHeight / 2)
+//             .attr('y', -50)
+//             .attr('fill', 'black')
+//             .attr('font-size', '14px')
+//             .attr('font-weight', 'bold')
+//             .attr('text-anchor', 'middle')
+//             .text(yAttr);
+
+//           // Add grid lines
+//           g.append('g')
+//             .attr('class', 'grid')
+//             .attr('opacity', 0.1)
+//             .call(d3.axisLeft(yScale).tickSize(-plotWidth).tickFormat(''));
+
+//           g.append('g')
+//             .attr('class', 'grid')
+//             .attr('opacity', 0.1)
+//             .attr('transform', `translate(0,${plotHeight})`)
+//             .call(d3.axisBottom(xScale).tickSize(-plotHeight).tickFormat(''));
+
+//           // Create tooltip
+//           const tooltip = d3.select('body').append('div')
+//             .attr('class', 'scatter-tooltip')
+//             .style('position', 'absolute')
+//             .style('visibility', 'hidden')
+//             .style('background-color', 'white')
+//             .style('border', '1px solid #ccc')
+//             .style('border-radius', '4px')
+//             .style('padding', '10px')
+//             .style('font-size', '12px')
+//             .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
+//             .style('pointer-events', 'none')
+//             .style('z-index', '10000');
+
+//           // Add points grouped by pane
+//           selectedPanes.forEach((pane, paneIdx) => {
+//             const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
+//             const baseColor = paneColors[paneIdx % paneColors.length].color;
+
+//             g.selectAll(`.point-pane-${paneIdx}`)
+//               .data(paneData)
+//               .enter()
+//               .append('circle')
+//               .attr('class', `point-pane-${paneIdx}`)
+//               .attr('cx', d => xScale(d.x))
+//               .attr('cy', d => yScale(d.y))
+//               .attr('r', 5)
+//               .attr('fill', d => d.isOverlap ? overlapColor : baseColor)
+//               .attr('fill-opacity', 1)
+//               .attr('stroke', '#333')
+//               .attr('stroke-width', 1)
+//               .style('opacity', 1)
+//               .style('pointer-events', 'all')
+//               .on('mouseover', function (event, d) {
+//                 d3.select(this)
+//                   .attr('r', 8)
+//                   .attr('stroke-width', 2);
+
+//                 tooltip
+//                   .style('visibility', 'visible')
+//                   .html(`
+//                     <strong>Node ID:</strong> ${d.id}<br>
+//                     <strong>Pane:</strong> ${d.paneId}<br>
+//                     <strong>${xAttr}:</strong> ${d.x.toFixed(3)}<br>
+//                     <strong>${yAttr}:</strong> ${d.y.toFixed(3)}${d.isOverlap ? '<br><em>Overlap position</em>' : ''}
+//                   `);
+//               })
+//               .on('mousemove', function (event) {
+//                 tooltip
+//                   .style('top', (event.pageY - 10) + 'px')
+//                   .style('left', (event.pageX + 10) + 'px');
+//               })
+//               .on('mouseout', function () {
+//                 d3.select(this)
+//                   .attr('r', 5)
+//                   .attr('stroke-width', 1);
+
+//                 tooltip.style('visibility', 'hidden');
+//               });
+//           });
+
+//           // Track visibility state for each pane
+//           const paneVisibility = {};
+//           selectedPanes.forEach((_, idx) => { paneVisibility[idx] = true; });
+
+//           // Add legend with checkboxes
+//           const legend = svg.append('g')
+//             .attr('transform', `translate(${width - margin.right + 20}, ${margin.top})`);
+
+//           legend.append('text')
+//             .attr('x', 0)
+//             .attr('y', 0)
+//             .attr('font-size', '14px')
+//             .attr('font-weight', 'bold')
+//             .text('Panes');
+
+//           selectedPanes.forEach((pane, paneIdx) => {
+//             const color = paneColors[paneIdx % paneColors.length].color;
+//             const legendItem = legend.append('g')
+//               .attr('transform', `translate(0, ${25 + paneIdx * 30})`)
+//               .style('cursor', 'pointer');
+
+//             // Add checkbox-like square
+//             const checkbox = legendItem.append('rect')
+//               .attr('x', 0)
+//               .attr('y', -8)
+//               .attr('width', 16)
+//               .attr('height', 16)
+//               .attr('fill', 'white')
+//               .attr('stroke', color)
+//               .attr('stroke-width', 2)
+//               .attr('rx', 2);
+
+//             // Add checkmark
+//             const checkmark = legendItem.append('text')
+//               .attr('x', 8)
+//               .attr('y', 5)
+//               .attr('font-size', '14px')
+//               .attr('font-weight', 'bold')
+//               .attr('text-anchor', 'middle')
+//               .attr('fill', color)
+//               .text('✓');
+
+//             // Add color indicator circle
+//             legendItem.append('circle')
+//               .attr('cx', 26)
+//               .attr('cy', 0)
+//               .attr('r', 5)
+//               .attr('fill', color)
+//               .attr('stroke', '#333')
+//               .attr('stroke-width', 1);
+
+//             // Add label
+//             legendItem.append('text')
+//               .attr('x', 40)
+//               .attr('y', 5)
+//               .attr('font-size', '12px')
+//               .text(`Pane ${paneIdx}: ${pane.id}`);
+
+//             // Add click handler to toggle visibility
+//             legendItem.on('click', function () {
+//               paneVisibility[paneIdx] = !paneVisibility[paneIdx];
+//               const visible = paneVisibility[paneIdx];
+
+//               // Update checkbox appearance
+//               checkmark.style('opacity', visible ? 1 : 0);
+//               checkbox.attr('fill', visible ? 'white' : '#f0f0f0');
+
+//               // Recalculate overlaps based on visible panes only
+//               const visiblePaneIndices = Object.keys(paneVisibility).filter(idx => paneVisibility[idx]).map(Number);
+//               const newPositionMap = new Map();
+//               dataPoints.forEach(pt => {
+//                 if (visiblePaneIndices.includes(pt.paneIdx)) {
+//                   const key = `${pt.x},${pt.y}`;
+//                   if (!newPositionMap.has(key)) {
+//                     newPositionMap.set(key, new Set());
+//                   }
+//                   newPositionMap.get(key).add(pt.paneIdx);
+//                 }
+//               });
+//               const newOverlaps = new Set(
+//                 Array.from(newPositionMap.entries())
+//                   .filter(([_, panes]) => panes.size > 1)
+//                   .map(([k]) => k),
+//               );
+
+//               // Update all panes: visibility for toggled pane, colors for all visible panes
+//               selectedPanes.forEach((_, idx) => {
+//                 const baseColor = paneColors[idx % paneColors.length].color;
+//                 const isVisible = paneVisibility[idx];
+//                 g.selectAll(`.point-pane-${idx}`)
+//                   .interrupt()
+//                   .transition()
+//                   .duration(200)
+//                   .style('opacity', isVisible ? 1 : 0)
+//                   .style('pointer-events', isVisible ? 'all' : 'none')
+//                   .attr('fill', d => isVisible && newOverlaps.has(`${d.x},${d.y}`) ? overlapColor : baseColor)
+//                   .attr('stroke', d => isVisible && newOverlaps.has(`${d.x},${d.y}`) ? overlapColor : baseColor);
+//               });
+//             });
+//           });
+
+//           // Overlap legend entry (only if there are overlaps)
+//           if (overlaps.size > 0) {
+//             const overlapIndex = selectedPanes.length;
+//             const overlapLegend = legend.append('g')
+//               .attr('transform', `translate(0, ${25 + overlapIndex * 30})`);
+
+//             overlapLegend.append('circle')
+//               .attr('cx', 8)
+//               .attr('cy', 0)
+//               .attr('r', 6)
+//               .attr('fill', overlapColor)
+//               .attr('stroke', '#333')
+//               .attr('stroke-width', 1);
+
+//             overlapLegend.append('text')
+//               .attr('x', 22)
+//               .attr('y', 4)
+//               .attr('font-size', '12px')
+//               .attr('font-style', 'italic')
+//               .text('Overlap (shared position)');
+//           }
+
+//           // Cleanup tooltip on dialog close
+//           const observer = new MutationObserver((mutations) => {
+//             mutations.forEach((mutation) => {
+//               mutation.removedNodes.forEach((node) => {
+//                 if (node.id === 'scatter-plot-container'
+//                   || (node.classList && node.classList.contains('swal2-container'))) {
+//                   tooltip.remove();
+//                   observer.disconnect();
+//                 }
+//               });
+//             });
+//           });
+//           observer.observe(document.body, { childList: true, subtree: true });
+//         });
+//       },
+//     });
+//   });
+// }
+
+// function renderScatterMatrix(selectedPanes, attributes, paneColors) {
+//   const overlapColor = '#000000'; // consistent overlap color
+//   // Helper function to get attribute value from node data
+//   const getAttributeValue = (nodeData, attr) => {
+//     if (nodeData.details && nodeData.details['Variable Values']
+//       && nodeData.details['Variable Values'][attr] !== undefined) {
+//       return nodeData.details['Variable Values'][attr];
+//     }
+//     if (nodeData.details && nodeData.details['Reward Structures']
+//       && nodeData.details['Reward Structures'][attr] !== undefined) {
+//       return nodeData.details['Reward Structures'][attr];
+//     }
+//     if (nodeData.details && nodeData.details['Model Checking Results']
+//       && nodeData.details['Model Checking Results'][attr] !== undefined) {
+//       return nodeData.details['Model Checking Results'][attr];
+//     }
+//     return nodeData[attr];
+//   };
+
+//   // Collect data points with all selected attributes
+//   const dataPoints = [];
+//   selectedPanes.forEach((pane, paneIdx) => {
+//     if (pane.cy) {
+//       pane.cy.nodes().forEach(node => {
+//         const nodeData = node.data();
+//         if (!nodeData.id.startsWith('t')) {
+//           const point = {
+//             id: nodeData.id,
+//             paneIdx: paneIdx,
+//             paneId: pane.id,
+//             values: {},
+//           };
+
+//           let allValid = true;
+//           attributes.forEach(attr => {
+//             const val = getAttributeValue(nodeData, attr);
+//             if (val === undefined || isNaN(val)) {
+//               allValid = false;
+//             } else {
+//               point.values[attr] = Number(val);
+//             }
+//           });
+
+//           if (allValid) {
+//             dataPoints.push(point);
+//           }
+//         }
+//       });
+//     }
+//   });
+
+//   if (dataPoints.length === 0) {
+//     alert('No valid data points found for the selected attributes');
+//     return;
+//   }
+
+//   // Create scatter matrix HTML
+//   import('sweetalert2').then(({ default: Swal }) => {
+//     const plotHtml = `
+//       <div id="scatter-matrix-container" style="width: 100%; height: 700px; overflow: auto; display: flex; justify-content: center; align-items: center;">
+//         <svg id="scatter-matrix-svg"></svg>
+//       </div>
+//     `;
+
+//     Swal.fire({
+//       title: `Scatter Plot Matrix (${attributes.length} attributes)`,
+//       html: plotHtml,
+//       width: '90%',
+//       showCloseButton: true,
+//       showConfirmButton: false,
+//       didOpen: () => {
+//         import('d3').then(d3Module => {
+//           const d3 = d3Module;
+
+//           const container = document.getElementById('scatter-matrix-container');
+//           const svg = d3.select('#scatter-matrix-svg');
+//           const containerWidth = container.clientWidth;
+//           const containerHeight = container.clientHeight;
+
+//           const n = attributes.length;
+//           const padding = 20;
+//           const legendWidth = 150;
+//           const matrixWidth = containerWidth - legendWidth - padding;
+//           const cellSize = Math.min((matrixWidth - padding * 2) / n, (containerHeight - padding * 2) / n);
+//           const plotSize = cellSize - 10;
+
+//           const svgWidth = n * cellSize + padding * 2 + legendWidth;
+//           const svgHeight = n * cellSize + padding * 2;
+
+//           svg.attr('width', svgWidth)
+//             .attr('height', svgHeight);
+
+//           svg.selectAll('*').remove();
+
+//           // Create scales for each attribute
+//           const scales = {};
+//           attributes.forEach(attr => {
+//             const values = dataPoints.map(d => d.values[attr]);
+//             const extent = d3.extent(values);
+//             const padding = (extent[1] - extent[0]) * 0.05 || 1;
+//             scales[attr] = d3.scaleLinear()
+//               .domain([extent[0] - padding, extent[1] + padding])
+//               .range([plotSize, 0]);
+//           });
+
+//           // Create tooltip
+//           const tooltip = d3.select('body').append('div')
+//             .attr('class', 'scatter-matrix-tooltip')
+//             .style('position', 'absolute')
+//             .style('visibility', 'hidden')
+//             .style('background-color', 'white')
+//             .style('border', '1px solid #ccc')
+//             .style('border-radius', '4px')
+//             .style('padding', '8px')
+//             .style('font-size', '11px')
+//             .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
+//             .style('pointer-events', 'none')
+//             .style('z-index', '10000');
+
+//           // Track visibility state for each pane
+//           const paneVisibility = {};
+//           selectedPanes.forEach((_, idx) => { paneVisibility[idx] = true; });
+
+//           // Draw matrix cells
+//           attributes.forEach((yAttr, i) => {
+//             attributes.forEach((xAttr, j) => {
+//               const g = svg.append('g')
+//                 .attr('transform', `translate(${padding + j * cellSize}, ${padding + i * cellSize})`);
+
+//               // Add cell border
+//               g.append('rect')
+//                 .attr('width', cellSize)
+//                 .attr('height', cellSize)
+//                 .attr('fill', 'white')
+//                 .attr('stroke', '#ddd')
+//                 .attr('stroke-width', 1);
+
+//               if (i === j) {
+//                 // Diagonal: show attribute name
+//                 g.append('text')
+//                   .attr('x', cellSize / 2)
+//                   .attr('y', cellSize / 2)
+//                   .attr('text-anchor', 'middle')
+//                   .attr('dominant-baseline', 'middle')
+//                   .attr('font-size', '12px')
+//                   .attr('font-weight', 'bold')
+//                   .text(xAttr);
+//               } else {
+//                 // Off-diagonal: scatter plot
+//                 const plotG = g.append('g')
+//                   .attr('transform', 'translate(5, 5)');
+
+//                 // Build overlap map for this cell across panes
+//                 const cellPositionMap = new Map();
+//                 selectedPanes.forEach((pane, paneIdx) => {
+//                   const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
+//                   paneData.forEach(d => {
+//                     const key = `${d.values[xAttr]},${d.values[yAttr]}`;
+//                     if (!cellPositionMap.has(key)) cellPositionMap.set(key, []);
+//                     cellPositionMap.get(key).push(paneIdx);
+//                   });
+//                 });
+//                 const cellOverlaps = new Set(Array.from(cellPositionMap.entries()).filter(([_, arr]) => arr.length > 1).map(([k]) => k));
+
+//                 // Draw points for each pane with overlap detection
+//                 selectedPanes.forEach((pane, paneIdx) => {
+//                   const paneData = dataPoints.filter(d => d.paneIdx === paneIdx);
+//                   const baseColor = paneColors[paneIdx % paneColors.length].color;
+
+//                   plotG.selectAll(`.point-${i}-${j}-pane-${paneIdx}`)
+//                     .data(paneData)
+//                     .enter()
+//                     .append('circle')
+//                     .attr('class', `point-${i}-${j}-pane-${paneIdx} matrix-point-pane-${paneIdx}`)
+//                     .attr('cx', d => cellSize - 10 - scales[xAttr](d.values[xAttr]))
+//                     .attr('cy', d => scales[yAttr](d.values[yAttr]))
+//                     .attr('r', 2.5)
+//                     .attr('fill', d => cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
+//                     .attr('fill-opacity', 1)
+//                     .attr('stroke', d => cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
+//                     .attr('stroke-width', 0.5)
+//                     .attr('opacity', 1)
+//                     .on('mouseover', function (event, d) {
+//                       d3.select(this)
+//                         .attr('r', 4)
+//                         .attr('opacity', 1);
+//                       const attrInfo = attributes.map(a => `<strong>${a}:</strong> ${d.values[a].toFixed(3)}`).join('<br>');
+//                       const overlapNote = cellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? '<br><em>Overlap position</em>' : '';
+//                       tooltip
+//                         .style('visibility', 'visible')
+//                         .html(`
+//                           <strong>Node:</strong> ${d.id}<br>
+//                           <strong>Pane:</strong> ${d.paneId}${overlapNote}<br>
+//                           ${attrInfo}
+//                         `);
+//                     })
+//                     .on('mousemove', function (event) {
+//                       tooltip
+//                         .style('top', (event.pageY - 10) + 'px')
+//                         .style('left', (event.pageX + 10) + 'px');
+//                     })
+//                     .on('mouseout', function () {
+//                       d3.select(this)
+//                         .attr('r', 2.5)
+//                         .attr('opacity', 1);
+//                       tooltip.style('visibility', 'hidden');
+//                     });
+//                 });
+//               }
+//             });
+//           });
+
+//           // Add legend
+//           const legend = svg.append('g')
+//             .attr('transform', `translate(${n * cellSize + padding + 20}, ${padding})`);
+
+//           legend.append('text')
+//             .attr('x', 0)
+//             .attr('y', 0)
+//             .attr('font-size', '14px')
+//             .attr('font-weight', 'bold')
+//             .text('Panes');
+
+//           selectedPanes.forEach((pane, paneIdx) => {
+//             const color = paneColors[paneIdx % paneColors.length].color;
+//             const legendItem = legend.append('g')
+//               .attr('transform', `translate(0, ${25 + paneIdx * 30})`)
+//               .style('cursor', 'pointer');
+
+//             const checkbox = legendItem.append('rect')
+//               .attr('x', 0)
+//               .attr('y', -8)
+//               .attr('width', 16)
+//               .attr('height', 16)
+//               .attr('fill', 'white')
+//               .attr('stroke', color)
+//               .attr('stroke-width', 2)
+//               .attr('rx', 2);
+
+//             const checkmark = legendItem.append('text')
+//               .attr('x', 8)
+//               .attr('y', 5)
+//               .attr('font-size', '14px')
+//               .attr('font-weight', 'bold')
+//               .attr('text-anchor', 'middle')
+//               .attr('fill', color)
+//               .text('✓');
+
+//             legendItem.append('circle')
+//               .attr('cx', 26)
+//               .attr('cy', 0)
+//               .attr('r', 5)
+//               .attr('fill', color)
+//               .attr('stroke', '#333')
+//               .attr('stroke-width', 1);
+
+//             legendItem.append('text')
+//               .attr('x', 40)
+//               .attr('y', 5)
+//               .attr('font-size', '11px')
+//               .text(`Pane ${paneIdx}: ${pane.id.substring(0, 15)}${pane.id.length > 15 ? '...' : ''}`);
+
+//             legendItem.on('click', function () {
+//               paneVisibility[paneIdx] = !paneVisibility[paneIdx];
+
+//               svg.selectAll(`.matrix-point-pane-${paneIdx}`)
+//                 .transition()
+//                 .duration(200)
+//                 .attr('opacity', paneVisibility[paneIdx] ? 1 : 0)
+//                 .style('pointer-events', paneVisibility[paneIdx] ? 'all' : 'none');
+
+//               checkmark.attr('opacity', paneVisibility[paneIdx] ? 1 : 0);
+//               checkbox.attr('fill', paneVisibility[paneIdx] ? 'white' : '#f0f0f0');
+
+//               // Recalculate overlaps based on visible panes and update colors for each cell
+//               const visiblePaneIndices = Object.keys(paneVisibility).filter(idx => paneVisibility[idx]).map(Number);
+
+//               // For each cell in the matrix, recalculate overlaps and update colors
+//               attributes.forEach((yAttr, i) => {
+//                 attributes.forEach((xAttr, j) => {
+//                   if (i === j) return; // Skip diagonal cells
+
+//                   // Build new overlap map for this cell based on visible panes
+//                   const cellPositionMap = new Map();
+//                   dataPoints.forEach(d => {
+//                     if (visiblePaneIndices.includes(d.paneIdx)) {
+//                       const key = `${d.values[xAttr]},${d.values[yAttr]}`;
+//                       if (!cellPositionMap.has(key)) cellPositionMap.set(key, new Set());
+//                       cellPositionMap.get(key).add(d.paneIdx);
+//                     }
+//                   });
+//                   const newCellOverlaps = new Set(
+//                     Array.from(cellPositionMap.entries())
+//                       .filter(([_, panes]) => panes.size > 1)
+//                       .map(([k]) => k),
+//                   );
+
+//                   // Update colors of visible points in this cell
+//                   visiblePaneIndices.forEach(idx => {
+//                     const baseColor = paneColors[idx % paneColors.length].color;
+//                     svg.selectAll(`.point-${i}-${j}-pane-${idx}`)
+//                       .transition()
+//                       .duration(200)
+//                       .attr('fill', d => newCellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor)
+//                       .attr('stroke', d => newCellOverlaps.has(`${d.values[xAttr]},${d.values[yAttr]}`) ? overlapColor : baseColor);
+//                   });
+//                 });
+//               });
+//             });
+//           });
+
+//           // Overlap legend entry (static, appears if any cell has overlaps)
+//           const anyOverlaps = (() => {
+//             // Rough heuristic: if any identical value pair exists across panes for any attribute pair
+//             const seen = new Set();
+//             let overlapFound = false;
+//             dataPoints.forEach(d => {
+//               attributes.forEach(a1 => {
+//                 attributes.forEach(a2 => {
+//                   if (a1 === a2) return;
+//                   const key = `${a1}:${d.values[a1]},${a2}:${d.values[a2]}`;
+//                   if (seen.has(key)) {
+//                     overlapFound = true;
+//                   } else {
+//                     seen.add(key);
+//                   }
+//                 });
+//               });
+//             });
+//             return overlapFound;
+//           })();
+//           if (anyOverlaps) {
+//             const overlapIndex = selectedPanes.length;
+//             const overlapLegend = legend.append('g')
+//               .attr('transform', `translate(0, ${25 + overlapIndex * 30})`);
+//             overlapLegend.append('circle')
+//               .attr('cx', 8)
+//               .attr('cy', 0)
+//               .attr('r', 6)
+//               .attr('fill', overlapColor)
+//               .attr('stroke', '#333')
+//               .attr('stroke-width', 1);
+//             overlapLegend.append('text')
+//               .attr('x', 22)
+//               .attr('y', 4)
+//               .attr('font-size', '11px')
+//               .attr('font-style', 'italic')
+//               .text('Overlap (shared position)');
+//           }
+
+//           // Cleanup
+//           const observer = new MutationObserver((mutations) => {
+//             mutations.forEach((mutation) => {
+//               mutation.removedNodes.forEach((node) => {
+//                 if (node.id === 'scatter-matrix-container'
+//                   || (node.classList && node.classList.contains('swal2-container'))) {
+//                   tooltip.remove();
+//                   observer.disconnect();
+//                 }
+//               });
+//             });
+//           });
+//           observer.observe(document.body, { childList: true, subtree: true });
+//         });
+//       },
+//     });
+//   });
+// }
 
 function showPcpOverlayDialog() {
   const panes = getPanes();

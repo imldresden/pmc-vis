@@ -1,53 +1,13 @@
-/**
- * Matrix View Module
- *
- * Provides an adjacency matrix visualization for state-to-state connections
- * in Cytoscape graphs. Transitions (t-nodes) are aggregated to show direct
- * state-to-state connectivity.
- *
- * Features:
- * - Canvas-based rendering for performance
- * - Multiple ordering strategies (ID, degree, BFS)
- * - Zoom and pan interactions
- * - Hover highlighting synchronized across panes
- * - Selection support via diagonal cell clicks
- * - Support for diff graphs and unified views with color coding
- *
- * @module matrix-view
- */
-
 import events from '../../utils/events.js';
 import { setPane } from '../../utils/controls.js';
 import { getPanes, destroyPanes, togglePane } from '../panes/panes.js';
 import Swal from 'sweetalert2';
 
-// ============================================================================
-// Module State
-// ============================================================================
-
-/** Map of pane ID to matrix view state */
 const state = new Map();
-
-// ============================================================================
-// DOM Utilities
-// ============================================================================
-
-/**
- * Get the container element for a pane.
- * @param {Object} pane - The pane object
- * @returns {HTMLElement|null} The container element
- */
 function getPaneContainer(pane) {
   return document.getElementById(pane.container);
 }
 
-/**
- * Create or retrieve the matrix overlay layer for a pane.
- * Sets up the canvas and event isolation.
- *
- * @param {Object} pane - The pane object
- * @returns {HTMLElement} The matrix layer element
- */
 function ensureMatrixLayer(pane) {
   const container = getPaneContainer(pane);
   const layerId = `${pane.container}-matrix`;
@@ -121,10 +81,6 @@ function ensureMatrixLayer(pane) {
   return layer;
 }
 
-/**
- * Hide Cytoscape elements when showing matrix view.
- * @param {Object} pane - The pane object
- */
 function hideCytoscape(pane) {
   const container = getPaneContainer(pane);
   const matrixId = `${pane.container}-matrix`;
@@ -136,10 +92,6 @@ function hideCytoscape(pane) {
   });
 }
 
-/**
- * Show Cytoscape elements when hiding matrix view.
- * @param {Object} pane - The pane object
- */
 function showCytoscape(pane) {
   const container = getPaneContainer(pane);
   const matrixId = `${pane.container}-matrix`;
@@ -151,16 +103,6 @@ function showCytoscape(pane) {
   });
 }
 
-// ============================================================================
-// Adjacency Matrix Computation
-// ============================================================================
-
-/**
- * Compute node degrees for filtering and ordering.
- * @param {Array} sNodes - State nodes array
- * @param {Array} edges - Edges array
- * @returns {Map<string, number>} Map of node ID to degree
- */
 function computeDegrees(sNodes, edges) {
   const degrees = new Map();
   sNodes.forEach((n) => degrees.set(n.id, 0));
@@ -177,12 +119,6 @@ function computeDegrees(sNodes, edges) {
   return degrees;
 }
 
-/**
- * Apply BFS ordering to nodes starting from the first node.
- * @param {Array} sNodes - State nodes array
- * @param {Array} edges - Edges array
- * @returns {Array} Ordered nodes array
- */
 function applyBfsOrdering(sNodes, edges) {
   if (sNodes.length === 0) {
     return sNodes;
@@ -223,17 +159,6 @@ function applyBfsOrdering(sNodes, edges) {
   return ordered;
 }
 
-/**
- * Build the adjacency matrix data from Cytoscape graph.
- * Aggregates transitions (t-nodes) to show state-to-state connectivity.
- *
- * @param {Object} pane - The pane object
- * @param {string} ordering - Ordering strategy: 'id' | 'degree' | 'bfs'
- * @param {Object} filters - Filter options
- * @param {number} [filters.minDegree] - Minimum degree filter
- * @param {boolean} [filters.showOnlySelected] - Show only selected nodes
- * @returns {Object} Adjacency data { nodes, counts, n, max, isUnifiedView, nodeMembership }
- */
 function buildAdjacency(pane, ordering = 'id', filters = {}) {
   const cy = pane.cy;
   const elements = cy.json()?.elements || {};
@@ -350,28 +275,6 @@ function buildAdjacency(pane, ordering = 'id', filters = {}) {
   };
 }
 
-// ============================================================================
-// Rendering Utilities
-// ============================================================================
-
-/**
- * Convert RGB color to RGBA string with intensity-based alpha.
- * @param {Object} color - Color object with r, g, b properties
- * @param {number} ratio - Intensity ratio (0-1)
- * @returns {string} RGBA color string
- */
-function toRGBA({ r, g, b }, ratio) {
-  if (!ratio || ratio <= 0) return 'rgba(0,0,0,0)';
-  const alpha = Math.max(0.35, Math.min(1, 0.25 + 0.75 * ratio));
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-/**
- * Create tooltip element for matrix hover.
- * @param {Object} pane - The pane object
- * @param {HTMLElement} layer - The matrix layer element
- * @returns {HTMLElement} The tooltip element
- */
 function createTooltip(pane, layer) {
   const tooltipId = `${pane.container}-matrix-tooltip`;
   let tooltip = document.getElementById(tooltipId);
@@ -397,17 +300,6 @@ function createTooltip(pane, layer) {
   return tooltip;
 }
 
-// ============================================================================
-// Matrix Renderer
-// ============================================================================
-
-/**
- * Create a renderer for the matrix view.
- * Manages canvas rendering, interactions, and state.
- *
- * @param {Object} pane - The pane object
- * @returns {Object} Renderer API { draw, resize, destroy, setOrdering, getCurrentOrdering, resetZoom }
- */
 function createRenderer(pane) {
   const layer = ensureMatrixLayer(pane);
   const canvas = layer.querySelector('canvas');
@@ -432,13 +324,6 @@ function createRenderer(pane) {
   let dragStartX = 0;
   let dragStartY = 0;
 
-  // -------------------------------------------------------------------------
-  // Hover Highlighting
-  // -------------------------------------------------------------------------
-
-  /**
-   * Clear hover highlighting from Cytoscape nodes.
-   */
   function clearMatrixHoverNodes() {
     if (!pane?.cy) return;
 
@@ -452,11 +337,6 @@ function createRenderer(pane) {
     hoveredNodeElements = [];
   }
 
-  /**
-   * Apply hover highlighting to Cytoscape nodes.
-   * @param {string} fromId - Source node ID
-   * @param {string} toId - Target node ID
-   */
   function applyMatrixHoverNodes(fromId, toId) {
     if (!pane?.cy) return;
     clearMatrixHoverNodes();
@@ -481,11 +361,6 @@ function createRenderer(pane) {
     });
   }
 
-  /**
-   * Emit global matrix hover event for cross-pane synchronization.
-   * @param {Array} ids - Array of hovered node IDs
-   * @param {Object} [edge] - Optional edge info {fromId, toId}
-   */
   function emitMatrixHover(ids, edge = null) {
     try {
       window.dispatchEvent(events.MATRIX_HOVER(pane?.id, ids || [], edge));
@@ -494,13 +369,6 @@ function createRenderer(pane) {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Canvas Sizing
-  // -------------------------------------------------------------------------
-
-  /**
-   * Resize canvas to match container dimensions.
-   */
   function resize() {
     const container = getPaneContainer(pane);
     canvas.width = container.clientWidth;
@@ -508,13 +376,6 @@ function createRenderer(pane) {
     draw();
   }
 
-  // -------------------------------------------------------------------------
-  // Main Drawing Function
-  // -------------------------------------------------------------------------
-
-  /**
-   * Main draw function - renders the entire matrix.
-   */
   function draw() {
     const filters = { minDegree: minDegreeFilter, showOnlySelected };
     const {
@@ -567,7 +428,7 @@ function createRenderer(pane) {
     if (cell >= 8 && n <= 500) {
       ctx.strokeStyle = '#eee';
       ctx.lineWidth = 1;
-      for (let i = 0; i <= n; i++) {
+      for (let i = 0; i <= n; i += 1) {
         const p = i * cell;
         ctx.beginPath();
         ctx.moveTo(0, p);
@@ -581,15 +442,12 @@ function createRenderer(pane) {
       }
     }
 
-    // Color scale: For diff graphs use diff colors, for unified views use graph membership colors, otherwise use single edge color
+    // Color scale:
+    // For diff graphs use diff colors,
+    // for unified views use graph membership colors,
+    // otherwise use single edge color
     const isDiffGraph = pane.cy.isDiffGraph;
-
-    const palette = isDiffGraph ? {
-      added: { r: 27, g: 94, b: 32 },            // green (diff-added)
-      removed: { r: 183, g: 28, b: 28 },         // red (diff-removed)
-      context: { r: 158, g: 158, b: 158 },       // gray (diff-context)
-      self: { r: 110, g: 110, b: 110 },          // neutral gray
-    } : isUnifiedView ? {
+    const unified = isUnifiedView ? {
       graphAOnly: { r: 76, g: 175, b: 80 },      // green (graph-a-only)
       graphBOnly: { r: 244, g: 67, b: 54 },      // red (graph-b-only)
       shared: { r: 158, g: 158, b: 158 },        // gray (shared)
@@ -599,6 +457,12 @@ function createRenderer(pane) {
       edge: { r: 43, g: 140, b: 255 },           // blue for all edges
       self: { r: 110, g: 110, b: 110 },          // neutral gray for diagonal
     };
+    const palette = isDiffGraph ? {
+      added: { r: 27, g: 94, b: 32 },            // green (diff-added)
+      removed: { r: 183, g: 28, b: 28 },         // red (diff-removed)
+      context: { r: 158, g: 158, b: 158 },       // gray (diff-context)
+      self: { r: 110, g: 110, b: 110 },          // neutral gray
+    } : unified;
     const toRGBA = ({ r, g, b }, ratio) => {
       if (!ratio || ratio <= 0) return 'rgba(0,0,0,0)';
       const a = Math.max(0.35, Math.min(1, 0.25 + 0.75 * ratio));
@@ -607,10 +471,10 @@ function createRenderer(pane) {
 
     // Row-wise maxima for normalization: max outgoing per source state
     const rowMax = new Uint16Array(n);
-    for (let rr = 0; rr < n; rr++) {
+    for (let rr = 0; rr < n; rr += 1) {
       let m = 0;
       const base = rr * n;
-      for (let cc = 0; cc < n; cc++) {
+      for (let cc = 0; cc < n; cc += 1) {
         const v = counts[base + cc];
         if (v > m) m = v;
       }
@@ -620,22 +484,25 @@ function createRenderer(pane) {
     // Degree vectors for fallback normalization when rows are uniform (max==1)
     const outDeg = new Uint16Array(n);
     const inDeg = new Uint16Array(n);
-    for (let rr = 0; rr < n; rr++) {
+    for (let rr = 0; rr < n; rr += 1) {
       const base = rr * n;
-      for (let cc = 0; cc < n; cc++) {
+      for (let cc = 0; cc < n; cc += 1) {
         if (counts[base + cc] > 0) {
-          outDeg[rr]++;
-          inDeg[cc]++;
+          outDeg[rr] += 1;
+          inDeg[cc] += 1;
         }
       }
     }
     let maxOut = 0; let
       maxIn = 0;
-    for (let i = 0; i < n; i++) { if (outDeg[i] > maxOut) maxOut = outDeg[i]; if (inDeg[i] > maxIn) maxIn = inDeg[i]; }
+    for (let i = 0; i < n; i += 1) {
+      if (outDeg[i] > maxOut) maxOut = outDeg[i];
+      if (inDeg[i] > maxIn) maxIn = inDeg[i];
+    }
 
     // Draw cells: only lower half (r >= c)
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
+    for (let r = 0; r < n; r += 1) {
+      for (let c = 0; c < n; c += 1) {
         // Only render lower half (including diagonal)
         if (r < c) continue;
 
@@ -734,34 +601,31 @@ function createRenderer(pane) {
             const ri = maxIn ? (inDeg[r] / maxIn) : 0;
             ratio = Math.max(ro, ri);
           }
-        } else {
-          // Normal view: single color for all edges
-          if (r === c) {
-            // Diagonal: self-loop, normalized by its row
-            if (rowMax[r] > 1) {
-              ratio = Math.min(1, f / rowMax[r]);
-            } else {
-              // fallback: degree-based
-              const ro = maxOut ? (outDeg[r] / maxOut) : 0;
-              const ri = maxIn ? (inDeg[r] / maxIn) : 0;
-              ratio = Math.max(ro, ri);
-            }
-            cellColor = palette.self;
+        } else if (r === c) {
+          // Diagonal: self-loop, normalized by its row
+          if (rowMax[r] > 1) {
+            ratio = Math.min(1, f / rowMax[r]);
           } else {
-            // Off-diagonal: use combined count from both directions
-            const totalCount = f + b;
-            // Normalize by the maximum of the two source rows
-            const maxSource = Math.max(rowMax[r], rowMax[c]);
-            if (maxSource > 1) {
-              ratio = Math.min(1, totalCount / maxSource);
-            } else {
-              // fallback: use combined degree
-              const ro = maxOut ? (outDeg[r] / maxOut) : 0;
-              const ri = maxIn ? (inDeg[c] / maxIn) : 0;
-              ratio = Math.max(ro, ri, 0.5);
-            }
-            cellColor = palette.edge;
+            // fallback: degree-based
+            const ro = maxOut ? (outDeg[r] / maxOut) : 0;
+            const ri = maxIn ? (inDeg[r] / maxIn) : 0;
+            ratio = Math.max(ro, ri);
           }
+          cellColor = palette.self;
+        } else {
+          // Off-diagonal: use combined count from both directions
+          const totalCount = f + b;
+          // Normalize by the maximum of the two source rows
+          const maxSource = Math.max(rowMax[r], rowMax[c]);
+          if (maxSource > 1) {
+            ratio = Math.min(1, totalCount / maxSource);
+          } else {
+            // fallback: use combined degree
+            const ro = maxOut ? (outDeg[r] / maxOut) : 0;
+            const ri = maxIn ? (inDeg[c] / maxIn) : 0;
+            ratio = Math.max(ro, ri, 0.5);
+          }
+          cellColor = palette.edge;
         }
 
         if (cellColor && ratio !== undefined) {
@@ -776,7 +640,7 @@ function createRenderer(pane) {
     ctx.lineWidth = 3;
     ctx.beginPath();
     // Start at top-left (0, 0) and draw zigzag along cell edges of the diagonal
-    for (let i = 0; i <= n; i++) {
+    for (let i = 0; i <= n; i += 1) {
       const pos = i * cell;
       if (i === 0) {
         ctx.moveTo(0, 0);
@@ -825,7 +689,7 @@ function createRenderer(pane) {
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
 
-      for (let i = 0; i < n; i++) {
+      for (let i = 0; i < n; i += 1) {
         if (selectedIds.has(nodes[i]?.id)) {
           // Highlight row
           ctx.strokeRect(0, i * cell, n * cell, cell);
@@ -844,7 +708,7 @@ function createRenderer(pane) {
       const fontSize = Math.max(10, Math.min(14, Math.floor(cell * 0.7)));
       ctx.font = `${fontSize}px sans-serif`;
       // Row labels (LEFT of matrix) - right-aligned
-      for (let r = 0; r < n; r++) {
+      for (let r = 0; r < n; r += 1) {
         const id = (nodes[r]?.id || '').toString();
         const text = id.length > 12 ? id.slice(0, 12) + '…' : id;
         ctx.textAlign = 'right';
@@ -853,7 +717,7 @@ function createRenderer(pane) {
       // Column labels (bottom, rotated) - shifted down with sufficient spacing
       ctx.save();
       ctx.translate(originX, originY + totalSize);
-      for (let c = 0; c < n; c++) {
+      for (let c = 0; c < n; c += 1) {
         const id = (nodes[c]?.id || '').toString();
         const text = id.length > 12 ? id.slice(0, 12) + '…' : id;
         ctx.save();
@@ -875,15 +739,15 @@ function createRenderer(pane) {
     // Compute statistics
     let nonZeroCells = 0;
     let totalDegree = 0;
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
+    for (let r = 0; r < n; r += 1) {
+      for (let c = 0; c < n; c += 1) {
         const f = counts[r * n + c];
         const b = counts[c * n + r];
-        if (f > 0 || b > 0) nonZeroCells++;
-        if (f > 0) totalDegree++;
+        if (f > 0 || b > 0) nonZeroCells += 1;
+        if (f > 0) totalDegree += 1;
       }
     }
-    const density = n > 0 ? (nonZeroCells / (n * n) * 100).toFixed(1) : 0;
+    const density = n > 0 ? ((nonZeroCells / (n * n)) * 100).toFixed(1) : 0;
     const avgDegree = n > 0 ? (totalDegree / n).toFixed(1) : 0;
 
     // Store statistics in pane for sidebar display
@@ -1056,7 +920,10 @@ function createRenderer(pane) {
         if (!(el && el.nonempty && el.isNode && el.isNode() && el.data('type') === 's')) {
           el = cy.nodes().filter((n) => n.data('id') === nodeId && n.data('type') === 's');
         }
-        const empty = (!el || (el.nonempty !== undefined && !el.nonempty) || (el.length !== undefined && el.length === 0));
+        const empty = (!el
+          || (el.nonempty !== undefined && !el.nonempty)
+          || (el.length !== undefined && el.length === 0)
+        );
         if (empty) return;
 
         try {
@@ -1622,17 +1489,24 @@ export function updateMatrixLegendInSidebar(pane) {
   const isDiffGraph = pane.cy.isDiffGraph;
 
   // Color legend items - different for diff graph, unified view, or normal view
+  const unifiedColors = isUnifiedView ? [
+    { color: 'rgba(76, 175, 80, 1)', label: 'Added (only in Graph 2)' },
+    { color: 'rgba(244, 67, 54, 1)', label: 'Removed (only in Graph 1)' },
+    { color: 'rgba(158, 158, 158, 1)', label: 'Unchanged (in both)' },
+    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
+  ] : [
+    {
+      color: 'rgba(43, 140, 255, 1)',
+      label: 'Edge',
+    },
+    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
+  ];
   const colorItems = isDiffGraph ? [
     { color: 'rgba(27, 94, 32, 1)', label: 'Added (in Graph 2)' },
     { color: 'rgba(183, 28, 28, 1)', label: 'Removed (in Graph 1)' },
     { color: 'rgba(158, 158, 158, 1)', label: 'Context (unchanged)' },
     { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
-  ] : isUnifiedView ? [
-    { color: 'rgba(76, 175, 80, 1)', label: 'Added (only in Graph 2)' },
-    { color: 'rgba(244, 67, 54, 1)', label: 'Removed (only in Graph 1)' },
-    { color: 'rgba(158, 158, 158, 1)', label: 'Unchanged (in both)' },
-    { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' },
-  ] : [{ color: 'rgba(43, 140, 255, 1)', label: 'Edge' }, { color: 'rgba(110, 110, 110, 1)', label: 'Self-loop (diagonal)' }];
+  ] : unifiedColors;
 
   colorItems.forEach(({ color, label }) => {
     const item = document.createElement('div');

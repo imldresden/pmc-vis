@@ -33,19 +33,6 @@ socket.on('disconnect', () => {
   location.reload();
 });
 
-// ============================================================================
-// Matrix Hover Cross-Pane Synchronization
-// ============================================================================
-
-/**
- * Resolve a state node element in Cytoscape by its ID.
- * Tries direct ID lookup first, then falls back to searching by data ID.
- * Only returns state nodes (type === 's').
- *
- * @param {Object} cy - Cytoscape instance
- * @param {string} nodeId - The node ID to resolve
- * @returns {Object|null} The Cytoscape node element, or null if not found
- */
 function resolveStateNodeElement(cy, nodeId) {
   if (!cy || !nodeId) return null;
 
@@ -72,15 +59,6 @@ function resolveStateNodeElement(cy, nodeId) {
   return null;
 }
 
-/**
- * Apply matrix hover highlighting to Cytoscape nodes and edges.
- * Called in response to the global 'matrix-hover' event to synchronize
- * hover state across all panes.
- *
- * @param {Object} cy - Cytoscape instance
- * @param {Array<string>} ids - Array of node IDs to highlight
- * @param {Object} [edge] - Optional edge info {fromId, toId} for edge highlighting
- */
 function applyMatrixHoverToCy(cy, ids, edge = null) {
   if (!cy) return;
 
@@ -184,10 +162,6 @@ function applyMatrixHoverToCy(cy, ids, edge = null) {
     }
   }
 }
-
-// ============================================================================
-// Pane Management Utilities
-// ============================================================================
 
 function uid() {
   return 'id' + shortid.generate();

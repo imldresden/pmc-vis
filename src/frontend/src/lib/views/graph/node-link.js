@@ -484,7 +484,11 @@ function spawnGraphOnNewPane(cy, nodes) {
 async function fetchAndSpawn(cy, nodes) {
   if (!nodes.length) return;
 
-  const res = await fetch(`${BACKEND}/${PROJECT}/outgoing?id=${nodes.map((n) => n.id).join('&id=')}${VERSION ? '&version=' + VERSION : ''}`);
+  const res = await fetch(`${BACKEND}/${PROJECT}/outgoing?id=${
+    nodes.map((n) => n.id).join('&id=')
+  }${
+    VERSION ? '&version=' + VERSION : ''
+  }`);
   const data = await res.json();
 
   const nodesIds = data.nodes
@@ -706,7 +710,10 @@ function spawnPCP(cy, order = undefined) {
   });
 
   // Restore overlay state if it was preserved
-  if (preservedOverlayState && preservedOverlayState.enabled && preservedOverlayState.panes.length > 0) {
+  if (preservedOverlayState
+    && preservedOverlayState.enabled
+    && preservedOverlayState.panes.length > 0
+  ) {
     cy.pcp.enableOverlay(preservedOverlayState.panes);
   }
 
@@ -730,133 +737,148 @@ function unbindListeners(cy) {
   }
 }
 
-let nodeDetailsWindowZ = 10000;
-let nodeDetailsWindowCount = 0;
+// KILLSWITCHED
+// let nodeDetailsWindowZ = 10000;
+// let nodeDetailsWindowCount = 0;
 
-function openDraggableDetailsWindow({ titleHtml, contentEl, originalEvent }) {
-  const winId = `node-details-window-${Date.now()}-${nodeDetailsWindowCount++}`;
-  const $win = document.createElement('div');
-  $win.id = winId;
-  $win.style.cssText = `
-    position: fixed;
-    width: 760px;
-    max-width: calc(100vw - 40px);
-    max-height: calc(100vh - 40px);
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    overflow: hidden;
-    z-index: ${++nodeDetailsWindowZ};
-  `;
+// function openDraggableDetailsWindow({ titleHtml, contentEl, originalEvent }) {
+//   const winId = `node-details-window-${Date.now()}-${nodeDetailsWindowCount++}`;
+//   const $win = document.createElement('div');
+//   $win.id = winId;
+//   $win.style.cssText = `
+//     position: fixed;
+//     width: 760px;
+//     max-width: calc(100vw - 40px);
+//     max-height: calc(100vh - 40px);
+//     background: #ffffff;
+//     border: 1px solid #d1d5db;
+//     border-radius: 8px;
+//     overflow: hidden;
+//     z-index: ${++nodeDetailsWindowZ};
+//   `;
 
-  const $header = document.createElement('div');
-  $header.style.cssText = `
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
-    cursor: grab;
-    user-select: none;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f9fafb;
-  `;
+//   const $header = document.createElement('div');
+//   $header.style.cssText = `
+//     display: flex;
+//     align-items: center;
+//     justify-content: space-between;
+//     gap: 12px;
+//     padding: 10px 12px;
+//     cursor: grab;
+//     user-select: none;
+//     border-bottom: 1px solid #e5e7eb;
+//     background: #f9fafb;
+//   `;
 
-  const $title = document.createElement('div');
-  $title.style.cssText = 'font-weight: 600; font-size: 13px; line-height: 1.2;';
-  $title.innerHTML = titleHtml;
+//   const $title = document.createElement('div');
+//   $title.style.cssText = 'font-weight: 600; font-size: 13px; line-height: 1.2;';
+//   $title.innerHTML = titleHtml;
 
-  const $close = document.createElement('button');
-  $close.type = 'button';
-  $close.setAttribute('aria-label', 'Close');
-  $close.style.cssText = `
-    width: 28px;
-    height: 28px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 28px;
-    color: #6b7280;
-  `;
-  $close.textContent = '×';
+//   const $close = document.createElement('button');
+//   $close.type = 'button';
+//   $close.setAttribute('aria-label', 'Close');
+//   $close.style.cssText = `
+//     width: 28px;
+//     height: 28px;
+//     border: 0;
+//     border-radius: 6px;
+//     background: transparent;
+//     cursor: pointer;
+//     font-size: 18px;
+//     line-height: 28px;
+//     color: #6b7280;
+//   `;
+//   $close.textContent = '×';
 
-  const $body = document.createElement('div');
-  $body.style.cssText = 'padding: 12px; overflow: auto; max-height: calc(100vh - 120px);';
-  $body.appendChild(contentEl);
+//   const $body = document.createElement('div');
+//   $body.style.cssText = 'padding: 12px; overflow: auto; max-height: calc(100vh - 120px);';
+//   $body.appendChild(contentEl);
 
-  $header.appendChild($title);
-  $header.appendChild($close);
-  $win.appendChild($header);
-  $win.appendChild($body);
+//   $header.appendChild($title);
+//   $header.appendChild($close);
+//   $win.appendChild($header);
+//   $win.appendChild($body);
 
-  // Initial positioning
-  const margin = 20;
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-  const baseX = typeof originalEvent?.clientX === 'number' ? originalEvent.clientX : Math.floor(viewportW / 2);
-  const baseY = typeof originalEvent?.clientY === 'number' ? originalEvent.clientY : Math.floor(viewportH / 2);
-  const cascade = (nodeDetailsWindowCount % 10) * 18;
+//   // Initial positioning
+//   const margin = 20;
+//   const viewportW = window.innerWidth;
+//   const viewportH = window.innerHeight;
+//   const baseX = typeof originalEvent?.clientX === 'number' ?
+//      originalEvent.clientX : Math.floor(viewportW / 2);
+//   const baseY = typeof originalEvent?.clientY === 'number' ?
+//      originalEvent.clientY : Math.floor(viewportH / 2);
+//   const cascade = (nodeDetailsWindowCount % 10) * 18;
 
-  // Place near cursor, clamped into viewport (use translate so we can measure after append)
-  $win.style.left = Math.max(margin, Math.min(viewportW - margin - 760, baseX + 10 + cascade)) + 'px';
-  $win.style.top = Math.max(margin, Math.min(viewportH - margin - 400, baseY + 10 + cascade)) + 'px';
+//   // Place near cursor, clamped into viewport (use translate so we can measure after append)
+//   $win.style.left = Math.max(
+//      margin,
+//      Math.min(viewportW - margin - 760, baseX + 10 + cascade)
+//   ) + 'px';
+//   $win.style.top = Math.max(
+//      margin,
+//      Math.min(viewportH - margin - 400, baseY + 10 + cascade)
+//   ) + 'px';
 
-  document.body.appendChild($win);
+//   document.body.appendChild($win);
 
-  const bringToFront = () => {
-    $win.style.zIndex = String(++nodeDetailsWindowZ);
-  };
-  $win.addEventListener('mousedown', bringToFront, { passive: true });
+//   const bringToFront = () => {
+//     $win.style.zIndex = String(++nodeDetailsWindowZ);
+//   };
+//   $win.addEventListener('mousedown', bringToFront, { passive: true });
 
-  // Dragging
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let startLeft = 0;
-  let startTop = 0;
+//   // Dragging
+//   let dragging = false;
+//   let startX = 0;
+//   let startY = 0;
+//   let startLeft = 0;
+//   let startTop = 0;
 
-  const onMouseMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    const nextLeft = Math.max(margin, Math.min(window.innerWidth - margin - $win.offsetWidth, startLeft + dx));
-    const nextTop = Math.max(margin, Math.min(window.innerHeight - margin - $win.offsetHeight, startTop + dy));
-    $win.style.left = nextLeft + 'px';
-    $win.style.top = nextTop + 'px';
-  };
+//   const onMouseMove = (e) => {
+//     if (!dragging) return;
+//     const dx = e.clientX - startX;
+//     const dy = e.clientY - startY;
+//     const nextLeft = Math.max(
+//        margin,
+//        Math.min(window.innerWidth - margin - $win.offsetWidth, startLeft + dx)
+//     );
+//     const nextTop = Math.max(
+//        margin,
+//        Math.min(window.innerHeight - margin - $win.offsetHeight, startTop + dy)
+//     );
+//     $win.style.left = nextLeft + 'px';
+//     $win.style.top = nextTop + 'px';
+//   };
 
-  const onMouseUp = () => {
-    if (!dragging) return;
-    dragging = false;
-    $header.style.cursor = 'grab';
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  };
+//   const onMouseUp = () => {
+//     if (!dragging) return;
+//     dragging = false;
+//     $header.style.cursor = 'grab';
+//     window.removeEventListener('mousemove', onMouseMove);
+//     window.removeEventListener('mouseup', onMouseUp);
+//   };
 
-  $header.addEventListener('mousedown', (e) => {
-    // Only left click
-    if (e.button !== 0) return;
-    bringToFront();
-    dragging = true;
-    $header.style.cursor = 'grabbing';
-    startX = e.clientX;
-    startY = e.clientY;
-    startLeft = $win.offsetLeft;
-    startTop = $win.offsetTop;
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseup', onMouseUp, { passive: true });
-  }, { passive: true });
+//   $header.addEventListener('mousedown', (e) => {
+//     // Only left click
+//     if (e.button !== 0) return;
+//     bringToFront();
+//     dragging = true;
+//     $header.style.cursor = 'grabbing';
+//     startX = e.clientX;
+//     startY = e.clientY;
+//     startLeft = $win.offsetLeft;
+//     startTop = $win.offsetTop;
+//     window.addEventListener('mousemove', onMouseMove, { passive: true });
+//     window.addEventListener('mouseup', onMouseUp, { passive: true });
+//   }, { passive: true });
 
-  const destroy = () => {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-    $win.remove();
-  };
+//   const destroy = () => {
+//     window.removeEventListener('mousemove', onMouseMove);
+//     window.removeEventListener('mouseup', onMouseUp);
+//     $win.remove();
+//   };
 
-  $close.addEventListener('click', destroy, { passive: true });
-}
+//   $close.addEventListener('click', destroy, { passive: true });
+// }
 
 function buildDetailsTooltipFromNode(cy, n) {
   n.unselectify();
@@ -902,8 +924,8 @@ function buildDetailsTooltipFromNode(cy, n) {
   }
 }
 
-// function buildDetailsTooltipFromNode(cy, n, originalEvent = undefined) {
 // KILLSWITCHED
+// function buildDetailsTooltipFromNode(cy, n, originalEvent = undefined) {
 //   n.unselectify();
 //   cy.pendingSelectify = true;
 
@@ -925,8 +947,15 @@ function buildDetailsTooltipFromNode(cy, n) {
 
 //   // Build overview section
 //   const overviewHtml = `
-//     <div style="background: #667eea; color: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-//       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+//     <div style="background: #667eea;
+//            color: white;
+//            padding: 15px;
+//            border-radius: 6px;
+//            margin-bottom: 20px;
+//            box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+//       <div style="display: grid;
+//              grid-template-columns: repeat(3, 1fr);
+//              gap: 15px; text-align: center;">
 //         <div>
 //           <div style="font-size: 11px; opacity: 0.9; margin-bottom: 4px;">Incoming</div>
 //           <div style="font-size: 20px; font-weight: bold;">${incomingEdges}</div>
@@ -952,7 +981,11 @@ function buildDetailsTooltipFromNode(cy, n) {
 //       || Object.values(details[d].props).reduce((a, b) => a || b, false);
 
 //     if (show) {
-//       const colorTheme = categoryColors[d] || { bg: '#f9fafb', header: '#6b7280', border: '#e5e7eb' };
+//       const colorTheme = categoryColors[d] || {
+//          bg: '#f9fafb',
+//          header: '#6b7280',
+//          border: '#e5e7eb'
+//       };
 //       const block = document.createElement('div');
 //       block.style.marginBottom = '20px';
 
@@ -979,11 +1012,29 @@ function buildDetailsTooltipFromNode(cy, n) {
 //       // Build table HTML
 //       let tableHtml = `
 //         <div style="margin-bottom: 15px;">
-//           <div style="background: ${colorTheme.header}; color: white; padding: 10px; border-radius: 6px 6px 0 0; font-weight: bold; font-size: 14px; text-align: center; display: flex; justify-content: space-between; align-items: center;">
+//           <div style="background: ${colorTheme.header};
+//                  color: white;
+//                  padding: 10px;
+//                  border-radius: 6px 6px 0 0;
+//                  font-weight: bold;
+//                  font-size: 14px;
+//                  text-align: center;
+//                  display: flex;
+//                  justify-content: space-between;
+//                  align-items: center;">
 //             <span>${d}</span>
-//             <span style="font-size: 11px; opacity: 0.9; font-weight: normal;">${attributes.length} attribute${attributes.length !== 1 ? 's' : ''}</span>
+//             <span style="font-size: 11px;
+//                      opacity: 0.9;
+//                      font-weight: normal;">${
+//                  attributes.length
+//                } attribute${attributes.length !== 1 ? 's' : ''}
+//             </span>
 //           </div>
-//           <table style="width: 100%; border-collapse: collapse; border: 1px solid ${colorTheme.border}; border-top: none;">
+//           <table style="width: 100%;
+//                    border-collapse: collapse;
+//                    border: 1px solid ${
+//                colorTheme.border
+//              }; border-top: none;">
 //             <tbody>
 //       `;
 
@@ -993,7 +1044,11 @@ function buildDetailsTooltipFromNode(cy, n) {
 //         const displayValue = isNumber ? fixed(value) : value;
 //         const rowBg = idx % 2 === 0 ? '#ffffff' : colorTheme.bg;
 
-//         let valueCell = `<td style="padding: 10px 12px; text-align: right; border-bottom: 1px solid ${colorTheme.border}; font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace;">
+//         let valueCell = `<td style="padding: 10px 12px;
+//            text-align: right;
+//            border-bottom: 1px solid ${colorTheme.border};
+//            font-weight: 600; color: ${colorTheme.header};
+//            font-family: 'Courier New', monospace;">
 //           ${displayValue}
 //         </td>`;
 
@@ -1005,21 +1060,56 @@ function buildDetailsTooltipFromNode(cy, n) {
 //           const percentage = range > 0 ? ((value - min) / range) * 100 : 50;
 
 //           // Ensure displayValue is valid for numeric display
-//           const safeDisplayValue = typeof value === 'number' && !isNaN(value) ? fixed(value) : value;
+//           const safeDisplayValue = typeof value === 'number' && !isNaN(value) ?
+//              fixed(value) : value;
 
 //           // Add range indicator bar
 //           valueCell = `
 //             <td style="padding: 8px 12px; border-bottom: 1px solid ${colorTheme.border};">
 //               <div style="display: flex; align-items: center; gap: 10px;">
-//                 <div style="flex: 1; background: #e5e7eb; height: 8px; border-radius: 4px; position: relative; overflow: hidden;">
-//                   <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${percentage}%; background: linear-gradient(90deg, ${colorTheme.header}cc, ${colorTheme.header}); border-radius: 4px; transition: width 0.3s;"></div>
-//                   <div style="position: absolute; left: ${percentage}%; top: 50%; transform: translate(-50%, -50%); width: 3px; height: 14px; background: ${colorTheme.header}; border-radius: 2px; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>
+//                 <div style="flex: 1;
+//                       background: #e5e7eb;
+//                       height: 8px;
+//                       border-radius: 4px;
+//                       position: relative;
+//                       overflow: hidden;
+//                      ">
+//                   <div style="position: absolute;
+//                       left: 0;
+//                       top: 0;
+//                       height: 100%;
+//                       width: ${percentage}%;
+//                       background: linear-gradient(90deg, ${
+//                          colorTheme.header
+//                       }cc, ${
+//                          colorTheme.header
+//                       });
+//                       border-radius: 4px;
+//                       transition: width 0.3s;
+//                      "></div>
+//                   <div style="position: absolute;
+//                       left: ${percentage}%;
+//                       top: 50%;
+//                       transform: translate(-50%, -50%);
+//                       width: 3px;
+//                       height: 14px;
+//                       background: ${colorTheme.header};
+//                       border-radius: 2px;
+//                       box-shadow: 0 0 3px rgba(0,0,0,0.3);
+//                      "></div>
 //                 </div>
-//                 <div style="font-weight: 600; color: ${colorTheme.header}; font-family: 'Courier New', monospace; min-width: 80px; text-align: right;">
+//                 <div style="font-weight: 600;
+//                       color: ${colorTheme.header};
+//                       font-family: 'Courier New', monospace;
+//                       min-width: 80px; text-align: right;">
 //                   ${safeDisplayValue}
 //                 </div>
 //               </div>
-//               <div style="display: flex; justify-content: space-between; margin-top: 2px; font-size: 10px; color: #9ca3af;">
+//               <div style="display: flex;
+//                      justify-content: space-between;
+//                      margin-top: 2px;
+//                      font-size: 10px;
+//                      color: #9ca3af;">
 //                 <span>min: ${typeof min === 'number' ? fixed(min) : min}</span>
 //                 <span>max: ${typeof max === 'number' ? fixed(max) : max}</span>
 //               </div>
@@ -1029,7 +1119,12 @@ function buildDetailsTooltipFromNode(cy, n) {
 
 //         tableHtml += `
 //           <tr style="background-color: ${rowBg};">
-//             <td style="padding: 10px 12px; text-align: left; border-bottom: 1px solid ${colorTheme.border}; font-weight: 500; color: #374151; width: 40%;">
+//             <td style="padding: 10px 12px;
+//                    text-align: left;
+//                    border-bottom: 1px solid ${colorTheme.border};
+//                    font-weight: 500;
+//                    color: #374151;
+//                    width: 40%;">
 //               ${k}
 //             </td>
 //             ${valueCell}
@@ -1063,7 +1158,12 @@ function buildDetailsTooltipFromNode(cy, n) {
 //     const titleHtml = `
 //       <div style="display: flex; align-items: center; gap: 10px;">
 //         <span>Node Details: ${g.id}</span>
-//         ${isSelected ? '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: normal;">SELECTED</span>' : ''}
+//         ${isSelected ? '<span style="background: #10b981;
+//            color: white;
+//            padding: 3px 8px;
+//            border-radius: 4px;
+//            font-size: 11px;
+//            font-weight: normal;">SELECTED</span>' : ''}
 //       </div>
 //     `;
 //     openDraggableDetailsWindow({ titleHtml, contentEl: container, originalEvent });
@@ -1132,7 +1232,9 @@ function buildComparisonTooltip(cy, nodes) {
       //           console.log(extraInfo);
       //         }
       //         if (details[d].metadata[k].type === 'number') {
-      //           return `${k}: <span id="tt-${g.id}-${k}">${fixed(g.details[d][k])}${extraInfo}</span>`;
+      //           return `${k}: <span id="tt-${g.id}-${k}">${
+      //              fixed(g.details[d][k])
+      //           }${extraInfo}</span>`;
       //         } else {
       //           return `${k}: <span id="tt-${g.id}-${k}">${g.details[d][k]}${extraInfo}</span>`;
       //         }
@@ -1171,7 +1273,10 @@ function buildComparisonTooltip(cy, nodes) {
           // Collect all values for this attribute
           const values = nodeData.map((g) => {
             const val = g.details[d]?.[k];
-            return val !== undefined ? (isNumber ? fixed(val) : val) : null;
+            if (val) {
+              return isNumber ? fixed(val) : val;
+            }
+            return null;
           });
 
           // Check if all values are the same (or all null)
@@ -1192,11 +1297,8 @@ function buildComparisonTooltip(cy, nodes) {
           values.forEach((val, idx) => {
             const color = generateComparisonColor(idx);
             const displayVal = val !== null ? val : 'N/A';
-            const bgColor = allSame
-              ? 'transparent'
-              : val !== null
-                ? '#fff3cd'
-                : '#f3f4f6';
+            const valColor = val !== null ? '#fff3cd' : '#f3f4f6';
+            const bgColor = allSame ? 'transparent' : valColor;
             const textColor = val === null ? '#9ca3af' : color;
             const fontStyle = val === null ? 'italic' : 'normal';
             const fontWeight = val === null ? 'normal' : '600';
@@ -1878,31 +1980,6 @@ function markRecurringNodes() {
         const node = paneCy.$('#' + nodeId);
         // persistent recurring mark (used by the 'Mark recurring' control)
         node.addClass('recurring');
-        // choose highlight color according to node's classification
-        let bg = COLORS.RECURRING;
-        let border = COLORS.RECURRING;
-        if (node.hasClass('graph-shared')) {
-          bg = COLORS.GRAPH_SHARED_BG;
-          border = COLORS.GRAPH_SHARED;
-        } else if (node.hasClass('graph-a-only')) {
-          bg = COLORS.GRAPH_A_BG;
-          border = COLORS.GRAPH_A_ONLY;
-        } else if (node.hasClass('graph-b-only')) {
-          bg = COLORS.GRAPH_B_BG;
-          border = COLORS.GRAPH_B_ONLY;
-        } else if (node.hasClass('graph-partial-shared')) {
-          bg = '#fff3e0';
-          border = '#ff9800';
-        } else if (node.hasClass('diff-added')) {
-          bg = '#e8f5e9';
-          border = '#1b5e20';
-        } else if (node.hasClass('diff-removed')) {
-          bg = '#ffebee';
-          border = '#b71c1c';
-        } else if (node.hasClass('diff-context')) {
-          bg = '#fafafa';
-          border = '#9e9e9e';
-        }
         // rely on stylesheet :hover and .recurring rules to apply fill/border
         // keep text color consistent
         node.style({ color: '#000' });

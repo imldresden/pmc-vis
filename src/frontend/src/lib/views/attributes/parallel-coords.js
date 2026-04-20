@@ -9,7 +9,7 @@ import {
 import { generateComparisonColor, getColorForNode } from '../../utils/colors.js';
 import makeCtxMenu from './ctx-menu.js';
 import {
-  frequencies, histogram, violin, brushedHistogram,
+  frequencies, violin, brushedHistogram,
 } from './axis.js';
 import d3 from '../imports/import-d3.js';
 import { _ } from 'lodash';
@@ -36,8 +36,6 @@ function parallelCoords(pane, data, metadata) {
     enabled: false,
     panes: [],  // array of {pane, data, metadata, visible, opacity}
     legend: null,  // DOM element
-    showRibbons: false,  // show difference ribbons between matched nodes
-    ribbonOpacity: 0.25,  // opacity of the ribbon fill
   };
 
   const publicFunctions = {
@@ -133,18 +131,6 @@ function parallelCoords(pane, data, metadata) {
       // Update sidebar to remove overlay legend
       updateSidebarLegends(pane);
     },
-    toggleRibbons: (show) => {
-      overlayState.showRibbons = show;
-      if (drawBrushedFn) {
-        drawBrushedFn();
-      }
-    },
-    setRibbonOpacity: (opacity) => {
-      overlayState.ribbonOpacity = Math.max(0.05, Math.min(1, opacity));
-      if (drawBrushedFn) {
-        drawBrushedFn();
-      }
-    },
     getOverlayState: () => {
       return {
         enabled: overlayState.enabled,
@@ -155,8 +141,6 @@ function parallelCoords(pane, data, metadata) {
           visible: p.visible,
           opacity: p.opacity,
         })),
-        showRibbons: overlayState.showRibbons,
-        ribbonOpacity: overlayState.ribbonOpacity,
       };
     },
   };
@@ -561,24 +545,6 @@ function parallelCoords(pane, data, metadata) {
           foreground.lineWidth = originalWidth;
           foreground.globalAlpha = originalAlpha;
         });
-
-        // Draw difference ribbons between matched nodes (if enabled)
-        if (overlayState.showRibbons) {
-          drawDifferenceRibbons(
-            overlayState,
-            data,
-            metadata,
-            dimensions,
-            yscale,
-            types,
-            margin,
-            foreground,
-            scale,
-            adjust,
-            generateComparisonColor,
-            orient,
-          );
-        }
       }
     }
 
@@ -1023,24 +989,6 @@ function parallelCoords(pane, data, metadata) {
             foreground.lineWidth = originalWidth;
             foreground.globalAlpha = originalAlpha;
           });
-
-          // Draw difference ribbons between matched nodes (if enabled)
-          if (overlayState.showRibbons) {
-            drawDifferenceRibbons(
-              overlayState,
-              data,
-              metadata,
-              dimensions,
-              yscale,
-              types,
-              margin,
-              foreground,
-              scale,
-              adjust,
-              generateComparisonColor,
-              orient,
-            );
-          }
         }
 
         return;
@@ -1182,24 +1130,6 @@ function parallelCoords(pane, data, metadata) {
           foreground.lineWidth = originalWidth;
           foreground.globalAlpha = originalAlpha;
         });
-
-        // Draw difference ribbons between matched nodes (if enabled)
-        if (overlayState.showRibbons) {
-          drawDifferenceRibbons(
-            overlayState,
-            data,
-            metadata,
-            dimensions,
-            yscale,
-            types,
-            margin,
-            foreground,
-            scale,
-            adjust,
-            generateComparisonColor,
-            orient,
-          );
-        }
       }
 
       // console.log(`Highlighting layer drew: ${
@@ -1349,210 +1279,5 @@ function parallelCoords(pane, data, metadata) {
 
   return publicFunctions;
 };
-
-// ============================================================================
-// Difference Ribbons for PCP Overlay Comparison
-// ============================================================================
-
-/**
- * Draw difference ribbons between matched nodes in base pane and overlay panes.
- *
- * Creates filled polygons connecting the polylines of matched nodes with same ID
- * to visually highlight attribute differences between graphs. The ribbon fills
- * the area between the base and overlay polylines, making it easy to see where
- * and how values differ.
- *
- * @param {Object} overlayState - The overlay state object
- * @param {boolean} overlayState.enabled - Whether overlays are enabled
- * @param {Array} overlayState.panes - Array of overlay pane configurations
- * @param {number} overlayState.ribbonOpacity - Opacity for ribbon fills
- * @param {Array<Object>} baseData - Data array from the base pane
- * @param {Object} baseMetadata - Metadata for the base pane
- * @param {Array<string>} dimensions - Array of dimension names
- * @param {Function} yscale - Y-scale function for axis positioning
- * @param {Object} types - Object mapping dimension names to axis type configs
- * @param {Object} margin - Margin object with top, left, right, bottom
- * @param {CanvasRenderingContext2D} ctx - Canvas 2D rendering context
- * @param {number} scale - Device pixel ratio scale factor
- * @param {Function} adjust - Coordinate adjustment function
- * @param {Function} getColorFn - Function that takes an index and returns a color string
- * @param {boolean} orient - Orientation (true = vertical, false = horizontal)
- */
-function drawDifferenceRibbons(
-  overlayState,
-  baseData,
-  baseMetadata,
-  dimensions,
-  yscale,
-  types,
-  margin,
-  ctx,
-  scale,
-  adjust,
-  getColorFn,
-  orient,
-) {
-  if (!overlayState.enabled || overlayState.panes.length === 0) return;
-
-  // Build a map of base pane nodes by ID for quick lookup
-  const baseById = new Map();
-  baseData.forEach((d) => {
-    if (d.id) baseById.set(d.id, d);
-  });
-
-  // Save original context state
-  const originalAlpha = ctx.globalAlpha;
-  const originalWidth = ctx.lineWidth;
-
-  // Process each overlay pane
-  overlayState.panes.forEach((overlayPane, paneIdx) => {
-    if (!overlayPane.visible) return;
-
-    const overlayData = overlayPane.data;
-    const overlayMetadata = overlayPane.metadata;
-    if (!overlayData || !overlayMetadata) return;
-
-    const paneColor = getColorFn(paneIdx);
-
-    // Draw ribbon for each matched node pair
-    overlayData.forEach((overlayPoint) => {
-      const basePoint = baseById.get(overlayPoint.id);
-      if (!basePoint) return; // No matching node in base pane
-
-      // Verify both points have all required dimensions
-      const canDrawBase = dimensions.every(
-        (dim) => baseMetadata.pld[dim] !== undefined && basePoint[dim] !== undefined,
-      );
-      const canDrawOverlay = dimensions.every(
-        (dim) => overlayMetadata.pld[dim] !== undefined && overlayPoint[dim] !== undefined,
-      );
-
-      if (!canDrawBase || !canDrawOverlay) return;
-
-      // Calculate polyline points for both base and overlay
-      const basePoints = calculatePolylinePoints(
-        dimensions,
-        basePoint,
-        types,
-        yscale,
-        margin,
-        adjust,
-        orient,
-      );
-      const overlayPoints = calculatePolylinePoints(
-        dimensions,
-        overlayPoint,
-        types,
-        yscale,
-        margin,
-        adjust,
-        orient,
-      );
-
-      // Skip if values are identical (no visible difference)
-      if (!hasSignificantDifference(basePoints, overlayPoints)) return;
-
-      // Draw the filled ribbon polygon
-      drawRibbonPolygon(
-        ctx,
-        basePoints,
-        overlayPoints,
-        paneColor,
-        overlayState.ribbonOpacity,
-        scale,
-      );
-    });
-  });
-
-  // Restore original context state
-  ctx.globalAlpha = originalAlpha;
-  ctx.lineWidth = originalWidth;
-}
-
-/**
- * Calculate polyline points for a data point across all dimensions.
- *
- * @param {Array<string>} dimensions - Dimension names
- * @param {Object} dataPoint - Data point with dimension values
- * @param {Object} types - Axis type configurations
- * @param {Function} yscale - Y-scale function
- * @param {Object} margin - Margin object
- * @param {Function} adjust - Coordinate adjustment function
- * @param {boolean} orient - Orientation flag
- * @returns {Array<Object>} Array of {x, y} point objects
- */
-function calculatePolylinePoints(dimensions, dataPoint, types, yscale, margin, adjust, orient) {
-  return dimensions.map((dim) => {
-    const axisScale = types[dim].scale;
-
-    if (orient) {
-      // Vertical orientation
-      return {
-        x: adjust(yscale(dim) + margin.left),
-        y: adjust(axisScale(dataPoint[dim]) + margin.top),
-      };
-    } else {
-      // Horizontal orientation
-      return {
-        x: adjust(axisScale(dataPoint[dim]) + margin.left),
-        y: adjust(yscale(dim) + margin.top),
-      };
-    }
-  });
-}
-
-/**
- * Check if there's a significant visual difference between two polylines.
- *
- * @param {Array<Object>} points1 - First polyline points
- * @param {Array<Object>} points2 - Second polyline points
- * @param {number} [threshold=1] - Minimum distance to consider as difference
- * @returns {boolean} True if polylines differ significantly
- */
-function hasSignificantDifference(points1, points2, threshold = 1) {
-  for (let i = 0; i < points1.length; i += 1) {
-    const dist = Math.abs(points1[i].x - points2[i].x) + Math.abs(points1[i].y - points2[i].y);
-    if (dist > threshold) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Draw a ribbon polygon connecting two polylines.
- *
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- * @param {Array<Object>} basePoints - Base polyline points
- * @param {Array<Object>} overlayPoints - Overlay polyline points
- * @param {string} color - Fill and stroke color
- * @param {number} opacity - Base opacity for fill
- * @param {number} scale - Scale factor for stroke width
- */
-function drawRibbonPolygon(ctx, basePoints, overlayPoints, color, opacity, scale) {
-  ctx.beginPath();
-  ctx.globalAlpha = opacity;
-  ctx.fillStyle = color;
-
-  // Forward path along base polyline
-  ctx.moveTo(basePoints[0].x, basePoints[0].y);
-  for (let i = 1; i < basePoints.length; i += 1) {
-    ctx.lineTo(basePoints[i].x, basePoints[i].y);
-  }
-
-  // Backward path along overlay polyline (to close the polygon)
-  for (let i = overlayPoints.length - 1; i >= 0; i -= 1) {
-    ctx.lineTo(overlayPoints[i].x, overlayPoints[i].y);
-  }
-
-  ctx.closePath();
-  ctx.fill();
-
-  // Draw a thin stroke around the ribbon for better visibility
-  ctx.globalAlpha = opacity * 2;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1 * scale;
-  ctx.stroke();
-}
 
 export { parallelCoords };

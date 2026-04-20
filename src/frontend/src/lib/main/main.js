@@ -92,14 +92,6 @@ addEventListener('linked-selection', e => {
   }
 }, true);
 
-// ============================================================================
-// Global Keyboard Shortcuts
-// ============================================================================
-
-/**
- * Get the currently active pane (the one with .active-pane class)
- * @returns {Object|null} The active pane object, or null if none
- */
 function getActivePane() {
   const activePaneElement = document.querySelector('.active-pane');
   if (!activePaneElement) return null;
@@ -107,18 +99,11 @@ function getActivePane() {
   return panes[activePaneElement.id] || null;
 }
 
-/**
- * Close all node detail windows
- */
 function closeAllDetailWindows() {
   const windows = document.querySelectorAll('[id^="node-details-window-"]');
   windows.forEach((win) => win.remove());
 }
 
-/**
- * Toggle PCP visibility for a pane by maximizing/restoring the structural view
- * @param {Object} pane - The pane object
- */
 function togglePcpVisibility(pane) {
   if (!pane) return;
   const cyContainer = document.getElementById(pane.container);

@@ -1,8 +1,3 @@
-/**
- * Color utilities for graph comparison visualization.
- * Provides consistent color generation across all views.
- */
-
 // Extended color palette for comparison - 16 hand-picked distinguishable colors
 export const baseComparisonColors = [
   '#3b82f6', // blue
@@ -23,14 +18,6 @@ export const baseComparisonColors = [
   '#fb7185', // light rose
 ];
 
-/**
- * Generate unlimited distinct colors using optimized HSL distribution.
- * Uses the base palette for indices 0-15, then generates new colors
- * using prime-based hue rotation for better visual distinction.
- *
- * @param {number} index - The index of the color to generate
- * @returns {string} A CSS color string (hex or hsl)
- */
 export function generateComparisonColor(index) {
   if (index < baseComparisonColors.length) {
     return baseComparisonColors[index];
@@ -67,17 +54,10 @@ export function generateComparisonColor(index) {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-/**
- * Generate a consistent color for any node based on a hash of its ID.
- * Useful for coloring nodes consistently across different views.
- *
- * @param {string} nodeId - The node ID to hash
- * @returns {string} A CSS color string
- */
 export function getColorForNode(nodeId) {
   // Simple hash function to convert node ID to a number
   let hash = 0;
-  for (let i = 0; i < nodeId.length; i++) {
+  for (let i = 0; i < nodeId.length; i += 1) {
     hash = nodeId.charCodeAt(i) + ((hash << 5) - hash);
     hash &= hash; // Convert to 32bit integer
   }

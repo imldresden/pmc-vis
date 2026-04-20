@@ -1,45 +1,11 @@
-/**
- * Axis Visualization Module
- *
- * Provides various visualization methods for axis distributions in Parallel
- * Coordinate Plots (PCP). Includes violin plots, histograms, frequency bars,
- * and brushed histograms showing selections.
- *
- * Adapted from https://observablehq.com/@ssiegmund/violin-plot-playground
- *
- * @module axis
- */
+// Adapted from https://observablehq.com/@ssiegmund/violin-plot-playground
 
 import * as d3 from 'd3';
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-/** Default aperture width for histogram bars */
 const DEFAULT_APERTURE = 15;
-
-/** Default number of bins for histograms */
 const DEFAULT_BIN_COUNT = 30;
-
-/** Default bandwidth for KDE in violin plots */
 const DEFAULT_KDE_BANDWIDTH = 0.3;
 
-// ============================================================================
-// Violin Plot
-// ============================================================================
-
-/**
- * Draw a violin plot for an axis dimension.
- * Uses Kernel Density Estimation (KDE) with Epanechnikov kernel.
- *
- * @param {d3.Selection} svg - The axis SVG group
- * @param {Object} options - Configuration options
- * @param {boolean} options.orient - Orientation (true = vertical, false = horizontal)
- * @param {Object} options.resp - Response object with axes scales
- * @param {string} options.name - Dimension name
- * @param {Array} options.data - Data values for this dimension
- */
 function violin(svg, {
   orient, resp, name, data,
 } = {}) {
@@ -54,21 +20,10 @@ function violin(svg, {
   const bandwidth = DEFAULT_KDE_BANDWIDTH;
   const thds = scale.ticks(40);
 
-  /**
-   * Kernel Density Estimation function.
-   * @param {Function} kernel - The kernel function
-   * @param {Array} thresholds - Threshold values to evaluate
-   * @returns {Function} KDE function
-   */
   function kde(kernel, thresholds) {
     return (V) => thresholds.map((t) => [t, d3.mean(V, (d) => kernel(t - d))]);
   }
 
-  /**
-   * Epanechnikov kernel function.
-   * @param {number} bw - Bandwidth
-   * @returns {Function} Kernel function
-   */
   function epanechnikov(bw) {
     return (x) => Math.abs((x /= bw)) <= 1 ? (0.75 * (1 - x * x)) / bw : 0;
   }
@@ -102,21 +57,6 @@ function violin(svg, {
     .attr('d', area);
 }
 
-// ============================================================================
-// Histogram
-// ============================================================================
-
-/**
- * Draw a histogram for an axis dimension.
- * Bins data into equal-width intervals and displays as bars.
- *
- * @param {d3.Selection} svg - The axis SVG group
- * @param {Object} options - Configuration options
- * @param {boolean} options.orient - Orientation (true = vertical, false = horizontal)
- * @param {Object} options.resp - Response object with axes scales
- * @param {string} options.name - Dimension name
- * @param {Array} options.data - Data values for this dimension
- */
 function histogram(svg, {
   orient, resp, name, data,
 } = {}) {
@@ -182,23 +122,6 @@ function histogram(svg, {
   }
 }
 
-// ============================================================================
-// Frequency Bars
-// ============================================================================
-
-/**
- * Draw frequency bars for an axis dimension.
- * Shows pre-computed counts at specific values.
- *
- * Note: This is based on counts done over the values of each property.
- * Close decimal imprecisions can make it so that bars overlap.
- *
- * @param {d3.Selection} svg - The axis SVG group
- * @param {Object} options - Configuration options
- * @param {Object} options.counts - Object mapping dimension names to value counts
- * @param {string} options.name - Dimension name
- * @param {boolean} options.orient - Orientation (true = vertical, false = horizontal)
- */
 function frequencies(svg, { counts, name, orient }) {
   svg.selectAll('.bars').remove();
 
@@ -230,23 +153,6 @@ function frequencies(svg, { counts, name, orient }) {
   }
 }
 
-// ============================================================================
-// Brushed Histogram (for PCP selections)
-// ============================================================================
-
-/**
- * Draw a brushed histogram showing both total distribution (gray) and brushed selection (colored).
- * This is used in PCP views to show how the current brush selection compares to the full distribution.
- *
- * @param {d3.Selection} svg - The axis SVG group
- * @param {Object} options - Configuration object
- * @param {boolean} options.orient - Orientation (true = vertical, false = horizontal)
- * @param {Object} options.resp - Response object with axes scales
- * @param {string} options.name - Dimension name
- * @param {Array} options.allData - All data values for this dimension
- * @param {Array} options.brushedData - Brushed/selected data values for this dimension
- * @param {string} [options.brushedColor='#3b82f6'] - Color for the brushed histogram bars
- */
 function brushedHistogram(svg, {
   orient, resp, name, allData, brushedData, brushedColor = '#3b82f6',
 } = {}) {
@@ -257,13 +163,10 @@ function brushedHistogram(svg, {
   const scale = nominal || resp.axes[name];
   const apperture = 18;
 
-  /**
-   * Bin data into equal-width intervals.
-   * @param {Array} dataArray - Data values to bin
-   * @returns {Array<Object>} Array of bin objects with pos, count, and width
-   */
   function binData(dataArray) {
-    const ds = dataArray.map((d) => nominal ? +resp.axes[name].mapping[d] : scale(d)).sort((a, b) => a - b);
+    const ds = dataArray.map(
+      (d) => nominal ? +resp.axes[name].mapping[d] : scale(d),
+    ).sort((a, b) => a - b);
     const dom = scale.domain().map((d) => scale(d));
 
     const pad = 0;
@@ -271,7 +174,7 @@ function brushedHistogram(svg, {
     const maxd = d3.max(dom) + pad;
     const step = (maxd - mind) / amount;
     let i = mind;
-    
+
     const values = [];
     while (i < maxd) {
       if (maxd < i + (step + 1)) { // last bin
@@ -295,11 +198,11 @@ function brushedHistogram(svg, {
 
   const allBins = binData(allData);
   const brushedBins = binData(brushedData);
-  
+
   // Find max across all data for consistent scaling
   const maxAll = d3.max(allBins.map(d => d.count));
   if (maxAll === 0) return; // No data to show
-  
+
   const s = d3.scaleLinear()
     .domain([0, maxAll])
     .range([0, apperture]);
@@ -332,7 +235,7 @@ function brushedHistogram(svg, {
       .attr('y', d => d.pos)
       .attr('width', d => s(d.count))
       .attr('height', d => d.width);
-    
+
     brushedBars
       .attr('x', 2)
       .attr('y', d => d.pos)
@@ -345,7 +248,7 @@ function brushedHistogram(svg, {
       .attr('y', d => -s(d.count))
       .attr('width', d => d.width)
       .attr('height', d => s(d.count));
-    
+
     brushedBars
       .attr('x', d => d.pos)
       .attr('y', d => -s(d.count))
@@ -354,4 +257,6 @@ function brushedHistogram(svg, {
   }
 }
 
-export { violin, histogram, frequencies, brushedHistogram };
+export {
+  violin, histogram, frequencies, brushedHistogram,
+};
