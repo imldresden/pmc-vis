@@ -23,6 +23,7 @@ const STAR_SELECTED_AXIOM_BORDER = '#4887b9';
 
 let sidebarResizeInitialized = false;
 let dlRepairLayoutInitialized = false;
+let dlRepairFullscreenControlsInitialized = false;
 
 const DL_REPAIR_LAYOUT = {
   leftWidth: 28,
@@ -146,18 +147,92 @@ function buildDLRepairLayoutShell() {
   layout.id = 'dl-repair-layout';
   layout.className = 'dl-repair-layout';
   layout.innerHTML = `
-    <section id="dl-repair-left-pane" class="dl-repair-panel dl-repair-panel-left"></section>
+    <section id="dl-repair-left-pane" class="dl-repair-panel dl-repair-panel-left" data-panel-key="decision">
+      <button type="button" class="dl-repair-fullscreen-toggle" data-fullscreen-target="decision" title="Expand decision tree panel" aria-label="Expand decision tree panel">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+    </section>
     <div class="dl-repair-resizer dl-repair-resizer-vertical" data-resize="left-center"></div>
     <section class="dl-repair-panel dl-repair-panel-center">
-      <div id="dl-repair-summary-pane" class="dl-repair-center-top"></div>
+      <div id="dl-repair-summary-pane" class="dl-repair-center-top" data-panel-key="summary">
+        <button type="button" class="dl-repair-fullscreen-toggle" data-fullscreen-target="summary" title="Expand summary graph panel" aria-label="Expand summary graph panel">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+      </div>
       <div class="dl-repair-resizer dl-repair-resizer-horizontal" data-resize="summary-star"></div>
-      <div id="dl-repair-star-pane" class="dl-repair-center-bottom"></div>
+      <div id="dl-repair-star-pane" class="dl-repair-center-bottom" data-panel-key="star">
+        <button type="button" class="dl-repair-fullscreen-toggle" data-fullscreen-target="star" title="Expand star plot panel" aria-label="Expand star plot panel">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+      </div>
     </section>
     <div class="dl-repair-resizer dl-repair-resizer-vertical" data-resize="center-right"></div>
-    <section id="dl-repair-class-hierarchy-pane" class="dl-repair-panel dl-repair-panel-right"></section>
+    <section id="dl-repair-class-hierarchy-pane" class="dl-repair-panel dl-repair-panel-right" data-panel-key="class-hierarchy">
+      <button type="button" class="dl-repair-fullscreen-toggle" data-fullscreen-target="class-hierarchy" title="Expand class hierarchy panel" aria-label="Expand class hierarchy panel">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+    </section>
   `;
 
   container.appendChild(layout);
+}
+
+function initializeDLRepairFullscreenControls() {
+  if (dlRepairFullscreenControlsInitialized) {
+    return;
+  }
+
+  const { layout } = getDlRepairHostElements();
+  if (!layout) {
+    return;
+  }
+
+  const labelByTarget = {
+    decision: 'decision tree',
+    summary: 'summary graph',
+    star: 'star plot',
+    'class-hierarchy': 'class hierarchy',
+  };
+
+  const updateButtons = () => {
+    const activeTarget = layout.getAttribute('data-fullscreen-target') || '';
+    layout.querySelectorAll('.dl-repair-fullscreen-toggle').forEach((button) => {
+      const target = button.getAttribute('data-fullscreen-target');
+      const isActive = target === activeTarget;
+      const label = labelByTarget[target] || 'panel';
+      const title = isActive ? `Exit ${label} fullscreen` : `Expand ${label} panel`;
+      button.innerHTML = `<i class="fa-solid ${isActive ? 'fa-compress' : 'fa-expand'}"></i>`;
+      button.title = title;
+      button.setAttribute('aria-label', title);
+      button.classList.toggle('is-active', isActive);
+    });
+  };
+
+  layout.addEventListener('click', (event) => {
+    const button = event.target.closest('.dl-repair-fullscreen-toggle');
+    if (!button) {
+      return;
+    }
+
+    const target = button.getAttribute('data-fullscreen-target');
+    const currentTarget = layout.getAttribute('data-fullscreen-target') || '';
+    if (!target) {
+      return;
+    }
+
+    if (currentTarget === target) {
+      layout.removeAttribute('data-fullscreen-target');
+    } else {
+      layout.setAttribute('data-fullscreen-target', target);
+    }
+
+    updateButtons();
+    applyDLRepairLayoutSizing();
+    requestAnimationFrame(() => triggerDLRepairPaneResize());
+  });
+
+  updateButtons();
+  dlRepairFullscreenControlsInitialized = true;
 }
 
 function mountDLRepairPanes({ decisionPaneId, summaryPaneId, classHierarchyPaneId }) {
@@ -1368,6 +1443,7 @@ async function startDLRepairProject() {
       summaryPaneId: axiomPaneId,
       classHierarchyPaneId: DL_REPAIR_CLASS_HIERARCHY_PANE_ID,
     });
+    initializeDLRepairFullscreenControls();
     initializeDLRepairLayoutResizers();
     applyDLRepairLayoutSizing();
 
