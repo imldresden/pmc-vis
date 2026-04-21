@@ -254,12 +254,16 @@ public class Model implements Namespace {
     }
 
     public void newInertProperty(String line){
+
         Matcher m = PATTERN_PROPERTY.matcher(line);
         if (m.find()){
             this.inertProperties.put(m.group(1), m.group(2));
             for (DataProvider dataProvider : dataProviders) {
                 dataProvider.addProperty(m.group(1), m.group(2));
             }
+            System.out.println("Inert: " + line);
+        }else{
+            System.out.println("Not Inert: " + line);
         }
     }
 
@@ -699,9 +703,9 @@ public class Model implements Namespace {
             List<Transition> transitions = database.executeCollectionQuery(String.format("SELECT * FROM %s WHERE %s IN (%s)", TABLE_TRANS, ENTRY_T_OUT, stateID), new TransitionMapper(this));
             List<WrittenTransition> transitionsOut = new ArrayList<>();
             for (Transition t : transitions){
-                Set<String> reach = new HashSet<>(t.getProbabilityDistribution().keySet());
-                stringIds.forEach(reach::remove);
-                if (!reach.equals(t.getProbabilityDistribution().keySet())){
+                //Set<String> reach = new HashSet<>(t.getProbabilityDistribution().keySet());
+                //stringIds.forEach(reach::remove);
+                //if (!reach.equals(t.getProbabilityDistribution().keySet())){
                     Map<String, Double> probabilityDistribution = t.getProbabilityDistribution().entrySet().stream().collect(Collectors.toMap(e -> stateMap.get(e.getKey()), Map.Entry::getValue));
                     Matcher m = PATTERN_ACTION.matcher(t.getAction());
                     String actionName = "";
@@ -711,7 +715,7 @@ public class Model implements Namespace {
 
                     WrittenTransition wt = new WrittenTransition(stateMap.get(t.getSource()), actionName, probabilityDistribution);
                     transitionsOut.add(wt);
-                }
+                //}
             }
 
             //Write Transitions
