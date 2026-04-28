@@ -1,1 +1,1 @@
-"broken": Pmax=? [F "obj"];
+"broken": P>=1 [F "obj"];
