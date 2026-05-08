@@ -1201,20 +1201,6 @@ function makeDetailCheckboxes() {
   });
 
   $props_config.appendChild($param);
-
-  $props_config.insertAdjacentHTML(
-    'beforeend',
-    `<div class="buttons param">
-      <button class="ui button" id="clear">
-        <span>Delete Properties</span>
-      </button>
-      <button class="ui button" id="status">
-        <span>Print Status</span>
-      </button>
-    </div>`,
-  );
-  document.getElementById('clear').addEventListener('click', () => clear());
-  document.getElementById('status').addEventListener('click', () => status());
 }
 
 function makeDetailPropsCheckboxes(options, propType) {
