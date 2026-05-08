@@ -1152,7 +1152,6 @@ function makeDetailCheckboxes() {
 
       let classIcon = triggerIcon;
       if (computing) {
-        console.log('wtf');
         classIcon = spinningIcon;
       }
       if (failed) {
