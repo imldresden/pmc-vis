@@ -1,12 +1,6 @@
 pathTemplate: volume
 debug: true
 registeredDataProvider:
-  - name: Mock Values
-    type: mock
-    executable: something
-  - name: Mockier Values
-    type: mock2
-    executable: somethingElse
   - name: CSV Data
     type: csv
     executable: irrelevant
@@ -14,7 +8,6 @@ registeredDataProvider:
       separator: " "
 
 logging:
-
   # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
   level: INFO
 
