@@ -43,7 +43,7 @@ class ConnectionViewProvider {
                 return false;
             } // Handle the error response object
         );
-
+        this._onDidChangeTreeData.fire(undefined);
         this.refresh();
     }
 
@@ -80,6 +80,7 @@ class ConnectionViewProvider {
         }, async progress => {
             return Promise.all(this._openProjects.map(async project => {
                 await project.refresh()
+                await this._onDidChangeTreeData.fire(undefined);
             }))
         })
         this._onDidChangeTreeData.fire(undefined);
