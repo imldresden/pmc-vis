@@ -94,6 +94,11 @@ public class WitnessTask extends DataProviderTask {
             property = property.replace("P>=", "Pmin>=");
         }
 
+        String type = ".props";
+        if (property.trim().startsWith("[")){
+            type = ".json";
+        }
+
         String call = String.format("./%s", binaryLocation);
 
         // Declare files for communication with switss-multi
@@ -102,7 +107,7 @@ public class WitnessTask extends DataProviderTask {
         
         try {
             // Create temporary file containing property
-            propFile = Files.createTempFile("property", ".prop");
+            propFile = Files.createTempFile("property", type);
             Files.writeString(propFile, property);
             ProcessBuilder builder = new ProcessBuilder(call, modelPath, "--prop", propFile.toAbsolutePath().toString(), "--grb-timelimit", Integer.toString(this.gurobiTimelimit), "--witness", "--export-subsystem-states");
             Process process = builder.start();

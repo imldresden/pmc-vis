@@ -22,3 +22,17 @@ services:
       - host.docker.internal:host-gateway
     profiles:
       - ''
+
+  server-tools:
+    build:
+      context: backend
+      dockerfile: server/Tools.Dockerfile
+    ports:
+      - "8080:8080"
+      - "8082:8082"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./backend/gurobi:/data
+    profiles:
+      - 'tools'
