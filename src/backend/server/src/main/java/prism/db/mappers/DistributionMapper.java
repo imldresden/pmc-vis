@@ -26,10 +26,14 @@ public class DistributionMapper implements RowMapper<Map<String, Double>> {
             if (e.length != 2){
                 throw new SQLException();
             }
-//            double doubleVal = Double.parseDouble(e[1]);
-//            doubleVal = ((double)Math.round(doubleVal*roundingFactor))/roundingFactor;
-//            System.out.println(doubleVal);
-            ret.put(e[0], Double.parseDouble(e[1]));
+            double doubleVal = Double.parseDouble(e[1]);
+            //doubleVal = ((double)Math.round(doubleVal*roundingFactor))/roundingFactor;
+
+            if(ret.containsKey(e[0])){
+                Double d = ret.get(e[0]);
+                doubleVal = d+doubleVal;
+            }
+            ret.put(e[0], doubleVal);
         }
         return ret;
     }

@@ -304,6 +304,10 @@ public class ModelChecker implements Namespace {
                             for (int l = 0; l < choice.size(); l++) {
                                 double probability = choice.getProbability(l);
                                 parser.State target = choice.computeTarget(l, s, modulesFile.createVarList());
+                                String stateID = parent.getModelParser().stateIdentifier(target).toString();
+                                if(probabilities.containsKey(stateID)) {
+                                    probability += probabilities.get(stateID);
+                                }
                                 probabilities.put(parent.getModelParser().stateIdentifier(target).toString(), probability);
                             }
                             if (numRewards > 0) {

@@ -387,7 +387,7 @@ public class ModelParser {
         List<parser.State> states = new ArrayList<>(this.initials);
         List<parser.State> visited = new ArrayList<>();
 
-        List<prism.api.State> outStates = new ArrayList<>();
+        Set<prism.api.State> outStates = new HashSet<>();
         List<Transition> transitions = new ArrayList<>();
 
         while (!states.isEmpty()) {
@@ -410,19 +410,20 @@ public class ModelParser {
                     if (!(states.contains(target) | visited.contains(target))) {
                         states.add(target);
                     }
-                    probabilities.put(target, probability);
+                    addProbability(probabilities, target, probability);
+                    //probabilities.put(target, probability);
                 }
 
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
             }
         }
 
-        return new Graph(parent, outStates, transitions);
+        return new Graph(parent, new ArrayList<>(outStates), transitions);
     }
 
     public Graph getSubGraph(List<String> stateIDs) throws Exception {
         List<parser.State> states = new ArrayList<>();
-        List<prism.api.State> outStates = new ArrayList<>();
+        Set<prism.api.State> outStates = new HashSet<>();
         List<Transition> transitions = new ArrayList<>();
 
         for (String stateID : stateIDs) {
@@ -445,19 +446,20 @@ public class ModelParser {
                     if (!states.contains(target)) {
                         contained = false;
                     }
-                    probabilities.put(target, probability);
+                    addProbability(probabilities, target, probability);
+                    //probabilities.put(target, probability);
                 }
                 if (contained) {
                     transitions.add(convertApiTransition(state, i, choice, probabilities));
                 }
             }
         }
-        return new Graph(parent, outStates, transitions);
+        return new Graph(parent, new ArrayList<>(outStates), transitions);
     }
 
     public Graph getOutgoing(List<String> stateIDs) throws Exception {
         List<parser.State> states = new ArrayList<>();
-        List<prism.api.State> outStates = new ArrayList<>();
+        Set<prism.api.State> outStates = new HashSet<>();
         List<Transition> transitions = new ArrayList<>();
 
         for (String stateID : stateIDs) {
@@ -478,19 +480,20 @@ public class ModelParser {
                     double probability = choice.getProbability(j);
                     parser.State target = choice.computeTarget(j, state, modulesFile.createVarList());
                     outStates.add(convertApiState(target));
-                    probabilities.put(target, probability);
+                    addProbability(probabilities, target, probability);
+                    //probabilities.put(target, probability);
                 }
 
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
             }
         }
-        return new Graph(parent, outStates, transitions);
+        return new Graph(parent, new ArrayList<>(outStates), transitions);
 
     }
 
     public Graph resetGraph(List<String> stateIDs, List<String> unexploredStateIDs) throws Exception {
         List<parser.State> states = new ArrayList<>();
-        List<prism.api.State> outStates = new ArrayList<>();
+        Set<prism.api.State> outStates = new HashSet<>();
         List<Transition> transitions = new ArrayList<>();
 
         for (String stateID : stateIDs) {
@@ -511,7 +514,8 @@ public class ModelParser {
                     double probability = choice.getProbability(j);
                     parser.State target = choice.computeTarget(j, state, modulesFile.createVarList());
                     outStates.add(convertApiState(target));
-                    probabilities.put(target, probability);
+                    addProbability(probabilities, target, probability);
+                    //probabilities.put(target, probability);
                 }
 
                 transitions.add(convertApiTransition(state, i, choice, probabilities));
@@ -525,7 +529,17 @@ public class ModelParser {
             }
         }
 
-        return new Graph(parent, outStates, transitions);
+        return new Graph(parent, new ArrayList<>(outStates), transitions);
+    }
+
+    public void addProbability(Map<parser.State, Double> probabilities, parser.State state, double probability){
+        if (probabilities.containsKey(state)) {
+            Double sumValue = probabilities.get(state);
+            sumValue += probability;
+            probabilities.put(state, sumValue);
+        }else{
+            probabilities.put(state, probability);
+        }
     }
 
 
