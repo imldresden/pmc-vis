@@ -95,7 +95,7 @@ class ConnectionViewProvider {
             }
 
             if (document === activeEditor.document) {
-                if (document.languageId == "mdp" && document.uri.scheme == "virtual") {
+                if (document.languageId == "prism" && document.uri.scheme == "virtual") {
                     const project = document.uri.path.split("/")[1];
 
                     console.log("register " + project)
@@ -115,7 +115,7 @@ class ConnectionViewProvider {
 
         if (activeEditor) {
             const document = activeEditor.document;
-            if (document.languageId == "mdp" && document.uri.scheme == "virtual" && this._decorator.checkRegistration(id)) {
+            if (document.languageId == "prism" && document.uri.scheme == "virtual" && this._decorator.checkRegistration(id)) {
                 console.log(id)
                 this._decorator.updateInfo(activeEditor);
             }
@@ -127,7 +127,7 @@ class ConnectionViewProvider {
         const project = this.getProject(element);
         if (activeEditor && project) {
             switch (String(activeEditor.document.languageId)) {
-                case "mdp":
+                case "prism":
                     await project.uploadFile("upload-model");
                     break;
                 case "props":
@@ -327,7 +327,7 @@ class ConnectionItem extends vscode.TreeItem {
             }
         let call;
         switch (String(this._document.languageId)) {
-            case "mdp":
+            case "prism":
                 call = "upload-model";
                 break;
             case "props":
