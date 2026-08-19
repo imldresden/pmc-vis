@@ -12,8 +12,8 @@ const grey = "#f2f2f2";
 //RegExpressions used
 const constantRegExp = /^\s*const\s+(int|bool)\s+(\w+)\s*=\s*(.+?)\s*;$/
 const formulaRegExp = /^\s*formula\s+(\w+)\s*=\s*(.+?)\s*;$/
-const variableDefRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(\w+)\s*\.\.\s*(\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/
-const variableRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(\w+)\s*\.\.\s*(\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/gm
+const variableDefRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(-?\w+)\s*\.\.\s*(-?\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/
+const variableRegExp = /^\s*(?:\s*global)?\s*(\w+)\s*:\s*(?:(?:\[\s*(-?\w+)\s*\.\.\s*(-?\w+)\s*\])|(?:bool))(?:\s*init\s+(?:\w+))?\s*;\s*$/gm
 const renameRegExp = /(\w+)\s*=\s*(\w+)/
 const commentRegExp = /\/\/(.*)$/gm
 

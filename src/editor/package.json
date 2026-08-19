@@ -16,20 +16,25 @@
   "contributes": {
     "languages": [
       {
-        "id": "mdp",
+        "id": "prism",
         "aliases": [
           "PRISM",
+          "prism",
           "mdp"
         ],
         "extensions": [
           ".mdp",
-          ".prism"
+          ".prism",
+          ".nm",
+          ".sm"
         ],
         "configuration": "./language-configuration.json"
       },
       {
         "id": "props",
         "aliases": [
+          "PRISM Properties",
+          "prism-properties",
           "pctl",
           "csl"
         ],
@@ -43,18 +48,18 @@
     ],
     "grammars": [
       {
-        "language": "mdp",
+        "language": "prism",
         "scopeName": "source.mdp",
-        "path": "./syntaxes/mdp.tmLanguage.json"
+        "path": "./syntaxes/prism.tmLanguage.json"
       },
       {
-        "language": "mdp",
+        "language": "props",
         "scopeName": "source.props",
-        "path": "./syntaxes/props.tmLanguage.json"
+        "path": "./syntaxes/prism-properties.tmLanguage.json"
       }
     ],
     "configurationDefaults": {
-      "[mdp]": {
+      "[prism]": {
         "editor.semanticHighlighting.enabled": true
       }
     },

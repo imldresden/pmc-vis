@@ -1,0 +1,186 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "PRISM Properties",
+  "scopeName": "source.prism-properties",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#const-declaration" },
+    { "include": "#label-declaration" },
+    { "include": "#formula-declaration" },
+    { "include": "#keywords" },
+    { "include": "#probability-operators" },
+    { "include": "#filter" },
+    { "include": "#quantifiers" },
+    { "include": "#temporal-operators" },
+    { "include": "#types" },
+    { "include": "#booleans" },
+    { "include": "#functions" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.prism",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": { "name": "punctuation.definition.comment.prism" }
+          }
+        },
+        {
+          "name": "comment.line.double-slash.prism",
+          "begin": "//",
+          "end": "$",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.prism" }
+          }
+        }
+      ]
+    },
+    "const-declaration": {
+      "match": "\\b(const)\\s+(?:(int|double|bool|rate|prob)\\s+)?([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.modifier.const.prism" },
+        "2": { "name": "storage.type.prism" },
+        "3": { "name": "variable.other.constant.prism" }
+      }
+    },
+    "label-declaration": {
+      "match": "\\b(label)\\s+(\"[^\"]*\")",
+      "captures": {
+        "1": { "name": "keyword.other.label.prism" },
+        "2": { "name": "entity.name.tag.label.prism" }
+      }
+    },
+    "formula-declaration": {
+      "match": "\\b(formula)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.other.formula.prism" },
+        "2": { "name": "entity.name.function.formula.prism" }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(const)\\b",
+          "name": "storage.modifier.prism"
+        },
+        {
+          "match": "\\b(formula|label)\\b",
+          "name": "keyword.other.prism"
+        }
+      ]
+    },
+    "probability-operators": {
+      "match": "\\b(Pmax|Pmin|P|Smax|Smin|S|Rmax|Rmin|R)\\b",
+      "name": "keyword.control.probability.prism"
+    },
+    "filter": {
+      "patterns": [
+        {
+          "match": "\\b(filter|multi)\\s*(?=\\()",
+          "name": "support.function.builtin.prism"
+        },
+        {
+          "match": "(?<=filter\\()\\s*\\b(min|max|argmin|argmax|count|sum|avg|first|range|forall|exists|state|print|printall)\\b",
+          "name": "support.constant.filter-type.prism"
+        }
+      ]
+    },
+    "quantifiers": {
+      "match": "\\b(A|E|exists|forall)\\b",
+      "name": "keyword.control.quantifier.prism"
+    },
+    "temporal-operators": {
+      "match": "\\b(X|U|F|G|W|C|I)\\b",
+      "name": "keyword.operator.temporal.prism"
+    },
+    "types": {
+      "match": "\\b(int|double|bool|rate|prob)\\b",
+      "name": "storage.type.prism"
+    },
+    "booleans": {
+      "match": "\\b(true|false)\\b",
+      "name": "constant.language.boolean.prism"
+    },
+    "functions": {
+      "match": "\\b(min|max|floor|ceil|round|pow|mod|log|func)\\s*(?=\\()",
+      "name": "support.function.builtin.prism"
+    },
+    "strings": {
+      "name": "string.quoted.double.prism",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.prism" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.prism" }
+      }
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b\\d+\\.\\d+(?:[eE][+-]?\\d+)?\\b",
+          "name": "constant.numeric.float.prism"
+        },
+        {
+          "match": "\\b\\d+[eE][+-]?\\d+\\b",
+          "name": "constant.numeric.float.prism"
+        },
+        {
+          "match": "\\b\\d+\\b",
+          "name": "constant.numeric.integer.prism"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "match": "=\\?",
+          "name": "keyword.operator.query.prism"
+        },
+        {
+          "match": "->",
+          "name": "keyword.operator.arrow.prism"
+        },
+        {
+          "match": "<->|<=>|=>",
+          "name": "keyword.operator.logical.prism"
+        },
+        {
+          "match": "!=|<=|>=|<|>|=",
+          "name": "keyword.operator.comparison.prism"
+        },
+        {
+          "match": "&|\\|\\|\\||\\|\\||\\||!",
+          "name": "keyword.operator.logical.prism"
+        },
+        {
+          "match": "\\+|-|\\*|/|\\^",
+          "name": "keyword.operator.arithmetic.prism"
+        },
+        {
+          "match": "\\?|:",
+          "name": "keyword.operator.ternary.prism"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "match": ";",
+          "name": "punctuation.terminator.statement.prism"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.comma.prism"
+        }
+      ]
+    }
+  }
+}

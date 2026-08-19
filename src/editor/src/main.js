@@ -18,6 +18,9 @@ const { ProviderViewProvider } = require('./providerView.js')
 const constants = require("./constants.js");
 const decorations = require("./decorations.js");
 
+/**
+ * @type {ConnectionViewProvider}
+ */
 let connectionProvider;
 
 // This method is called when your extension is activated
@@ -26,7 +29,7 @@ let connectionProvider;
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider({ language: 'mdp' }, new token.DocumentSemanticTokensProvider(), token.tokenLegend));
+	context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider({ language: 'prism' }, new token.DocumentSemanticTokensProvider(), token.tokenLegend));
 
 	const fileSystemProvider = new VirtualFileSystemProvider();
 
