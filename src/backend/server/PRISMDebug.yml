@@ -1,12 +1,9 @@
 pathTemplate: volume
 debug: true
 registeredDataProvider:
-  - name: Mock Values,
-    type: mock
-    executable: something
-  - name: Mockier Values,
-    type: mock2
-    executable: somethingElse
+  - name: Responsibility
+    type: responsibility
+    executable: ../SVaBResp/target/release/svabresp-cli
   - name: CSV Data
     type: csv
     executable: irrelevant

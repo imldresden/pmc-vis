@@ -1,0 +1,3 @@
+"success_qual": Pmax>=0.5 [F "all_delivered"];
+"failure_qual": Pmax>=0.5 [F "crashed"];
+"no_charging": [{"quantifier": "exists", "op": "conjunction", "properties": [{"ltl": "!(\"at_station\" & X \"at_station\") U \"delivered_A\""}], "sense": ">=", "bounds": ["1/2"]}];

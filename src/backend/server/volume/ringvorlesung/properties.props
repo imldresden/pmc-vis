@@ -1,5 +1,0 @@
-"Shipped_Wrong": Pmax=? [ F "shipped" & "failure"];
-
-"Found_Wrong": Pmax=? [ F "found" & "failure"];
-
-"Error": Pmax=? [ F "failure"];

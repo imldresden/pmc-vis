@@ -1,0 +1,2 @@
+"noDamageQual": [{"quantifier": "forall", "op": "disjunction", "properties": [{"ltl": "G \"noDamage\""}], "sense": ">=", "bounds": ["1/2"]}];
+"maintain": [{"quantifier": "exists", "op": "conjunction", "properties": [{"ltl": "G F\"maintain\""}], "sense": ">=", "bounds": ["3/4"]}];

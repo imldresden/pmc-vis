@@ -1,0 +1,1 @@
+"tradeoff": [{"quantifier": "exists", "op": "conjunction", "properties": [{"ltl": "G !\"crashed\""}, {"ltl": "F \"all_delivered\""}], "sense": ">=", "bounds": ["3/4", "1/2"]}];

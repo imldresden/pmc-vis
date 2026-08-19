@@ -1,0 +1,3 @@
+"Good": P>=1 [ F "good"];
+
+"Bad": P>=1 [ F "bad"];

@@ -1,0 +1,2 @@
+"conj": [{"quantifier": "exists", "op": "conjunction", "properties": [{"ltl": "G F \"s3\""}, {"ltl": "G F \"s4\""}], "sense": ">=", "bounds": ["1/2", "1/2"]}];
+"disj": [{"quantifier": "forall", "op": "disjunction", "properties": [{"ltl": "F G \"s1\""}, {"ltl": "G F \"s2\""}], "sense": ">=", "bounds": ["1/4", "1/4"]}];

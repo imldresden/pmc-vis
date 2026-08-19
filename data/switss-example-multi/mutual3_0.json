@@ -1,0 +1,23 @@
+[
+    {
+        "quantifier": "exists",
+        "op": "conjunction",
+        "properties": [
+            {
+                "ltl": "G F \"label3\""
+            },
+            {
+                "ltl": "G F \"label5\""
+            },
+            {
+                "ltl": "G F \"label6\""
+            }
+        ],
+        "sense": ">=",
+        "bounds": [
+            "1/10",
+            "1/10",
+            "1/10"
+        ]
+    }
+]

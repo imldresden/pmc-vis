@@ -1,6 +1,15 @@
 pathTemplate: volume
 debug: false
-
+registeredDataProvider:
+  - name: Responsibility
+    type: responsibility
+    executable: ../SVaBResp/target/release/svabresp-cli
+  - name: CSV Data
+    type: csv
+    executable: irrelevant
+    extraArguments:
+      separator: " "
+      
 logging:
 
   # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
@@ -49,3 +58,4 @@ database:
 
   # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
   minIdleTime: 1 minute
+
