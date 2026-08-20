@@ -1,0 +1,89 @@
+mdp
+
+// New Version of the medical sample example from the ISoLA paper.
+
+// Sampler determines the actual state of the sample before tests begin
+const int infected = 1;
+const int clean = -1;
+const int undecided = 0;
+
+module sampler
+    sample: [-1..1] init undecided ;
+
+    [sample] sample = undecided  -> 0.7: (sample'=clean) + 0.3: (sample'=infected);
+endmodule
+
+// Controls the sample progress, and how much of the sample is left over. 
+module laboratory
+    condition: [0..10] init 10;
+    decision: [-1..1] init undecided;
+
+    [method1] (condition - damage1 >=0) & (decision = undecided) -> (condition'=condition-damage1);
+    [method2] (condition - damage2 >=0) & (decision = undecided) -> (condition'=condition-damage2);
+    [method3] (condition - damage3 >=0) & (decision = undecided) -> (condition'=condition-damage3);
+    [method4] (condition - damage4 >=0) & (decision = undecided) -> (condition'=condition-damage4);
+
+    [positive] (decision = undecided) & (decisionScore > 0) -> (decision'= infected);
+    [negative] (decision = undecided) & (decisionScore < 0) -> (decision'= clean);
+
+    [end] (decision != undecided) -> true;
+endmodule
+
+label "infected" = (sample = infected);
+label "clean" = (sample = clean);
+
+label "positive" = (decision = infected);
+label "negative" = (decision = clean);
+
+label "truePositive" = (sample = infected) & (decision = infected);
+label "trueNegative" = (sample = clean) & (decision = clean);
+
+label "falsePositive" = (sample = clean) & (decision = infected);
+label "falseNegative" = (sample = infected) & (decision = clean);
+label "error" = ((sample = clean) & (decision = infected)) | ((sample = infected) & (decision = clean));
+
+formula decisionScore = impact1 + impact2 + impact3 + impact4;
+
+
+// Methods of determining wheter the sample is infected or not
+// Every method determines a damage it can do to the sample, which makes the sample unusable for future analysis
+
+const int damage1 = 3;
+const double pInfected1 = 0.8;
+const double pClean1 = 0.2;
+
+formula impact1 = (choice1);
+
+module method1
+    choice1: [-1..1] init undecided;
+
+    [method1] (sample = infected) & (choice1=undecided) -> pInfected1:(choice1'=infected) + (1-pInfected1):(choice1'=clean);
+    [method1] sample = clean      & (choice1=undecided) -> pClean1:(choice1'=infected)    + (1-pClean1):(choice1'=clean);
+endmodule
+
+const int damage2 = 3;
+const double pInfected2 = 0.85;
+const double pClean2 = 0.1;
+
+formula impact2 = (choice2);
+
+module method2 = method1 [ choice1 = choice2, method1 = method2, pInfected1 = pInfected2, pClean1 = pClean2 ] endmodule
+
+const int damage3 = 3;
+const double pInfected3 = 0.9;
+const double pClean3 = 0.2;
+
+formula impact3 = (choice3);
+
+module method3 = method1 [ choice1 = choice3, method1 = method3, pInfected1 = pInfected3, pClean1 = pClean3 ] endmodule
+
+const int damage4 = 8;
+const double pInfected4 = 0.95;
+const double pClean4 = 0.45;
+
+formula impact4 = (choice4);
+
+module method4 = method1 [ choice1 = choice4, method1 = method4, pInfected1 = pInfected4, pClean1 = pClean4 ] endmodule
+
+
+

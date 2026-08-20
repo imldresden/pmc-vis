@@ -1,0 +1,31 @@
+mdp
+
+module pipeline
+    s : [0..5] init 0;
+    defect: bool init false;
+
+    // s=-1: Environment - Provides a defective sample or not
+    [supply] s=0 -> 0.6:(s'=1) & (defect'=false) + 0.4:(s'=1) & (defect'=true);
+
+    // s=1: Sorter — routes product to assembly line
+    [line_A]  s=1 -> (s'=2);     // send to line A
+    [line_B]  s=1 -> (s'=3);     // send to line B
+
+    // s=2: Line A — attempts to fix the defect
+    [fix_A]   s=2 & defect -> 0.9:(s'=5) + 0.1:(s'=4); 
+    [fix_A]   s=2 & !defect -> 0.1:(s'=5) + 0.9:(s'=4); 
+
+    // s=3: Line B — attempts to fix the defect
+    [fix_B]   s=3 & defect -> 0.5:(s'=5) + 0.5:(s'=4); 
+    [fix_B]   s=3 & !defect -> 0.5:(s'=5) + 0.5:(s'=4);
+
+    // s=4: product shipped (absorbing)
+    [shipped] s=4 -> (s'=4);
+
+    // s=5: product caught (absorbing)
+    [found]    s=5 -> (s'=5);
+endmodule
+
+label "shipped" = s=4;
+label "found" = s=5;
+label "failure" = (s=4 & defect) | (s=5 & !defect);

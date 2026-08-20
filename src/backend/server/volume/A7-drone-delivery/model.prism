@@ -1,0 +1,69 @@
+// This PRISM program models a drone delivery scenario
+mdp
+
+// Different locations
+const int BASE = 0;
+const int TARGET_A = 1;
+const int TARGET_B = 2;
+const int TARGET_C = 3;
+const int CRASHED = 4;
+formula at_base = location = BASE;
+formula not_at_base = location != BASE;
+formula crashed = location = CRASHED;
+
+// Battery levels and failure probabilities
+const int BATTERY_LEVELS = 5;
+formula battery_full = battery = BATTERY_LEVELS;
+formula battery_med = battery >= 3 & battery <= 4;
+formula battery_low = battery >= 1 & battery <= 2;
+formula battery_empty = battery = 0;
+const double fail_full = 0.01;
+const double fail_med = 0.1;
+const double fail_low = 0.2;
+
+module drone_battery
+    battery : [0..BATTERY_LEVELS] init BATTERY_LEVELS;
+
+    [charge] at_base -> (battery'=min(BATTERY_LEVELS, battery+1));
+    [fly_target_a] at_base & battery >= 2 -> (battery'=battery - 2);
+    [fly_target_b] at_base & battery >= 1 -> (battery'=battery - 1);
+    [fly_target_c] at_base & battery >= 3 -> (battery'=battery - 3);
+    [return] not_at_base & battery >= 1 & location != CRASHED -> (battery'=1);
+    // Error state
+    [empty] not_at_base & battery_empty | (location = CRASHED) -> true;
+endmodule
+
+module drone_location
+    // 0 = Base
+    // 1 = Target A
+    // 2 = Target B
+    // 3 = Target C
+    // 4 = Crashed
+    location : [0..4] init 0;
+    delivered_a : bool init false;
+    delivered_b : bool init false;
+    delivered_c : bool init false;
+
+    [fly_target_a] battery_full -> 1-fail_full: (location'=TARGET_A) & (delivered_a'=true) + fail_full: (location'=CRASHED); 
+    [fly_target_a] battery_med -> 1-fail_med: (location'=TARGET_A) & (delivered_a'=true) + fail_med: (location'=CRASHED);
+    [fly_target_a] battery_low -> 1-fail_med: (location'=TARGET_A) & (delivered_a'=true) + fail_med: (location'=CRASHED); 
+
+    [fly_target_b] battery_full -> 1-fail_full: (location'=TARGET_B) & (delivered_b'=true) + fail_full: (location'=CRASHED); 
+    [fly_target_b] battery_med -> 1-fail_med: (location'=TARGET_B) & (delivered_b'=true) + fail_med: (location'=CRASHED);
+    [fly_target_b] battery_low -> 1-fail_low: (location'=TARGET_B) & (delivered_b'=true) + fail_low: (location'=CRASHED); 
+
+    [fly_target_c] battery_full -> 1-fail_full: (location'=TARGET_C) & (delivered_c'=true) + fail_full: (location'=CRASHED); 
+    [fly_target_c] battery_med -> 1-fail_med: (location'=TARGET_C) & (delivered_c'=true) + fail_med: (location'=CRASHED);
+    [fly_target_c] battery_low -> 1-fail_low: (location'=TARGET_C) & (delivered_c'=true) + fail_low: (location'=CRASHED); 
+
+    [return] battery_full -> 1-fail_full: (location'=BASE) + fail_full: (location'=CRASHED); 
+    [return] battery_med -> 1-fail_med: (location'=BASE) + fail_med: (location'=CRASHED);
+    [return] battery_low -> 1-fail_low: (location'=BASE) + fail_low: (location'=CRASHED); 
+endmodule
+
+label "crashed" = crashed;
+label "all_delivered" = delivered_a & delivered_b & delivered_c;
+label "delivered_A" = delivered_a;
+label "delivered_B" = delivered_b;
+label "delivered_C" = delivered_c;
+label "at_station" = location = 0;

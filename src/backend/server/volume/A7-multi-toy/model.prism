@@ -1,0 +1,23 @@
+// Model taken from
+// Certificates and Witnesses for Multi-objective ω-regular Queries in Markov Decision Processes
+// Christel Baier, Calvin Chau, Volodymyr Drobitko, Simon Jantsch, Sascha Klueppelholz
+
+mdp
+
+module N
+    s : [0..4] init 0;
+
+    [a] s=0 -> 0.5: (s'=1) + 0.5: (s'=3);
+    [] s=1 -> (s'=1);
+    [] s=1 -> (s'=2);
+    [] s=2 -> (s'=1);
+    [] s=3 -> (s'=2);
+    [] s=3 -> (s'=4);
+    [] s=4 -> (s'=3);
+    [] s=4 -> (s'=2);
+endmodule
+
+label "s1" = s=1;
+label "s2" = s=2;
+label "s3" = s=3;
+label "s4" = s=4;

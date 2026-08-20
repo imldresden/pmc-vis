@@ -1,0 +1,144 @@
+// This PRISM program models two robots on a grid
+// The controllable robot is controlled by the policy module
+// The environment robot is controlled by the environment
+// The robots perform their moves in a turn-based manner
+// ----------------------------------------------------------------------
+//  Grid layout (shown for the default 3x3 configuration below).
+//  x runs left->right (east = +x), y runs bottom->top (north = +y).
+//
+//                    N (north, +y)
+//                    ^
+//                    |
+//           x=0     x=1     x=2
+//         +-------+-------+-------+
+//    y=2  | OBST. | MACH. |  [E]  |
+//         +-------+-------+-------+
+//    y=1  |       |       |       |
+//         +-------+-------+-------+
+//    y=0  |  [C]  |       |       |
+//         +-------+-------+-------+
+//                    |
+//                    v
+//                    S (south, -y)   W = -x   E = +x
+//
+//  Legend:
+//    [C]   = controllable robot, start (x=0, y=0)         -> policy module
+//    [E]   = environment robot,  start (a=WIDTH-1, b=HEIGHT-1) = (2,2)
+//    OBST. = obstacle at (OBSTACLE_X, OBSTACLE_Y) = (0, 2)
+//    MACH. = machine   at (MACHINE_X,  MACHINE_Y)  = (1, 2)
+//
+//  Note: WIDTH/HEIGHT (min 3) and the obstacle/machine positions are
+//  configurable via the constants below; the picture reflects the
+//  defaults. The environment robot always starts in the top-right corner.
+// ----------------------------------------------------------------------
+
+mdp
+
+// Grid dimension, slipping probability, obstacles
+const int WIDTH = 3; // Minimum 3
+const int HEIGHT = 3; // Minimum 3
+const double p = 0.3;
+
+// Location of obstacle
+const int OBSTACLE_X = 0;
+const int OBSTACLE_Y = 2;
+formula c_robot_hit_obstacle = (x=OBSTACLE_X & y=OBSTACLE_Y);
+formula e_robot_hit_obstacle = (a=OBSTACLE_X & b=OBSTACLE_Y);
+
+// Location of machine
+const int MACHINE_X = 1;
+const int MACHINE_Y = 2;
+formula c_robot_at_machine = (x=MACHINE_X & y=MACHINE_Y);
+formula e_robot_at_machine = (a=MACHINE_X & b=MACHINE_Y);
+
+// Scheduler module ensuring moves are performed in turn-based manner
+module scheduler
+    turn : [1..3] init 1;
+    // Let environment robot perform its move
+    [c_north] turn=1 -> (turn' = 2);
+    [c_south] turn=1 -> (turn' = 2);
+    [c_west] turn=1 -> (turn' = 2);
+    [c_east] turn=1 -> (turn' = 2);
+    [c_idle] turn=1 -> (turn' = 2);
+    // Let controllable robot perform its move
+    [e_north] turn=2 -> (turn' = 1);
+    [e_south] turn=2 -> (turn' = 1);
+    [e_west] turn=2 -> (turn' = 1);
+    [e_east] turn=2 -> (turn' = 1);
+    [e_idle] turn=2 -> (turn' = 1);
+
+    [] turn=1 & c_robot_hit_obstacle -> (turn'=2);
+    [] turn=2 & e_robot_hit_obstacle -> (turn'=1);
+
+endmodule
+
+// Robot controlled by policy
+module controllable_robot
+    x : [0..WIDTH-1] init 0;
+    y : [0..HEIGHT-1] init 0;
+
+    [c_north] !c_robot_hit_obstacle -> 
+        1-p : (y'=min(HEIGHT-1, y+1)) +
+        p/3 : (x'=min(WIDTH-1, x+1)) + 
+        p/3 : (x'=max(0, x-1)) + 
+        p/3 : (x'=x) & (y'=y);
+    [c_south] !c_robot_hit_obstacle -> 
+        1-p : (y'=max(0, y-1)) + 
+        p/3 : (x'=min(WIDTH-1, x+1)) + 
+        p/3 : (x'=max(0, x-1)) + 
+        p/3 : (x'=x) & (y'=y);
+    [c_east] !c_robot_hit_obstacle -> 
+        1-p : (x'=min(WIDTH-1, x+1)) + 
+        p/3 : (y'=min(HEIGHT-1, y+1)) + 
+        p/3 : (y'=max(0, y-1)) + 
+        p/3 : (x'=x) & (y'=y);
+    [c_west] !c_robot_hit_obstacle -> 
+        1-p : (x'=max(0, x-1)) + 
+        p/3 : (y'=min(HEIGHT-1, y+1)) + 
+        p/3 : (y'=max(0, y-1)) + 
+        p/3 : (x'=x) & (y'=y);
+    [c_idle] true -> true;
+endmodule
+
+// Robot controlled by environment
+module environment_robot
+    a : [0..WIDTH-1] init WIDTH-1;
+    b : [0..HEIGHT-1] init HEIGHT-1;
+
+    [e_north] !e_robot_hit_obstacle -> 
+        1-p : (b'=min(HEIGHT-1, b+1)) + 
+        p/3 : (a'=min(WIDTH-1, a+1)) + 
+        p/3 : (a'=max(0, a-1)) + 
+        p/3 : (b'=b);
+    [e_south] !e_robot_hit_obstacle-> 
+        1-p : (b'=max(0, b-1)) + 
+        p/3 : (a'=min(WIDTH-1, a+1)) + 
+        p/3 : (a'=max(0, a-1)) + 
+        p/3 : (b'=b);
+    [e_east] !e_robot_hit_obstacle -> 
+        1-p : (a'=min(WIDTH-1, a+1)) + 
+        p/3 : (b'=min(HEIGHT-1, b+1)) + 
+        p/3 : (b'=max(0, b-1)) + 
+        p/3 : (b'=b);
+    [e_west] !e_robot_hit_obstacle-> 
+        1-p : (a'=max(0, a-1)) + 
+        p/3 : (b'=min(HEIGHT-1, b+1)) + 
+        p/3 : (b'=max(0, b-1)) + 
+        p/3 : (b'=b);
+    [e_idle] true -> true;
+endmodule
+
+// Policy prescribing the actions of the controllable robot
+// Go right until wall is hit and then go up
+// Then visit the machine whenever the environment robot visits the machine
+module policy
+    [c_north] x = WIDTH - 1 & y < HEIGHT-1 -> true;
+    [c_south] false -> true;
+    [c_west] e_robot_at_machine & (x = WIDTH-1) & (y = HEIGHT-1) -> true;
+    [c_east] x < WIDTH-1 -> true;
+    [c_idle] !e_robot_at_machine & (x = WIDTH-1) & (y = HEIGHT-1)-> true;
+endmodule
+
+label "damage" = c_robot_hit_obstacle;
+label "noDamage" = !c_robot_hit_obstacle;
+label "maintain" = !e_robot_at_machine | c_robot_at_machine;

@@ -1,0 +1,15 @@
+mdp
+
+module Example
+    s: [0..4] init 0;
+
+    [a] (s=0) -> 0.5: (s'=1) + 0.5: (s'=3);
+    [b] (s=1) -> (s'=2);
+    [c] (s=2) -> (s'=1);
+    [d] (s=2) -> (s'=2);
+    [e] (s=3) -> (s'=4);
+    [f] (s=4) -> (s'=3);
+
+endmodule
+
+label "target" = s=2;

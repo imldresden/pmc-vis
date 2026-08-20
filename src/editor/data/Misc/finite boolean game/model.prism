@@ -1,0 +1,40 @@
+mdp // probabilities to model enemies choices, non determinism for players choices
+
+// formula: /phi = ( not p_1 /impl p_2) or ( ( p_1 and p_2 ) /impl ( p_3 or p_4 ) ) and ( not p_2 /impl (p_4 / impl not p_3) )
+
+global p_1 : [-1..1] init -1;
+global p_2 : [-1..1] init -1;
+global p_3 : [-1..1] init -1;
+global p_4 : [-1..1] init -1;
+
+// needs p_n=m equality check so boolean logic can be used
+formula logic_formula = ((p_1=0) => (p_2=1)) | (((p_1=1) & (p_2=1)) => ((p_3=1) | (p_4=1))) & ((p_2=0) => ((p_4=1) => (p_3=0)));
+
+module player
+
+// player begins
+[] p_1=-1 -> (p_1'=0);
+[] p_1=-1 -> (p_1'=1);
+[] p_2!=-1 -> (p_3'=0);
+[] p_2!=-1 -> (p_3'=1);
+
+endmodule
+
+module enemy
+
+// player begins
+[] p_1!=-1 -> 0.5 : (p_2'=0) + 0.5 : (p_2'=1);
+[] p_3!=-1 -> 0.5 : (p_4'=0) + 0.5 : (p_4'=1);
+
+endmodule
+
+
+//module game_end // ?? gemini produced this
+//
+//    // PRISM requires state machines to never reach a "dead end".
+//    // Once all variables are assigned, we transition to a self-loop.
+//    [] p_1!=-1 & p_2!=-1 & p_3!=-1 & p_4!=-1 -> true;
+//
+//endmodule
+
+label "done" = (p_1!=-1 & p_2!=-1 & p_3!=-1 & p_4!=-1); // checks whether all variables are assigned
