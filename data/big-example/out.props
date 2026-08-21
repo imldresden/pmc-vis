@@ -1,0 +1,11 @@
+"PrMin_happy": filter(printall, Pmin=? [ "always_finish" U "end"], "init")
+
+"PrMax_happy": filter(printall, Pmax=? [ "always_finish" U "end"], "init")
+
+"Least_Violations": filter(printall, R{"violations"}min=?[ F "end" ], "init")
+
+"Most_Violations": filter(printall, R{"violations"}max=?[ F "end" ], "init")
+
+"Least_Energy": filter(printall, R{"energy"}min=?[ F "end" ], "init")
+
+"Most_Energy": filter(printall, R{"energy"}max=?[ F "end" ], "init")

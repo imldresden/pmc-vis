@@ -34,6 +34,9 @@ function getDefaultBadge(name) {
 }
 
 function setInfo(newInfo) {
+  if (newInfo['id'] != PROJECT) {
+    return;
+  }
   Object.keys(newInfo).forEach(k => {
     info[k] = newInfo[k];
   });
