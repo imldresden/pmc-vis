@@ -58,7 +58,7 @@ module method1
     choice1: [-1..1] init undecided;
 
     [method1] (sample = infected) & (choice1=undecided) -> pInfected1:(choice1'=infected) + (1-pInfected1):(choice1'=clean);
-    [method1] sample = clean      & (choice1=undecided) -> pClean1:(choice1'=infected)    + (1-pClean1):(choice1'=clean);
+    [method1] (sample = clean)      & (choice1=undecided) -> pClean1:(choice1'=infected)    + (1-pClean1):(choice1'=clean);
 endmodule
 
 const int damage2 = 3;
@@ -67,7 +67,12 @@ const double pClean2 = 0.1;
 
 formula impact2 = (choice2);
 
-module method2 = method1 [ choice1 = choice2, method1 = method2, pInfected1 = pInfected2, pClean1 = pClean2 ] endmodule
+module method2
+    choice2: [-1..1] init undecided;
+
+    [method2] (sample = infected) & (choice2=undecided) -> pInfected2:(choice2'=infected) + (1-pInfected2):(choice2'=clean);
+    [method2] (sample = clean)      & (choice2=undecided) -> pClean2:(choice2'=infected)    + (1-pClean2):(choice2'=clean);
+endmodule
 
 const int damage3 = 3;
 const double pInfected3 = 0.9;
@@ -75,7 +80,12 @@ const double pClean3 = 0.2;
 
 formula impact3 = (choice3);
 
-module method3 = method1 [ choice1 = choice3, method1 = method3, pInfected1 = pInfected3, pClean1 = pClean3 ] endmodule
+module method3
+    choice3: [-1..1] init undecided;
+
+    [method3] (sample = infected) & (choice3=undecided) -> pInfected3:(choice3'=infected) + (1-pInfected3):(choice3'=clean);
+    [method3] sample = clean      & (choice3=undecided) -> pClean3:(choice3'=infected)    + (1-pClean3):(choice3'=clean);
+endmodule
 
 const int damage4 = 8;
 const double pInfected4 = 0.95;
@@ -83,7 +93,12 @@ const double pClean4 = 0.45;
 
 formula impact4 = (choice4);
 
-module method4 = method1 [ choice1 = choice4, method1 = method4, pInfected1 = pInfected4, pClean1 = pClean4 ] endmodule
+module method4
+    choice4: [-1..1] init undecided;
+
+    [method4] (sample = infected) & (choice4=undecided) -> pInfected4:(choice4'=infected) + (1-pInfected4):(choice4'=clean);
+    [method4] sample = clean      & (choice4=undecided) -> pClean4:(choice4'=infected)    + (1-pClean4):(choice4'=clean);
+endmodule
 
 
 
