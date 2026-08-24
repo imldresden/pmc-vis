@@ -78,11 +78,15 @@ public class Project implements Namespace{
     }
 
     public void addFile(File file) throws Exception {
+        addFile(file, true);
+    }
+
+    public void addFile(File file, boolean overwrite) throws Exception {
         String fileEnding = file.getName().substring(file.getName().lastIndexOf("."));
         switch (fileEnding) {
             case ".profeat":
                 File translatedFile = new File(file.getPath().replace(fileEnding, ".prism"));
-                addFile(ModelChecker.translateProFeat(file, translatedFile));
+                addFile(ModelChecker.translateProFeat(file, translatedFile), overwrite);
                 return;
             case ".prop":
             case ".props":
@@ -90,7 +94,7 @@ public class Project implements Namespace{
                 break;
             case ".mdp":
             case ".prism":
-                createModel(file);
+                createModel(file, overwrite);
                 break;
             case ".csv":
                 if(!file.getName().equals("style.csv")){
@@ -139,11 +143,19 @@ public class Project implements Namespace{
     }
 
     public String createModel(File modelFile) throws Exception {
+        return createModel(modelFile, true);
+    }
+
+    public String createModel(File modelFile, boolean overwrite) throws Exception {
         String modelName = modelFile.getName().split("\\.")[0];
-        return createModel(modelFile, modelName);
+        return createModel(modelFile, modelName, overwrite);
     }
 
     public String createModel(File modelFile, String version) throws Exception {
+        return createModel(modelFile, version, true);
+    }
+
+    public String createModel(File modelFile, String version, boolean overwrite) throws Exception {
         Model m;
         try {
             m = new Model(modelFile, version, this, debug);
@@ -153,7 +165,10 @@ public class Project implements Namespace{
             return null;
         }
         models.put(version, m);
-        this.newestVersion = version;
+        if (overwrite){
+            this.newestVersion = version;
+        }
+
         //for (File f : propertyFiles) {
         //    m.loadPropertyFile(f);
         //}
@@ -209,13 +224,6 @@ public class Project implements Namespace{
 
     public String defaultVersion(){
         return newestVersion;
-    }
-
-    public Model defaultModel(){
-        if (newestVersion == null){
-            return null;
-        }
-        return models.get(defaultVersion());
     }
 
     public List<String> getFileStructure() {

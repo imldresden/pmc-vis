@@ -464,10 +464,11 @@ public class TaskResource extends Resource {
 
             if(parsingMessage != null){
                 System.out.println("parse Failed");
+                modelFile.delete();
                 return error("File could not be parsed: \n" + parsingMessage);
             }
 
-            tasks.resetProject(projectID);
+            p.addFile(modelFile, false);
 
             return ok(newVersionName);
         } catch (Exception e) {

@@ -114,9 +114,13 @@ public class WitnessTask extends DataProviderTask {
 
             int exitVal = process.waitFor();
             if (exitVal != 0) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                StringBuilder logger = new StringBuilder();
                 String line;
+                StringBuilder logger = new StringBuilder();
+                while ((line = reader.readLine()) != null) {
+                    logger.append(line).append("\n");
+                }
                 while ((line = errorReader.readLine()) != null) {
                     logger.append(line).append("\n");
                 }
