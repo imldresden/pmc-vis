@@ -285,7 +285,7 @@ summary>.trigger-check-prop {
 
 .chosen-edge {
   border: none;
-  background-color: var(--action-color);
+  background-color: var(--highlight-path-color);
   height: 2px;
   margin-bottom: 6px;
   margin-top: 9px;

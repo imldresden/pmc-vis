@@ -43,6 +43,12 @@ function setInfo(newInfo) {
   info.details = {};
   info.types = {};
   info.computable = newInfo[CONSTANTS.computable];
+
+  if (info.numberStates) {
+    document.getElementById('legend-number').innerHTML = info.numberStates;
+    document.getElementById('legend-number-div').style.display = 'flex';
+  }
+
   ['s', 't'].forEach(type => {
     Object.keys(info[type]).forEach(k => {
       info.details[k] = info[type][k];

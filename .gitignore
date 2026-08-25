@@ -26,3 +26,6 @@ src/backend/server/test
 Artifact
 
 artifact-import-export/*.tar
+src/backend/SVaBResp
+src/backend/switss
+src/backend/gurobi

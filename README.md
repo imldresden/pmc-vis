@@ -4,9 +4,9 @@
 1. Active Docker Daemon (min 2GB RAM, recommended 4+GB RAM)
 2. A chromium-based browser (e.g., Google Chrome)
 
-### **Tool** Version
-If you want to use the PMC-VIS version with more tools added,
-follow the **Tool** keyword. Before starting any build option:
+### Adding Explanation Tools 
+If you want to use the PMC-VIS version with more explanation tools added,
+use the **Tool** profile (see Docker Compose Below). Before starting any build option:
 1. add SVAResp to `src/backend/SVaBResp` (`git clone https://github.com/johannesalehmann/SVaBResp.git SVaBResp`)
 2. add switss-multi to `src/backend/switss`
 3. add an active gurobi WSL license to `src/backend/gurobi`
@@ -15,10 +15,11 @@ follow the **Tool** keyword. Before starting any build option:
 
 ### Docker Compose:
 1. on the directory `./src`
-2. `docker compose up` starts the server:
-   - `-d` flag detaches the running system
+2. we use `docker compose`:
+   - `--profile tools` to build with the tools profile
+   - `up` to start the containers
    - `--build` flag rebuilds docker images
-   - **Tool** `--profile tools` to build with the tools profile
+   - `-d` flag detaches the running system
    - `docker compose down` stops the system
    - `docker image prune` removes dangling images
 3. web vis at `http://localhost:3000`
