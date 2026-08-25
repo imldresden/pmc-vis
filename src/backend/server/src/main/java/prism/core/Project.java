@@ -71,9 +71,16 @@ public class Project implements Namespace{
     }
 
     private void addAllFiles() throws Exception {
+        boolean coreModel = false;
         for (File file : Objects.requireNonNull(new File(String.format("%s/%s", rootDir, id)).listFiles())) {
             if (debug) System.out.println("Adding file " + file.getName());
             addFile(file);
+            if (file.getName().trim().equals(Namespace.PROJECT_MODEL)){
+                coreModel = true;
+            }
+        }
+        if (coreModel) {
+            this.newestVersion = Namespace.PROJECT_MODEL.split("\\.")[0];
         }
     }
 

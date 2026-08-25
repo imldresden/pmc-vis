@@ -468,7 +468,9 @@ public class TaskResource extends Resource {
                 return error("File could not be parsed: \n" + parsingMessage);
             }
 
-            p.addFile(modelFile, false);
+            p.createModel(modelFile, false);
+            tasks.resetProject(projectID);
+
 
             return ok(newVersionName);
         } catch (Exception e) {
