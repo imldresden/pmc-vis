@@ -1,0 +1,66 @@
+{
+  "title": "PMC-VIS",
+  "description": "",
+  "pages": [
+    {
+      "title": "FAQ",
+      "url": "https://docs.myproject.com/developer/FAQ/",
+      "description": "Frequently asked questions",
+      "priority": "medium"
+    },
+    {
+      "title": "Backend",
+      "url": "https://docs.myproject.com/developer/structure/backend/",
+      "description": "PMC-Vis Backend",
+      "priority": "medium"
+    },
+    {
+      "title": "Communication",
+      "url": "https://docs.myproject.com/developer/structure/communication/",
+      "description": "Communication between the parts",
+      "priority": "medium"
+    },
+    {
+      "title": "Editor",
+      "url": "https://docs.myproject.com/developer/structure/editor/",
+      "description": "VS-Code Plugin",
+      "priority": "medium"
+    },
+    {
+      "title": "Frontend",
+      "url": "https://docs.myproject.com/developer/structure/frontend/",
+      "description": "The Graph Explorer",
+      "priority": "medium"
+    },
+    {
+      "title": "Structure",
+      "url": "https://docs.myproject.com/developer/structure/",
+      "description": "PMC-VIS Structure",
+      "priority": "medium"
+    },
+    {
+      "title": "Leftovers",
+      "url": "https://docs.myproject.com/index_old/",
+      "description": "The leftovers from the initial project",
+      "priority": "medium"
+    },
+    {
+      "title": "PMC-VIS",
+      "url": "https://docs.myproject.com/",
+      "description": "The visual MDP Explorer",
+      "priority": "high"
+    },
+    {
+      "title": "Install",
+      "url": "https://docs.myproject.com/user/install/",
+      "description": "Installing PMC-VIS",
+      "priority": "medium"
+    },
+    {
+      "title": "Quick Start",
+      "url": "https://docs.myproject.com/user/usage/",
+      "description": "A Quick Introduction to PMC-VIS",
+      "priority": "medium"
+    }
+  ]
+}

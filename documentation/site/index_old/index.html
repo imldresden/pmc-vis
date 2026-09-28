@@ -1,0 +1,961 @@
+<!--
+  ---------------------------------------------------------------
+  docmd : the zero-config documentation engine.
+  @website https://docmd.io
+  [docmd-source] - Please do not remove this header.
+  ---------------------------------------------------------------
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="generator" content="docmd v0.9.6">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script>
+      var root = "../";
+      if (root && !root.endsWith('/')) root += '/';
+      if (root === '') root = './';
+      window.DOCMD_ROOT = root;
+
+      window.DOCMD_SITE_ROOT = "/documentation/";
+
+      window.DOCMD_APPEARANCE = "system";
+      window.DOCMD_VERSION_ROOT = "/";
+      window.DOCMD_BASE = "/documentation/";
+      window.DOCMD_LOCALE = "";
+      window.DOCMD_DEFAULT_LOCALE = "";
+    </script>
+    <script>/**
+ * --------------------------------------------------------------------
+ * docmd : the zero-config documentation engine.
+ *
+ * @package     @docmd/core (and ecosystem)
+ * @website     https://docmd.io
+ * @repository  https://github.com/docmd-io/docmd
+ * @license     MIT
+ * @copyright   Copyright (c) 2025-present docmd.io
+ *
+ * [docmd-source] - Please do not remove this header.
+ * --------------------------------------------------------------------
+ */
+
+(function () {
+  try {
+    // 1. Determine Theme
+    //
+    // Resolve from three sources, in priority order:
+    //   1. localStorage explicit user choice (light / dark)
+    //   2. window.DOCMD_APPEARANCE  (current canonical name, set by EJS templates)
+    //   3. window.DOCMD_DEFAULT_MODE (legacy alias kept for pre-0.8.7 outputs)
+    //   4. 'light' as the final fallback
+    //
+    // Note: localStorage is only honoured when it holds an explicit
+    // 'light' or 'dark' value. A stored 'system' value (from a prior
+    // session where the user picked "follow system") must NOT win over
+    // a freshly resolved config value — the resolved value will itself
+    // be 'system' in that case and the OS preference check below takes
+    // over, so this is a no-op for the in-session behaviour but keeps
+    // any future storage migration simple.
+    var localValue = localStorage.getItem('docmd-theme');
+    var configValue = window.DOCMD_APPEARANCE
+      || window.DOCMD_DEFAULT_MODE
+      || 'light';
+    var theme = (localValue === 'light' || localValue === 'dark')
+      ? localValue
+      : configValue;
+
+    if (theme === 'system') {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    // 2. Apply to Root
+    document.documentElement.setAttribute('data-theme', theme);
+
+    // 3. Highlight.js Toggle Strategy
+    var lightLink = document.getElementById('hljs-light');
+    var darkLink = document.getElementById('hljs-dark');
+
+    if (lightLink && darkLink) {
+      if (theme === 'dark') {
+        lightLink.disabled = true;
+        darkLink.disabled = false;
+      } else {
+        lightLink.disabled = false;
+        darkLink.disabled = true;
+      }
+    }
+
+    document.documentElement.style.visibility = "visible";
+  } catch (e) {
+    document.documentElement.style.visibility = "visible";
+    console.error('Theme init failed', e);
+  }
+})();</script>
+    <style>
+      html {
+        visibility: hidden;
+      }
+    </style>
+    <title>Leftovers - PMC-VIS</title>
+    
+    
+
+    <link id="site-favicon" rel="icon" href="../assets/favicon.ico?v=mugwa917">
+    <link rel="stylesheet" href="../assets/css/docmd-main.css?v=mugwa917">
+    
+    <link rel="stylesheet" href="../assets/css/docmd-highlight-light.css?v=mugwa917" id="hljs-light" >
+    <link rel="stylesheet" href="../assets/css/docmd-highlight-dark.css?v=mugwa917" id="hljs-dark" disabled>
+    
+    
+<meta name="description" content="The leftovers from the initial project">
+<link rel="canonical" href="https://docs.myproject.com/index_old/">
+<meta property="og:title" content="Leftovers - PMC-VIS">
+<meta property="og:description" content="The leftovers from the initial project">
+<meta property="og:url" content="https://docs.myproject.com/index_old/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Leftovers - PMC-VIS">
+<meta name="twitter:description" content="The leftovers from the initial project">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"PMC-VIS","item":"https://docs.myproject.com/"},{"@type":"ListItem","position":2,"name":"Leftovers","item":"https://docs.myproject.com/index_old/"}]}
+</script>
+
+
+
+
+<link rel="stylesheet" href="../assets/css/docmd-git.css?v=mugwa917" >
+<link rel="stylesheet" href="../assets/css/docmd-openapi.css?v=mugwa917" >
+
+    
+    
+  </head>
+  <body
+    class="sidebar-collapsible"
+    data-default-collapsed="false"
+    data-copy-code-enabled="true" data-spa-enabled="true" data-source-file="docs/index_old.md">
+
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    
+    
+
+    
+
+    
+    
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          
+            <h1><a href="../">
+                PMC-VIS
+              </a></h1>
+          
+          <span class="mobile-view sidebar-menu-button float-right">
+            
+<svg class="lucide-icon icon-menu " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-menu"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 5h16" />
+  <path d="M4 12h16" />
+  <path d="M4 19h16" />
+</svg>
+
+          </span>
+        </div>
+        <div class="sidebar-top-group">
+          
+          
+          
+            <div class="sidebar-options-wrapper">
+              
+
+
+<div class="docmd-options-menu">
+    
+    <button class="docmd-search-trigger" aria-label="Search">
+        
+<svg class="lucide-icon icon-search " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-search"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" />
+</svg>
+
+        <span class="search-label">Search</span>
+        <span class="search-keys"><kbd class="docmd-kbd">⌘</kbd><kbd class="docmd-kbd">K</kbd></span>
+    </button>
+    
+
+    
+
+    
+
+    
+    <button class="theme-toggle-button" aria-label="Toggle theme" title="Toggle theme">
+        
+<svg class="lucide-icon icon-sun icon-sun" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-sun"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <circle cx="12" cy="12" r="4" />
+  <path d="M12 2v2" />
+  <path d="M12 20v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="m17.66 17.66 1.41 1.41" />
+  <path d="M2 12h2" />
+  <path d="M20 12h2" />
+  <path d="m6.34 17.66-1.41 1.41" />
+  <path d="m19.07 4.93-1.41 1.41" />
+</svg>
+ 
+<svg class="lucide-icon icon-moon icon-moon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-moon"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
+</svg>
+
+    </button>
+    
+
+    
+
+    
+</div>
+
+            </div>
+          
+          
+          
+        </div>
+        
+
+<nav class="sidebar-nav" aria-label="Main Navigation">
+  <ul>
+    
+      <li class="" >
+      
+        <a href="../" class=" "
+          >
+          
+          <span class="nav-item-title">
+            PMC-VIS
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="active" >
+      
+        <a href="../index_old/" class="active "
+          >
+          
+          <span class="nav-item-title">
+            Leftovers
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="collapsible nav-group"  aria-expanded="false" >
+      
+        <span class="nav-label nav-group">
+          
+          <span class="nav-item-title">
+            Developer
+          </span>
+          
+            <span class="collapse-icon-wrapper">
+<svg class="lucide-icon icon-chevron-right collapse-icon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-chevron-right"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m9 18 6-6-6-6" />
+</svg>
+</span>
+          
+        </span>
+        
+
+        
+          <ul class="submenu">
+            
+      <li class="" >
+      
+        <a href="../developer/FAQ/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            FAQ
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="" >
+      
+        <a href="../developer/structure/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Structure
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="collapsible nav-group"  aria-expanded="false" >
+      
+        <span class="nav-label nav-group">
+          
+          <span class="nav-item-title">
+            Structure
+          </span>
+          
+            <span class="collapse-icon-wrapper">
+<svg class="lucide-icon icon-chevron-right collapse-icon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-chevron-right"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m9 18 6-6-6-6" />
+</svg>
+</span>
+          
+        </span>
+        
+
+        
+          <ul class="submenu">
+            
+      <li class="" >
+      
+        <a href="../developer/structure/backend/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Backend
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="" >
+      
+        <a href="../developer/structure/communication/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Communication
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="" >
+      
+        <a href="../developer/structure/editor/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Editor
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="" >
+      
+        <a href="../developer/structure/frontend/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Frontend
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+          </ul>
+        
+      </li>
+    
+          </ul>
+        
+      </li>
+    
+      <li class="collapsible nav-group"  aria-expanded="false" >
+      
+        <span class="nav-label nav-group">
+          
+          <span class="nav-item-title">
+            User
+          </span>
+          
+            <span class="collapse-icon-wrapper">
+<svg class="lucide-icon icon-chevron-right collapse-icon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-chevron-right"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m9 18 6-6-6-6" />
+</svg>
+</span>
+          
+        </span>
+        
+
+        
+          <ul class="submenu">
+            
+      <li class="" >
+      
+        <a href="../user/install/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Install
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+      <li class="" >
+      
+        <a href="../user/usage/" class=" "
+          >
+          
+          <span class="nav-item-title">
+            Quick Start
+            </span>
+          
+          
+        </a>
+        
+
+        
+      </li>
+    
+          </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+        <div class="sidebar-bottom-group mt-auto">
+          
+          
+          
+          
+          
+        </div>
+      </aside>
+      
+      <div class="main-content-wrapper">
+        
+        
+        
+          <header class="page-header">
+            <div class="header-left">
+              
+                <button id="sidebar-toggle-button" class="sidebar-toggle-button"
+                  aria-label="Toggle Sidebar">
+                  
+<svg class="lucide-icon icon-chevron-left " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-chevron-left"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m15 18-6-6 6-6" />
+</svg>
+
+                </button>
+              
+              <div class="header-titles-wrapper">
+                <span class="header-title">
+                  Leftovers
+                </span>
+              </div>
+            </div>
+            <div class="header-right">
+              
+            </div>
+          </header>
+        
+        <div class="content-theme-cover">
+          <main class="content-area" id="main-content">
+            <div class="content-layout">
+              <div class="main-content">
+                <div class="docmd-breadcrumbs-row">
+                  <div id="docmd-raw-markdown" data-content="---%0Atitle%3A%20%22Leftovers%22%0Adescription%3A%20%22The%20leftovers%20from%20the%20initial%20project%22%0A---%0A%0A%23%20Quick%20Start%20Your%20Docs%20%F0%9F%9A%80%0A%0AThis%20is%20the%20home%20page%20of%20your%20new%20**docmd**%20project.%20You&#039;re%20currently%20viewing%20%60docs%2Findex.md%60%20%E2%80%94%20edit%20it%2C%20and%20your%20site%20updates.%0A%0A%23%23%20Run%20the%20dev%20server%0A%0A%60%60%60bash%0Anpx%20%40docmd%2Fcore%20dev%0A%60%60%60%0A%0AOpen%20%60http%3A%2F%2Flocalhost%3A3000%60%20%E2%80%94%20the%20page%20auto-reloads%20as%20you%20edit.%0A%0A%23%23%20Build%20for%20production%0A%0A%60%60%60bash%0Anpx%20%40docmd%2Fcore%20build%0A%60%60%60%0A%0AOutput%20goes%20to%20%60site%2F%60.%20Deploy%20that%20folder%20anywhere%20that%20serves%20static%20files.%0A%0A%23%23%20Project%20structure%0A%0A%60%60%60text%0A.%0A%E2%94%9C%E2%94%80%E2%94%80%20docs%2F%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%23%20Your%20markdown%20content%0A%E2%94%82%20%20%20%E2%94%94%E2%94%80%E2%94%80%20index.md%20%20%20%20%20%20%20%20%20%20%20%23%20You%20are%20here%0A%E2%94%9C%E2%94%80%E2%94%80%20assets%2F%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%23%20Custom%20CSS%2C%20JS%2C%20and%20images%0A%E2%94%9C%E2%94%80%E2%94%80%20docmd.config.json%20%20%20%20%20%20%23%20Site%20configuration%0A%E2%94%94%E2%94%80%E2%94%80%20package.json%20%20%20%20%20%20%20%20%20%20%20%23%20Node%20dependencies%20%2B%20scripts%0A%60%60%60%0A%0A%23%23%20Features%0A%0A%23%23%23%201.%20Smart%20containers%0A%0A%60%60%60markdown%0A%3A%3A%3A%20callout%20tip%20%22Did%20you%20know%3F%22%0AYou%20can%20nest%20containers%2C%20add%20titles%2C%20and%20use%20icons.%0A%3A%3A%3A%0A%0A%3A%3A%3A%20card%20%22Flexible%22%20icon%3Alayout-grid%0AOrganise%20content%20with%20cards.%0A%0A%5BView%20the%20docs%20%E2%86%92%5D(https%3A%2F%2Fdocs.docmd.io)%7B.docmd-button%7D%0A%3A%3A%3A%0A%60%60%60%0A%0ARenders%20as%20a%20styled%20callout%20and%20a%20card%20with%20a%20button.%0A%0A%23%23%23%202.%20Tabs%20and%20code%0A%0A%60%60%60%60markdown%0A%3A%3A%3A%20tabs%0A%3D%3D%20tab%20%22JavaScript%22%20icon%3Abraces%0A%60%60%60javascript%0Aconsole.log(&#039;Hello%20World&#039;)%3B%0A%60%60%60%0A%0A%3D%3D%20tab%20%22Python%22%20icon%3Acode%0A%60%60%60python%0Aprint(&#039;Hello%20World&#039;)%0A%60%60%60%0A%3A%3A%3A%0A%60%60%60%60%0A%0A%23%23%23%203.%20Built-in%20plugins%0A%0Adocmd%20ships%20with%20these%20plugins%20enabled%20by%20default%20%E2%80%94%20no%20install%20needed%3A%0A%0A-%20**AI%20Assistant**%20%E2%80%94%20interactive%20documentation%20chat%20(100%25%20free%20with%20BYOK%20or%20docmd%20Cloud)%0A-%20**Search**%20%E2%80%94%20full-text%20%2B%20semantic%20search%20(optional)%0A-%20**Sitemap**%20%2B%20**SEO**%20meta%20tags%0A-%20**LLMs%20context**%20%E2%80%94%20%60llms.txt%60%20and%20%60llms.json%60%20for%20AI%20agents%0A-%20**OKF**%20%E2%80%94%20Open%20Knowledge%20Format%20bundle%20at%20%60site%2Fokf%2F%60%0A-%20**Mermaid**%20diagrams%0A-%20**Git**%20last-modified%20timestamps%0A-%20**Math**%20(KaTeX)%20%E2%80%94%20enable%20with%20%60docmd%20add%20math%60%0A%0ASee%20the%20%5Bfull%20plugin%20list%5D(https%3A%2F%2Fdocs.docmd.io%2Fplugins%2Fusage%2F).%0A%0A%23%23%20Next%20steps%0A%0A-%20**%5BInstall%20docmd%5D(https%3A%2F%2Fdocs.docmd.io%2Fgetting-started%2Finstallation%2F)**%0A-%20**%5BConfigure%20your%20site%5D(https%3A%2F%2Fdocs.docmd.io%2Fconfiguration%2Foverview%2F)**%0A-%20**%5BBrowse%20templates%5D(https%3A%2F%2Fdocs.docmd.io%2Ftheming%2Ftemplates%2F)**%0A-%20**%5BDeploy%20to%20production%5D(https%3A%2F%2Fdocs.docmd.io%2Fdeployment%2F)**%0A-%20**%5BGitHub%20repo%5D(https%3A%2F%2Fgithub.com%2Fdocmd-io%2Fdocmd%2F)**%0A%0AHappy%20documenting!%20%F0%9F%8E%89" style="display: none;"></div>
+                  
+                    <nav aria-label="breadcrumb" class="docmd-breadcrumbs">
+                      <ol>
+                        
+                        
+                          <li class="breadcrumb-item active" aria-current=&quot;page&quot;>
+                            
+                              <span>Leftovers</span>
+                            
+                            
+                          </li>
+                        
+                      </ol>
+                    </nav>
+                  
+
+                  
+                  
+                    <div class="docmd-copy-widgets">
+                      
+                        <button class="docmd-copy-btn docmd-copy-raw-btn" data-copied="Copied!" title="Copy Markdown" aria-label="Copy Markdown">
+                          <span class="docmd-btn-icon">
+<svg class="lucide-icon icon-copy " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-copy"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+</svg>
+</span>
+                        </button>
+                      
+                      
+                        <button class="docmd-copy-btn docmd-copy-context-btn" data-copied="Copied!" title="Copy Context">
+                          <span class="docmd-btn-icon">
+<svg class="lucide-icon icon-message-square " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-message-square"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+</svg>
+</span>
+                          <span class="docmd-btn-text">Copy Context</span>
+                        </button>
+                      
+                      
+                    </div>
+                  
+                </div>
+                
+                  <h1 class="docmd-focus-title">
+                    Leftovers
+                  </h1>
+                
+                <h1 id="quick-start-your-docs" class="docmd-heading"><a href="#quick-start-your-docs" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Quick Start Your Docs 🚀</h1>
+<p>This is the home page of your new <strong>docmd</strong> project. You’re currently viewing <code>docs/index.md</code> — edit it, and your site updates.</p>
+<h2 id="quick-start-your-docs-run-the-dev-server" class="docmd-heading"><a href="#quick-start-your-docs-run-the-dev-server" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Run the dev server</h2>
+<pre class="hljs"><code class="language-bash">npx @docmd<span class="hljs-operator">/</span>core dev
+</code></pre>
+<p>Open <code>http://localhost:3000</code> — the page auto-reloads as you edit.</p>
+<h2 id="quick-start-your-docs-build-for-production" class="docmd-heading"><a href="#quick-start-your-docs-build-for-production" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Build for production</h2>
+<pre class="hljs"><code class="language-bash">npx @docmd<span class="hljs-operator">/</span>core build
+</code></pre>
+<p>Output goes to <code>site/</code>. Deploy that folder anywhere that serves static files.</p>
+<h2 id="quick-start-your-docs-project-structure" class="docmd-heading"><a href="#quick-start-your-docs-project-structure" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Project structure</h2>
+<pre class="hljs"><code class="language-text">.
+├── docs<span class="hljs-operator">/</span>                  <span class="hljs-comment"># Your markdown content</span>
+│   └── index.<span class="hljs-attr">md</span>           <span class="hljs-comment"># You are here</span>
+├── assets<span class="hljs-operator">/</span>                <span class="hljs-comment"># Custom CSS, JS, and images</span>
+├── docmd.<span class="hljs-attr">config</span>.<span class="hljs-attr">json</span>      <span class="hljs-comment"># Site configuration</span>
+└── package.<span class="hljs-attr">json</span>           <span class="hljs-comment"># Node dependencies + scripts</span>
+</code></pre>
+<h2 id="quick-start-your-docs-features" class="docmd-heading"><a href="#quick-start-your-docs-features" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Features</h2>
+<h3 id="quick-start-your-docs-features-1-smart-containers" class="docmd-heading"><a href="#quick-start-your-docs-features-1-smart-containers" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>1. Smart containers</h3>
+<pre class="hljs"><code class="language-markdown"><span class="hljs-operator">:::</span> callout tip <span class="hljs-string">&quot;Did you know?&quot;</span>
+You can nest containers, add titles, and <span class="hljs-keyword">use</span> icons.
+<span class="hljs-operator">:::</span>
+
+<span class="hljs-operator">:::</span> card <span class="hljs-string">&quot;Flexible&quot;</span> icon<span class="hljs-operator">:</span>layout<span class="hljs-operator">-</span>grid
+Organise content <span class="hljs-keyword">with</span> cards.
+
+[View the docs →](https<span class="hljs-operator">://</span>docs.<span class="hljs-attr">docmd</span>.<span class="hljs-attr">io</span>){.<span class="hljs-attr">docmd</span><span class="hljs-operator">-</span>button}
+<span class="hljs-operator">:::</span>
+</code></pre>
+<p>Renders as a styled callout and a card with a button.</p>
+<h3 id="quick-start-your-docs-features-2-tabs-and-code" class="docmd-heading"><a href="#quick-start-your-docs-features-2-tabs-and-code" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>2. Tabs and code</h3>
+<pre class="hljs"><code class="language-markdown"><span class="hljs-operator">:::</span> tabs
+<span class="hljs-operator">==</span> tab <span class="hljs-string">&quot;JavaScript&quot;</span> icon<span class="hljs-operator">:</span>braces
+<span class="hljs-string">``</span><span class="hljs-string">`javascript
+console.log(&#039;Hello World&#039;);
+`</span><span class="hljs-string">``</span>
+
+<span class="hljs-operator">==</span> tab <span class="hljs-string">&quot;Python&quot;</span> icon<span class="hljs-operator">:</span>code
+<span class="hljs-string">``</span><span class="hljs-string">`python
+print(&#039;Hello World&#039;)
+`</span><span class="hljs-string">``</span>
+<span class="hljs-operator">:::</span>
+</code></pre>
+<h3 id="quick-start-your-docs-features-3-built-in-plugins" class="docmd-heading"><a href="#quick-start-your-docs-features-3-built-in-plugins" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>3. Built-in plugins</h3>
+<p>docmd ships with these plugins enabled by default — no install needed:</p>
+<ul>
+<li><strong>AI Assistant</strong> — interactive documentation chat (100% free with BYOK or docmd Cloud)</li>
+<li><strong>Search</strong> — full-text + semantic search (optional)</li>
+<li><strong>Sitemap</strong> + <strong>SEO</strong> meta tags</li>
+<li><strong>LLMs context</strong> — <code>llms.txt</code> and <code>llms.json</code> for AI agents</li>
+<li><strong>OKF</strong> — Open Knowledge Format bundle at <code>site/okf/</code></li>
+<li><strong>Mermaid</strong> diagrams</li>
+<li><strong>Git</strong> last-modified timestamps</li>
+<li><strong>Math</strong> (KaTeX) — enable with <code>docmd add math</code></li>
+</ul>
+<p>See the <a href="https://docs.docmd.io/plugins/usage/">full plugin list</a>.</p>
+<h2 id="quick-start-your-docs-next-steps" class="docmd-heading"><a href="#quick-start-your-docs-next-steps" class="heading-anchor" aria-label="Permalink to this section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2-icon lucide-link-2"><path d="M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8"/></svg></a>Next steps</h2>
+<ul>
+<li><strong><a href="https://docs.docmd.io/getting-started/installation/">Install docmd</a></strong></li>
+<li><strong><a href="https://docs.docmd.io/configuration/overview/">Configure your site</a></strong></li>
+<li><strong><a href="https://docs.docmd.io/theming/templates/">Browse templates</a></strong></li>
+<li><strong><a href="https://docs.docmd.io/deployment/">Deploy to production</a></strong></li>
+<li><strong><a href="https://github.com/docmd-io/docmd/">GitHub repo</a></strong></li>
+</ul>
+<p>Happy documenting! 🎉</p>
+
+                
+                  <div class="page-navigation">
+                    
+                      <a href="../" class="prev-page">
+                        
+<svg class="lucide-icon icon-arrow-left page-nav-icon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-arrow-left"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m12 19-7-7 7-7" />
+  <path d="M19 12H5" />
+</svg>
+
+                        <span><small>Previous</small><strong>
+                            PMC-VIS
+                          </strong></span>
+                      </a>
+                    
+                    
+                      <a href="../developer/FAQ/" class="next-page">
+                        <span><small>Next</small>
+                          <strong>
+                            FAQ
+                          </strong></span>
+                        
+<svg class="lucide-icon icon-arrow-right page-nav-icon" width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-arrow-right"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" />
+</svg>
+
+                      </a>
+                    
+                  </div>
+                
+              </div>
+              
+              
+              <div class="toc-sidebar">
+                
+                
+                  
+
+
+  <div class="toc-container">
+    <h2 class="toc-title">On This Page<span class="mobile-view toc-menu-button float-right">
+<svg class="lucide-icon icon-chevron-down " width="1em" height="1em" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+  class="lucide lucide-chevron-down"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m6 9 6 6 6-6" />
+</svg>
+</span></h2>
+    <ul class="toc-list">
+      
+        <li class="toc-item toc-level-1">
+          <a href="#quick-start-your-docs" class="toc-link">Quick Start Your Docs 🚀</a>
+        </li>
+      
+        <li class="toc-item toc-level-2">
+          <a href="#quick-start-your-docs-run-the-dev-server" class="toc-link">Run the dev server</a>
+        </li>
+      
+        <li class="toc-item toc-level-2">
+          <a href="#quick-start-your-docs-build-for-production" class="toc-link">Build for production</a>
+        </li>
+      
+        <li class="toc-item toc-level-2">
+          <a href="#quick-start-your-docs-project-structure" class="toc-link">Project structure</a>
+        </li>
+      
+        <li class="toc-item toc-level-2">
+          <a href="#quick-start-your-docs-features" class="toc-link">Features</a>
+        </li>
+      
+        <li class="toc-item toc-level-3">
+          <a href="#quick-start-your-docs-features-1-smart-containers" class="toc-link">1. Smart containers</a>
+        </li>
+      
+        <li class="toc-item toc-level-3">
+          <a href="#quick-start-your-docs-features-2-tabs-and-code" class="toc-link">2. Tabs and code</a>
+        </li>
+      
+        <li class="toc-item toc-level-3">
+          <a href="#quick-start-your-docs-features-3-built-in-plugins" class="toc-link">3. Built-in plugins</a>
+        </li>
+      
+        <li class="toc-item toc-level-2">
+          <a href="#quick-start-your-docs-next-steps" class="toc-link">Next steps</a>
+        </li>
+      
+    </ul>
+  </div>
+
+                
+                
+              </div>
+              
+            </div>
+            <div class="page-footer-actions">
+              
+              
+              <span class="git-spacer"></span>
+              
+            </div>
+          </main>
+          
+
+
+<footer class="page-footer">
+  <div class="footer-content">
+    <div class="user-footer">© 2026 PMC-Vis</div>
+    
+  </div>
+</footer>
+
+        </div>
+      </div>
+      
+      <script src="../assets/js/docmd-main.js?v=mugwa917"></script>
+      
+      <script src="../assets/js/docmd-git.js?v=mugwa917"></script>
+      <script src="../assets/js/docmd-image-lightbox.js?v=mugwa917" ></script>
+<script src="../assets/js/vendor/minisearch.js?v=mugwa917" ></script>
+<script src="../assets/js/docmd-search.js?v=mugwa917" ></script>
+<script src="../assets/js/docmd-git.js?v=mugwa917" ></script>
+
+  <!-- Search Modal (Injected by @docmd/plugin-search) -->
+  <div id="docmd-search-modal" class="docmd-search-modal" style="display: none;" data-show-confidence="false" data-show-filters="true"
+       data-search-placeholder="Search documentation..."
+       data-search-no-results="No results found."
+       data-search-error="Failed to load search index."
+       data-search-offline="Search requires a web server. Open this site via http://localhost instead of file:// to enable search."
+       data-search-offline-build="Search is disabled because these docs were built with the --offline flag. Rebuild the site without the flag to enable search."
+       data-search-initial="Type to start searching..."
+       data-search-navigate="to navigate"
+       data-search-escape="to close">
+      <div class="docmd-search-box">
+          <div class="docmd-search-header">
+              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon icon-search"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <input type="text" id="docmd-search-input" placeholder="Search documentation..." autocomplete="off" spellcheck="false">
+              <button onclick="window.closeDocmdSearch()" class="docmd-search-close" aria-label="Close search">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon icon-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+              </button>
+          </div>
+          <div id="docmd-search-results" class="docmd-search-results"></div>
+          <div class="docmd-search-footer">
+              <span><kbd class="docmd-kbd">↑</kbd> <kbd class="docmd-kbd">↓</kbd> to navigate</span>
+              <span><kbd class="docmd-kbd">ESC</kbd> to close</span>
+          </div>
+      </div>
+  </div>
+
+    <script>
+      (function() {
+        var searchDebounceTimer;
+
+        document.addEventListener('click', function(e) {
+          var link = e.target.closest('a');
+          if (!link || !window.gtag) return;
+          
+          var url = link.href;
+          var hostname = window.location.hostname;
+          var isExternal = link.hostname && link.hostname !== hostname;
+          var isDownload = link.hasAttribute('download') || url.match(/\.(pdf|zip|tar|gz|exe|pkg)$/i);
+          
+          if (isExternal) {
+            gtag('event', 'click_external', { 'url': url, 'link_text': link.innerText.trim() });
+          } else if (isDownload) {
+            gtag('event', 'download', { 'file_name': url.split('/').pop(), 'url': url });
+          }
+
+          // TOC tracking
+          if (link.classList.contains('toc-link')) {
+            gtag('event', 'toc_click', { 'target_id': link.getAttribute('href'), 'title': link.innerText.trim() });
+          }
+
+          // Permalink tracking
+          if (link.classList.contains('heading-anchor')) {
+            gtag('event', 'permalink_click', { 'url': url });
+          }
+        });
+
+        
+        // Search Keyword Tracking
+        document.addEventListener('input', function(e) {
+          if (e.target.id === 'docmd-search-input' && window.gtag) {
+            var query = e.target.value.trim();
+            if (query.length < 3) return;
+            
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(function() {
+              gtag('event', 'search', { 'search_term': query });
+            }, 1000);
+          }
+        });
+        
+      })();
+    </script>
+
+<script>window.__git_config={"repo":null,"branch":"main","editLink":false,"lastUpdated":true,"commitHistory":true,"maxCommits":5,"dateFormat":"relative"};window.__git_i18n={"lastUpdated":"Last updated","recentCommits":"Recent commits","viewCommitHistory":"View commit history","editOnGitHub":"Edit on GitHub","editOnGitLab":"Edit on GitLab","editOnBitbucket":"Edit on Bitbucket","editThisPage":"Edit this page","justNow":"just now","minutesAgo":"{n}m ago","hoursAgo":"{n}h ago","daysAgo":"{n}d ago"}</script>
+
+      
+      
+      
+  </body>
+</html>

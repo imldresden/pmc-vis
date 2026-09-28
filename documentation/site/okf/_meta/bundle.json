@@ -1,0 +1,132 @@
+{
+  "okf_version": "0.9.6",
+  "bundle": {
+    "name": "pmc-vis",
+    "title": "PMC-VIS",
+    "description": "",
+    "url": "https://docs.myproject.com",
+    "generated_by": "@docmd/plugin-okf",
+    "generated_at": "2026-09-25T11:46:07.649Z",
+    "default_type": "concept"
+  },
+  "stats": {
+    "concepts": 10,
+    "by_type": {
+      "concept": 10
+    },
+    "locales": [],
+    "versions": []
+  },
+  "concepts": [
+    {
+      "id": "developer-faq",
+      "type": "concept",
+      "title": "FAQ",
+      "description": "Frequently asked questions",
+      "path": "/developer/FAQ/",
+      "file": "concepts/developer-faq.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "developer-structure-backend",
+      "type": "concept",
+      "title": "Backend",
+      "description": "PMC-Vis Backend",
+      "path": "/developer/structure/backend/",
+      "file": "concepts/developer-structure-backend.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "developer-structure-communication",
+      "type": "concept",
+      "title": "Communication",
+      "description": "Communication between the parts",
+      "path": "/developer/structure/communication/",
+      "file": "concepts/developer-structure-communication.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "developer-structure-editor",
+      "type": "concept",
+      "title": "Editor",
+      "description": "VS-Code Plugin",
+      "path": "/developer/structure/editor/",
+      "file": "concepts/developer-structure-editor.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "developer-structure-frontend",
+      "type": "concept",
+      "title": "Frontend",
+      "description": "The Graph Explorer",
+      "path": "/developer/structure/frontend/",
+      "file": "concepts/developer-structure-frontend.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "developer-structure",
+      "type": "concept",
+      "title": "Structure",
+      "description": "PMC-VIS Structure",
+      "path": "/developer/structure/",
+      "file": "concepts/developer-structure.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "root",
+      "type": "concept",
+      "title": "PMC-VIS",
+      "description": "The visual MDP Explorer",
+      "path": "/",
+      "file": "concepts/root.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "index-old",
+      "type": "concept",
+      "title": "Leftovers",
+      "description": "The leftovers from the initial project",
+      "path": "/index_old/",
+      "file": "concepts/index-old.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "user-install",
+      "type": "concept",
+      "title": "Install",
+      "description": "Installing PMC-VIS",
+      "path": "/user/install/",
+      "file": "concepts/user-install.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    },
+    {
+      "id": "user-usage",
+      "type": "concept",
+      "title": "Quick Start",
+      "description": "A Quick Introduction to PMC-VIS",
+      "path": "/user/usage/",
+      "file": "concepts/user-usage.md",
+      "locale": "",
+      "version": "",
+      "tags": []
+    }
+  ]
+}
